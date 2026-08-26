@@ -1,16 +1,22 @@
 /**
  * F5's reserved mount (F4 §5; DR-2026-08-22-search-is-not-a-page).
  *
- * Renders NOTHING at F4 — no input, no "Search" word, no disabled control
- * (omitted, not captioned). Contract handed to F5: the mount occupies the
- * nav row's right region; closed-state "word in the nav", open-state
- * grow-across-the-row, 2-char trigger and in-place swap are F5's behaviors.
+ * Landed state (spec-f5-search §5.1): the element still owns the nav
+ * row's right region and carries `data-shell-slot="search"` — F4's smoke
+ * greps for the attribute — and now hosts F5's field inside it: closed
+ * "Search" word, open input, 2-char in-place swap. The swap machinery
+ * consumes F4's server-rendered `data-search-swap-root` from this
+ * component's own side; no search code lives anywhere else in shell.
  *
- * Integration is one composition edit: this stub renders F5's field host
- * inside this element instead of nothing — the `data-shell-slot="search"`
- * attribute survives F5's takeover, and there is no `/search` route and no
- * search link anywhere in F4 output.
+ * There is no `/search` route and no search link anywhere in F4 output
+ * (spec-f5 §6).
  */
+import SiteSearchField from "../header/SiteSearchField";
+
 export default function SearchSlot() {
-  return <div data-shell-slot="search" />;
+  return (
+    <div data-shell-slot="search">
+      <SiteSearchField />
+    </div>
+  );
 }
