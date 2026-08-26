@@ -1,0 +1,41 @@
+# Brief — Spec Fixer: F5 header search r1
+
+Fresh Fixer agent; never spawn subagents; never commit; Wartales pack
+only. Revise exactly ONE file: `docs/spec-f5-search.mdx`. Produce no
+other deliverable except the response ledger inside it.
+
+Inputs, read IN FULL before editing:
+1. `docs/review-spec-f5-search.mdx` — binding finding list (2 BLOCKER,
+   3 MAJOR, 7 MINOR). Every finding addressed with disk evidence; none
+   argued away.
+2. `docs/spec-f4-app-shell.mdx` AS AMENDED BY ITS IN-FLIGHT r1 REVISION
+   (`## Revision r1` section at the end of that file — it is being
+   updated concurrently by a sibling fixer; if the amendment text for
+   the search seam is present, conform to IT; if not yet present,
+   conform to F5's own §5 seam requirement and record the dependency in
+   `## r1 conflicts`). Never edit F4.
+3. Disk truth for B1: recount from
+   `extracted/relinks/locale_availability.jsonl` yourself — named-locale
+   rows after the `namedLocales` exclusion rule, per locale; replace the
+   wrong ceiling derivation AND the invented `"en": 3247` manifest
+   example with measured values (or clearly-marked illustrative shapes
+   with `<measured-at-r1>` placeholders pointing at the recount
+   command).
+4. M3: execute the normalization you specify (python, read-only) over
+   the frozen pl test cases; specify a fold set that actually works
+   under NFKD+strip-marks (explicit `ł→l` mapping entry) or re-freeze
+   test cases to what the pipeline truly yields — but the DR-mandated
+   matching quality bar stays binding.
+5. M1/pt-BR: hrefs compose from F4's lowercase URL segments
+   (`pt-br`), never BCP-47 client codes; keep the id/client-code/segment
+   distinction explicit in the row schema.
+
+Rules of engagement:
+- Fix at anchored sections; keep structure/numbering/AC-id scheme
+  stable; tag changed AC bodies `(r1)`; never silently renumber.
+- End with `## Revision r1` — finding-by-finding table: id · severity ·
+  resolution one-liner · sections touched.
+- Do not touch any other file; do not commit.
+
+Done = all 12 findings resolved with evidence, seam ownership stated
+(who mounts what attribute where), AC set still executable.

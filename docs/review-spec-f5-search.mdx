@@ -1,0 +1,292 @@
+# Spec review — F5 header search ([`spec-f5-search.mdx`](./spec-f5-search.mdx))
+
+Reviewer: fresh Spec Reviewer (F5 brief
+[`briefs/reviewer-spec-f5-search.mdx`](./briefs/reviewer-spec-f5-search.mdx)) ·
+2026-08-26 · review only, no fixes proposed, nothing else touched.
+
+## Verdict: **NEEDS_REVISION**
+
+2 BLOCKER, 3 MAJOR, 7 MINOR. The DR is quoted verbatim (verified
+word-for-word against the register by mechanical diff) and every clause
+has a mechanism; the artifact/matcher/test architecture is sound and
+almost every frozen citation traces. What blocks: the frozen-numbers
+block misderives its own ceiling and ships an invented rowCount in the
+artifact contract itself (B1), and the F4↔F5 seam is specified with two
+disjoint vocabularies that fail both directions of the handoff (B2). The
+majors are a locale-casing break in the emitted hrefs (M1), a wrong path
+in the files-touched contract (M2), and a normalization fold the
+specified pipeline cannot perform (M3).
+
+---
+
+## 0. What was traced (evidence base)
+
+Every check below was executed against disk this session, not taken from
+the spec's own citations:
+
+- **avail** [`extracted/relinks/locale_availability.jsonl`] measured:
+  3,779 rows (item 2,125 / skill 1,373 / class 281);
+  `availableLocales` empty (= no bridge leaf anywhere) **458** = item
+  318 / skill 137 / class 3; a further **102** entities have ≥1 resolved
+  field but **no name in any locale** (item 4, skill 98);
+  `namedLocales` non-empty ⇒ exactly **3,219 rows per locale**, identical
+  in all nine, zero partial-coverage rows; `fields[L].name` flag ↔
+  `namedLocales` membership: **0 mismatches** across all rows × locales;
+  overlay id-sets set-equal across all nine locales for all three kinds.
+- **Overlays** `extracted/locales/{en,fr,de,es,pl,pt-BR,ru,ko,zh}/{item,skill,class}.json`
+  — only wave-1 kinds exist (SEARCHABLE_KINDS == overlay universe);
+  shape `{name?, description?}` as cited; markup-bearing names confirmed
+  (de item: `<item>OilBrave</item>-Konzentrat`, `Leiche von [NAME]`).
+- **wkk** [`pipeline/tools/wave_kinds.py`]: `MANAGED_KINDS` asserted 40
+  (module lines 119–120); wave-1 = item/skill/class(unitClass) ✓.
+- **Stage registry**: root [`../run_all.ps1`] `Invoke-StageEmit` runs
+  exactly `locale_bridge_dig.py` then `validate_all.py` (lines 327–335);
+  `--dry-run` and `--list` flags exist (lines 17, 16); StageInfo desc for
+  `emit` present (lines 66–68); `EXTRACTION-LOG.md` §3 stage table
+  exists; buildid 20318128 present in the log (6×). There is **no**
+  `pipeline/run_all.ps1`.
+- **FRAMEWORK.md** §2.1/§2.2/§2.9/§2.10 read: "derived, disposable
+  artifact", "Shipped JSON index + MiniSearch under ~100k entities …
+  Meilisearch above that or for faceted relational filtering", static
+  JSON API naming the search index — all accurately characterized by the
+  spec. §8 <200 ms budget present.
+- **DR register** [_foundation/decision-register.md]:
+  [DR-2026-08-22-search-is-not-a-page] mechanically diffed against the
+  spec §1 quote block — **identical word for word** (the five clauses,
+  including bold spans and backticks). Also verified in full:
+  [DR-2026-08-20-locale-urls] ¶1 (`/{pivot}/*` … 301 to unprefixed),
+  [DR-2026-08-22-inputs-answer-as-you-type] gated clause ¶5,
+  [DR-2026-08-22-copy-earns-its-place] §3 (search empty-state example),
+  [DR-2026-08-18-page-size] (50, "a choice, not a derivation"),
+  [DR-2026-08-21-drop-chip-words-and-updated-column] ("a cell holding a
+  measured or calculated number carries no word").
+- **F4** [`spec-f4-app-shell.mdx`] read in full (both directions of the
+  handoff checked, below). **pieces.mdx** F5 row: quoted verbatim ✓.
+  **locale-key-convention.mdx** §3/§5/§7: schema, drift ledger, coverage
+  table match disk. **seo-standard** §2 noindex line, **localization-
+  architecture** §4 complete-chrome rule, **design-standard** 12px floor
+  and quiet-confidence clauses, AGENTS.md rule 8, spec.md ×9 official
+  locale list + `omit-until-translated`: all as the spec cites.
+- **Normalization pipeline** re-implemented and run (Python
+  unicodedata, same semantics as JS `String.normalize`): results below.
+- **site/ tree as found**: package.json (`test: vitest run`; devDeps
+  jpeg-js + vitest only), tokens.css/tokens.test.ts/tokens-preview.html
+  present and untouched by the spec's lists, no `app/**`, no
+  vitest.config, contracts/ carries `maps.schema.json` (flat
+  `<name>.schema.json` convention the new contract follows).
+
+## 1. Findings
+
+### BLOCKER
+
+**B1 — Frozen-numbers block misderives its ceiling and the artifact
+contract contains an invented rowCount.** [§2 "Frozen numbers"; §3.2
+manifest example]
+
+- §2 states the bound as "**bounded 278 ≤ N ≤ 3,321 (= 3,779 − 458)**".
+  That subtraction removes only the *no-bridge-leaf* population (458 =
+  item 318 / skill 137 / class 3 — itself correct, traced to
+  locale-key-convention §5 and to disk). But the spec's own membership
+  rule (§2: "A row exists for locale `L` iff `L ∈ namedLocales`") also
+  excludes the **102 fielded-but-nameless entities** (item 4, skill 98)
+  measured in avail today — entities that have a bridge leaf (a
+  description) and therefore survive "3,779 − 458", yet can never
+  contribute a row. The stated ceiling is arithmetically unsupported by
+  the spec's own rule; the true ceiling — and the actual value, since
+  presence is perfectly parallel — is **3,219 per locale** (disk-
+  measured; locale-key-convention §4 independently records "3,219
+  en-named").
+- §3.2's manifest example prints `"rowCount": { "en": 3247, "fr": 3247,
+  … }`. **3,247 appears nowhere on disk or in any cited document** — it
+  is an invented number sitting inside §3, the section that defines the
+  published artifact shape, and it disagrees with both the (wrong)
+  ceiling story above it and the disk truth beneath it.
+- Compounding: because AC-4/AC-5 assert only the loose band `[278,
+  3321]`, every test written from this spec passes at 3,219 while the
+  narrative stays false — the band would tolerate ±102 rows of silent
+  membership drift before any gate fires. Per the brief's law
+  ("invented numbers = BLOCKER"), and because TestWriter anchors frozen
+  numbers from this exact block, this must be reconciled to disk before
+  arbiter: the named-universe arithmetic (3,779 = 458 no-leaf + 102
+  nameless-anywhere + 3,219 named) belongs in §2, and the example must
+  carry the real value or no value.
+
+**B2 — The F4↔F5 seam fails the handoff in both directions; DR clause
+3's mechanism is ungated at integration time.** [§5.1, §5.3.2, §13 H-3;
+vs spec-f4-app-shell §5 and AC-11]
+
+- F4's recorded contract handed to F5 is `data-shell-slot="search"`: "a
+  reserved mount in the header grid … rendering nothing at F4",
+  occupying "the nav row's right region", with F4 AC-11 asserting the
+  attribute "present and **empty** in served header HTML; no search
+  input, no 'Search' nav word". **F5 never mentions this attribute.** It
+  neither mounts into it nor explains why not.
+- F5's swap mechanism instead requires `data-search-swap-root` on "its
+  main content wrapper" (§5.1) and calls that "the F4 seam". **F4
+  records no such obligation anywhere** — not in its shell anatomy (§5),
+  not in its files-touched list (§9), not in its 14 ACs (§8). Each spec
+  believes the other owns the bridge; as written, integration produces
+  H-3's fallback, and H-3's fallback itself — "results render in the
+  header's own fallback slot" — references a slot nothing defines. If it
+  means F4's right-region mount, rendering the results surface inside a
+  header-grid slot contradicts DR clause 3's in-place-replacement model
+  outright.
+- §5.3.2 additionally makes a *structural* shell claim — "grid-column
+  expansion of the same row; the nav items yield the row to it" — which
+  can only be delivered by touching F4-owned header/nav-row layout, yet
+  §11's edit list touches no shell file. The grow-across-the-row half of
+  DR clause 2 therefore has no owner either.
+- The brief's bar for H-3 was "resolved or correctly gated". It is
+  neither: it is recorded, but recorded with the wrong counterparty
+  obligation. Until one attribute set, one owner, and one integration
+  edit exist in *both* specs, clause 3 (and the open-state half of
+  clause 2) has no enforceable mechanism at build time.
+
+### MAJOR
+
+**M1 — Emitted hrefs use client codes; F4's URL-segment law is
+lowercase. Every Portuguese result dead-links.** [§3.3 vs F4 §2 table +
+§3 routing]
+
+- §2 declares artifact keys use client codes "(`pt-BR`, `zh`)… BCP-47
+  presentation mapping is a concern of the URL layer, which F4 owns" —
+  but F4's URL layer does not carry `pt-BR`: its segment table and its
+  `defineRouting({ locales: [… "pt-br" …] })` use lowercase `pt-br`
+  (URL hygiene, F4 §2), and unknown segments 404 (F4 §3 rule 5). §3.3
+  composes `href = /{locale}/db/...` without ever saying which
+  vocabulary `{locale}` is. Composed from client codes (the only
+  vocabulary §3.2/§3.3 put in the emitter), the artifact ships
+  `/pt-BR/db/item/…` while the site serves `/pt-br/…` — every hit in the
+  pt-BR index renders a 404 link the day PT03 lands. H-1 records the
+  `/db/{kind}/{id}` *shape* as provisional; it does not cover segment
+  casing, so this hole is currently unrecorded. The route table must pin
+  the segment vocabulary (client-code → URL-segment mapping) at emit
+  time.
+
+**M2 — Files-touched points CodeWriter at a nonexistent path.** [§11
+Edited list]
+
+- The edited entry is "`pipeline/run_all.ps1` (emit stage: append step 3
+  + StageInfo desc)". The stage registry lives at the **pack root**
+  `run_all.ps1` (StageInfo `'emit'` at lines 66–68; `Invoke-StageEmit`
+  steps at 327–335); `pipeline/run_all.ps1` does not exist. The spec
+  itself cites `../run_all.ps1` correctly in §1 and §3.1, and AC-6
+  commands `pwsh ./run_all.ps1` — the files-touched list is the one place
+  that is wrong, and it is the list CodeWriter implements from. As-is it
+  manufactures a stray new file and leaves the real registry unedited
+  (caught only late, by AC-6 failing).
+
+**M3 — The claimed `ł→l` fold cannot be produced by the specified
+normalization pipeline, and §9.1 freezes a test case for it.** [§4.3,
+§9.1 suite 1]
+
+- §4.3 asserts "fr/de/es/pl/pt-BR — diacritics fold (`é→e`, `ł→l`,
+  `ß` excepted…)". U+0142 (ł) has **no canonical or compatibility
+  decomposition**, so NFKD + mark-strip leaves it intact. Executed
+  check of the exact §4.3 pipeline: `normalize("Włóczęga") →
+  "włoczega"` — ó folds, **ł persists**; `normalize("Ł") → "ł"`.
+- Consequence 1: §9.1's frozen table-driven case "pl `ł`" cannot pass as
+  described — TestWriter either writes a red test or silently contradicts
+  the spec text. Consequence 2: matching quality for Polish — one of the
+  nine official locales — is degraded across the whole pl index, since
+  Ł/ł-initial words (very common in Wartales strings) never tier-match
+  queries typed with plain `l`. The ß gap was honestly ledgered (H-5);
+  this gap is asserted away rather than ledgered, and unlike ß it breaks
+  a shipped locale. Verified-correct claims in the same section, for the
+  record: ё→е ✓ (`Ёж`→`еж`), Épée→epee ✓, ＸＹ→xy ✓, jamo partial typing ✓
+  (compatibility jamo U+314E/U+314F NFKD-fold to conjoining ᄒ/ᅡ, category
+  Lo, so `\p{M}` never eats them — `ㅎㅏ` prefix-matches `한국`), hanzi
+  stable ✓, İ incidentally folds to `i` (recorded out-of-scope
+  anyway) ✓.
+
+### MINOR
+
+**m1 — Bracket/color macros survive normalization, unledgered.** [§4.3]
+Step 1 strips only angle-tag markup. Disk shows Heaps names also carry
+`[NAME]`-style macros (`Leiche von [NAME]`, de item overlay) and
+locale-key-convention §2 documents `[Guard]` macros and `::value::` color
+spans; none of these are stripped, so they become matchable noise
+characters in `n` and skew tier-2 word-edge logic after them. The ß gap
+got an explicit hole (H-5); this one is suffered silently. Ledger it or
+extend step 1.
+
+**m2 — Swap trigger keys on normalized length, DR speaks of typed
+characters — deviation unrecorded.** [§5.2, §5.3.3 vs DR clause 3/4]
+Gating on `len(normalize(q)) ≥ 2` means some two-keystroke inputs (e.g.
+combining pairs, whitespace) never trigger and some single-keystroke IME
+commitments do; the owner's number is "two characters… typed". The
+choice is defensible (normalized space is the matcher's alphabet) but it
+is a paraphrase-level divergence from a verbatim-quoted clause and, in
+this spec's own culture (H-5, §5.2's blur note), deliberate deviations
+get recorded. Record it.
+
+**m3 — react/react-dom listed as *new devDependencies*, but F4 installs
+them first as dependencies.** [§9 preamble, §11 Edited]
+The spec's own sequencing (batch posture; pieces law; F4 §1 package.json
+extension) puts `react`/`react-dom` into `dependencies` before F5 lands.
+Re-adding them under devDependencies creates duplicate entries and
+version-skew risk. Only `@testing-library/react`, `jsdom`,
+`@vitejs/plugin-react` (+ types if wanted) are actually additive at F5.
+
+**m4 — The "kept honest" loop for the transcribed 40-kind mirror is not
+mechanical.** [§9.4, §9.5]
+Suite 4 checks `SEARCHABLE_KINDS` against a TS transcription of wkk's 40
+kinds; suite 5 imports `wave_kinds.MANAGED_KINDS` directly — but a
+Python-side import cannot validate a TypeScript literal, so a typo'd
+mirror passes both suites forever. The honesty claim as written is
+illusory; either generate the mirror from Python at test time or drop
+the claim and keep only the ⊂-check against the artifact's observed
+kinds.
+
+**m5 — Chrome-key merge handoff omits the mechanics F4 will demand.**
+[§8, H-4 vs F4 §4]
+When `search.*` merges into `site/messages/<id>.json` ×9, F4's gates
+apply mechanically: `_stub-keys.json` must list the stubbed keys,
+placeholder sets must be identical ×9 (`{count}` in `countTemplate` is a
+placeholder), and values must be byte-identical across all nine while
+stubbed. H-4 records the key merge but none of this, nor the mechanism
+convergence from F5's self-hosted props/injected-dictionary resolver to
+F4's next-intl message files — two chrome-i18n mechanisms will coexist
+until someone reconciles them, and only key names are called "the
+negotiation surface".
+
+**m6 — AC-1's git-diff envelope contradicts the rest of the spec's edit
+set.** [AC-1 vs AC-6, §11]
+AC-1: "`git diff` touches only the appended step + registry comment."
+AC-6 mandates the StageInfo description change and §11 separately edits
+`EXTRACTION-LOG.md`; whether those fall inside AC-1's "only" depends on
+whether the envelope is per-file or per-commit. State the envelope
+precisely, or the AC is unfalsifiable as an exactness claim.
+
+**m7 — Serialization order: prose and example disagree.** [§3.2, §3.4]
+§3.2 says "sorted keys" (which under `sort_keys=True` emits
+`href,id,kind,name`) while the example object and §3.4's "fixed key
+order" show `kind,id,name,href`. Deterministic either way, but the
+contract contradicts its own illustration and the published
+`contracts/search-index.schema.json` will be diffed against one of them.
+Pin one ordering in words the emitter and schema can both satisfy.
+
+## 2. Axis-by-axis adjudication (summary)
+
+| Brief axis | Result |
+|---|---|
+| 1. DR fidelity | Quotes verbatim (mechanically diffed ✓); every clause mechanized (cl.1→§6 six legs; cl.2→§5.3.1–2; cl.3→§5.3.3–5 + `hidden` mechanism; cl.4→`MIN_QUERY_CHARS=2` constant; cl.5→§4.1 purity + AC-8/AC-11). Deviations found are M3 (false coverage claim) and m2 (unrecorded trigger paraphrase), plus B2 leaving cl.2-open/cl.3 mechanisms ownerless at integration. |
+| 2. Traceability | 3,779 ✓, 458 ✓ (as no-leaf), 278/locale ✓, ×9 set ✓ (spec.md line 44; dirs on disk), MANAGED_KINDS=40 asserted ✓, SEARCHABLE_KINDS == overlay universe ✓. B1 = invented 3,247 + misderived ceiling; M1 = route-table vocabulary unpinned. |
+| 3. Index artifact soundness | Emit wiring realizable as specified (two existing steps confirmed; append-third is a plain Steps-array edit; `--dry-run`/`--list` exist; EXTRACTION-LOG §3 exists). Determinism achievable (sorted rows, fixed serialization, buildId-only freshness). Gates consistent with disk (flag↔namedLocales 0 mismatches). Row schema coherent except M1 (href vocabulary) and m7. |
+| 4. Matcher correctness | Pure-module rules realizable in App Router (no-env TS module; grep guard executable). Tiers/order/shuffle-stability sound; complexity budget credible at 3,219 rows. ru/ko/zh/fr/de/es/pt-BR coverage verified by execution; **pl `ł` claim false (M3)**; macro residue m1; MiniSearch departure justified and technically accurate (default tokenizer does break jamo typing and CJK substring), revisit triggers recorded. |
+| 5. Header state machine | Closed/open/swapped graph, Escape/clear restore, blur non-behavior (recorded), focus choreography, hidden-not-unmounted triple assertion: implementable and testable as specified. B2 = swap-root placement unresolved across specs; m2 = trigger alphabet deviation. |
+| 6. Route-absence sweep | Six legs complete and mechanical; ABSENT-line protocol prevents vacuous passes; `/en/search` → 301 → 404 mapping is faithful to [DR-2026-08-20-locale-urls] ¶1 and F4's pre-shim; net-never-200 correctly derived. |
+| 7. AC executability | All 16 ACs falsifiable by named suites/artifacts; dual-environment parity battery (same file, both vitest projects) is realizable and is the right executable form of clause 5. Weakest ACs: AC-15's banned-copy pattern sweep (string blacklist — acceptable), AC-1 envelope (m6). |
+| 8. Boundary integrity | No page routes designed (H-1 flagged); SEO legs are absence-proofs only; chrome parity gate not redefined ✓; tokens.css/tokens.test.ts honored untouched ✓; 14 new files verified collision-free against the tree; **edited list wrong on one of three paths (M2)**; shell-chrome crossing unowned (B2). |
+
+## 3. Count summary
+
+| Severity | Count | Findings |
+|---|---|---|
+| BLOCKER | 2 | B1 (invented rowCount 3,247 + ceiling misderivation, §2/§3.2), B2 (seam handoff fails both ways, §5.1/H-3 vs F4 §5/AC-11) |
+| MAJOR | 3 | M1 (pt-BR href casing vs `pt-br` segment law, §3.3), M2 (`pipeline/run_all.ps1` nonexistent, §11), M3 (`ł` fold impossible + frozen red test case, §4.3/§9.1) |
+| MINOR | 7 | m1 macro residue, m2 trigger-alphabet deviation unrecorded, m3 duplicate react deps, m4 illusory mirror-honesty loop, m5 chrome-merge mechanics, m6 AC-1 diff envelope, m7 key-order contradiction |
+| **Total** | **12** | |
+
+**Verdict: NEEDS_REVISION** — return to the Documentator for B1+B2
+reconciliation and the three majors; minors ride the same revision pass.
