@@ -1,0 +1,196 @@
+# Arbiter — PT16 SEO/AEO infra spec, revision r1
+
+Arbiter: fresh agent (brief
+[`docs/briefs/arbiter-pt16-seo.mdx`](./briefs/arbiter-pt16-seo.mdx)).
+Date: 2026-08-26. Judge only — nothing edited outside this deliverable,
+nothing committed, no subagents.
+
+## Verdict: **APPROVE-FOR-BUILD**
+
+All 12 findings of [`review-spec-pt16-seo.mdx`](./review-spec-pt16-seo.mdx)
+are **RESOLVED** (12 · 0 WEAKENED · 0 UNRESOLVED). The recorded
+[`## r1 conflicts`](./spec-pt16-seo.mdx#r1-conflicts) pt-BR item is ruled
+below: it is a **genuine cross-spec contradiction requiring an
+orchestrator errata decision** — exact clauses named there; PT16 itself
+needs no structural change and proceeds. Actual build stays gated on the
+pack's rule-8 data gate (PROGRESS P2; builds open with Batch 3) — this
+verdict releases the *spec*, not the build. Three non-blocking sweep
+directives (N-1..N-3) ride the next touch of the file; none blocks
+CodeWriter start.
+
+## Verification basis
+
+Read in full: subject [`spec-pt16-seo.mdx`](./spec-pt16-seo.mdx) (851
+lines, incl. `## r1 conflicts` + `## Revision r1`);
+[`review-spec-pt16-seo.mdx`](./review-spec-pt16-seo.mdx);
+[`_foundation/seo-standard.md`](../_foundation/seo-standard.md) §1–§9
+(END sentinel reached); FRAMEWORK §2.10 + §8;
+[`_foundation/localization-architecture.md`](../_foundation/localization-architecture.md)
+(sentinel reached); root AGENTS.md (sentinel reached);
+[DR-2026-08-20-locale-urls]; frozen authorities
+[`spec-f2-contracts.mdx`](./spec-f2-contracts.mdx) (827 lines — §2, §4,
+§6, §12, §15 AC7/AC8 load-bearing here) and
+[`spec-f4-app-shell.mdx`](./spec-f4-app-shell.mdx) (548 lines — §2, §3,
+§8, §9 seam reconciliations); [`pieces.mdx`](./pieces.mdx);
+[`arbiter-stages-spec.mdx`](./arbiter-stages-spec.mdx) m1/F9 ruling;
+PROGRESS batch plan + question queue. Verified first-hand on disk this
+session: `extracted/relinks/locale_availability.jsonl` (**regenerated
+since the r0 snapshot — now 14,456 rows × 34 kinds**, distribution
+len(availableLocales) {0: 4,982 · 8: 2 · 9: 9,472}; wave-1 subset intact:
+item 2,125 + skill 1,373 + class 281 = 3,779, of which 3,321 all-nine and
+**458 with ∅ — zero locales, not partial**; the only genuinely partial
+rows anywhere are `fiefCondition` `CompleteFiefMission` /
+`GovernmentAssign`, each missing `fr`); `validation-report.json`
+(`buildId:"20318128"`, `generated:"2026-08-25T19:45:51"` offset-naive);
+census closure 10,207 + 1,266 = 11,473 (spec-stages lines 102–105);
+AGENTS.md rule 5 text (binaries "stay local forever") and rule 8 (data
+gate); `contracts/` holds only `maps.schema.json` (`api.manifest.json`
+absent, as PT16 assumes); every §14 "new files" path absent today;
+`site/public/fonts/README.md` + `assets/ui/README.md` staging precedents
+exist; pack `.gitignore` binary-exclusion lines present; PROGRESS
+question queue exists (line 248); `design/sources/INDEX.mdx` exists; the
+cited "declared exemption, arbiter stages ruling F9/m1" traces to
+arbiter-stages-spec m1/F9 and spec-stages line 415. AC inventory recounted:
+**35** (S1–S7 · R1–R6 · J1–J7 · T1–T4 · O1–O3 · L1–L4 · I1–I4), six
+`(r1)` bodies confirmed (S4, R3, T4, J5, O2, I1).
+
+## Finding rulings
+
+| id | Ruling | Anchor |
+|---|---|---|
+| M-A | **RESOLVED** | §6.4 now derives `subjectOf` from F2 §6's actual law, quoting it exactly: *"take the page path, strip the optional leading locale segment, prepend `data/`, append `.json`"* with the worked pair `/de/item/Gold` → `/data/de/item/Gold.json` — verified character-for-character against F2 §6. The invented "page URL + `.json`" pseudo-quote is gone from §6.4 and §9(4); §9(4) additionally generates links from `api.manifest.json` so URLs cannot drift. Residual inherited tension is the pt-BR composition — adjudicated below, not an M-A defect. |
+| M-B | **RESOLVED** | All three sub-contradictions closed. (1) Import point: §3.1 names exactly F4 §9's modules (`src/i18n/{locales,routing,navigation}.ts`, `src/lib/routes-manifest.ts`) and adopts the ban — "creates no mapping module of its own … 'No second mapping may appear anywhere in `site/`'"; matches F4 §9's seam note "no `routes.ts` exists or will". (2) Casing: §3.2 consumes lowercase ids and names the join ("`locale_availability.jsonl` rows carry **client codes** (`pt-BR`), so every consumer … maps once through F4's `locales.ts`"). (3) Statuses: §11 flips both to LANDED with BLOCKED-ON moved to the *builds*. |
+| M-C | **RESOLVED** | §2 referent corrected to the canonical dataset rows: "10,207 across the 40 managed kinds; the census closure total 11,473 includes 1,266 logic-constant rows that can never have entity pages and is not a URL denominator." Arithmetic checked (10,207 × 9 = 91,863; 3,779 × 9 = 34,011; 2,125 + 1,373 + 281 = 3,779); the ≈34 k figure is honestly attributed to the frozen F2 §2 snapshot rather than claimed as present tense — wise, since the artifact has since grown (verification basis). Growth policy declared; sharding conclusion holds at both magnitudes. One inherited wording error split out as N-1. |
+| M-D | **RESOLVED** | AC-I1 now: "returns exactly the key string — **32 ASCII bytes** (33 with a trailing newline tolerated); the key itself is 32 hex chars" — internally consistent with §10's 32-hex contract and valid IndexNow key material; decidable by curl + byte count. |
+| M-E | **RESOLVED** | Fourth leg dropped, not papered over: AC-J5 is a three-source diff ("`name` in JSON-LD == the H1 text == F2 JSON API `name`"), §6.1 restates llms.txt's identity role as linking entry points, and the identity burden moves to AC-L3's fetch loop. Every remaining source has a defined producer. |
+| M-F | **RESOLVED** | `default.png` is no longer a commit: §8.2 stages it at setup behind a committed README contract ("The binary is **never committed** (AGENTS.md rule 5…)"), §14 adds the `.gitignore` exclusion (`site/public/assets/og/*.png`), and the committed-vs-staged split paragraph enumerates the exception explicitly — mirroring the fonts/textures README precedents, both verified on disk. Rule 5's letter is honored; `{key}.txt` correctly remains a committed public token. |
+| m-1 | **RESOLVED** | §6.2 carries an inline declared deviation: the root renders neither trail nor stub because "it has no ancestors … from the first child level up, §1's letter applies in full. Declared here so nothing is silently relaxed." Justified, scoped to one node, visible+structured parity preserved everywhere else — the deviation-with-reason m-1 asked for, not a diluted standard. |
+| m-2 | **RESOLVED** | `/db/…` spellings purged: §4.2 pins "F2 §6 frozen shapes (`/{kind}`, `/{kind}/{id}`, `/{kind}/{id}/tooltip`, `/db`, `/map`) … no `/db/…`-prefixed entity routes anywhere," echoing F2's own "evidence shape, not doctrine"; §5.3 tooltip row and AC-R3 (`localhost:3000/item?quality=tier2`) / AC-T4 (`/en/item/x`) probes re-pointed consistently. |
+| m-3 | **RESOLVED** | §4.3 pins the whole chain: one instant per run/buildid, emitted "verbatim — no zone suffix is invented … no host-local→UTC conversion," exact string equality; the offset-naive form is cited to its real authority (F9/m1 exemption — traced). AC-S4's regex makes the zone optional and demands "exactly string-equal … (script; no normalization on either side)" — decidable and byte-stable, hence AC-S6 coherent. |
+| m-4 | **RESOLVED** | §12's "Deferred binding clauses of the standard, named so none is ownerless": render parity (structural no-UA-branch guarantee + FRAMEWORK §8 DoD pointer), CWV budgets (launch DoD + flagged to the PROGRESS question queue — verified to exist), measurement gates (owner/orchestrator at launch). Every clause has an owner or a pointer; none implemented silently, none dropped. |
+| m-5 | **RESOLVED** | The false "none required" claim replaced by the honest minimum (`site/package.json` scripts beside F4's additions, `test` untouched; one `.gitignore` line), and `parse_jsonld.py` homed at `pipeline/tools/` — matching AC-J1's invocation and the pack convention F2's tools already follow. |
+| m-6 | **RESOLVED** | Mechanism re-pinned as `app/sitemap.xml/route.ts` custom handler with the reason stated ("Next's `app/sitemap.ts` Metadata convention serializes a plain `<urlset>` only"), child handler retained, and a CodeWriter verify-vs-pinned-Next duty recorded — the discovery risk m-6 flagged is now scheduled, not lurking. |
+
+**Totals: 12 RESOLVED · 0 WEAKENED · 0 UNRESOLVED.**
+
+## Adjudication — `## r1 conflicts`: F2-vs-F4 pt-BR segment collision
+
+**Ruling: (a) — a genuine cross-spec contradiction that must be surfaced to
+the orchestrator as errata.** Not merely a segment-vs-BCP-47 naming
+distinction: BCP-47 never enters URLs on either plane (F2 §4, F4 §2 agree),
+and the hreflang/lang layer PT16 §3.2 already disambiguates correctly. The
+collision lives one layer deeper — **page-path segment vs client code
+across the page→data boundary** — and two frozen clauses cannot both be
+applied literally to the same production URL:
+
+- F4 §2 freezes the page segment id `` `pt-br` `` (recorded r1 decision,
+  lowercase-hygiene rationale, "Orchestrator may override before first
+  deploy; flipping this §2 row is the whole change").
+- F2 §4 asserts, of page URLs, "**Locale segments** = the 8 non-pivot
+  CLIENT codes, exact strings: `de es fr ko pl pt-BR ru zh`", and F2 §6
+  freezes the derivation over them: *"take the page path, strip the
+  optional leading locale segment, prepend `data/`, append `.json`"* —
+  with F2 §15 AC7 implementing the strip against
+  `api.manifest.json.locales.prefixed` (client codes).
+
+Composed literally on an F4-conformant page, `/pt-br/item/Gold` strips to
+`pt-br` — outside F2's declared locale set — and yields
+`/data/pt-br/item/Gold.json`, while F2's own plane pins
+`/data/pt-BR/item/Gold.json`. This is invisible to both specs' own gates:
+F2 AC7 probes only `sorted(prefixed)[0]` = `de`, so its bijection passes
+green without ever exercising Portuguese-Brazil. Exactly one of the two
+frozen clauses must change; both candidate errata are one-clause edits:
+
+1. **Primary (recommended): exercise the override F4 §2 itself reserves —
+   flip the `pt-br` row's `id` cell to `pt-BR` in
+   `docs/spec-f4-app-shell.mdx` §2**, updating the derived mentions as
+   consequences (§3 `defineRouting` array, §4 message filename
+   `pt-br.json`, §7.2 expectation, §8 AC 2 probe, §2 recorded-decision
+   paragraph). Page segments then equal client codes for all eight
+   prefixed locales; F2 §6 composes verbatim with no bridge; PT16 §9(4)'s
+   published rule becomes true as written; and the URL spelling
+   re-aligns with [DR-2026-08-20-locale-urls] ¶2's own `/pt-BR/…`
+   illustration. Cost: F4's recorded lowercase-hygiene preference.
+2. **Alternative (keeps lowercase): amend `docs/spec-f2-contracts.mdx`
+   §6's derivation rule** to insert the bridge step — strip the optional
+   leading locale segment, **normalize it to the client code through the
+   pack's single locale bridge** (`src/i18n/locales.ts` /
+   `api.manifest.json` `locales`), prepend `data/`, append `.json` — with
+   the same normalization inside the manifest's `derivationRule` string
+   and one `pt-br`-spelled page case added to F2 §15 AC7's probe set. F4
+   untouched. Cost: F2's "bijective, mechanical" rule gains one
+   normalization step forever.
+
+**What PT16 must do either way (binding downstream):** the fixer's core
+claim holds — emitted links survive both arbitrations *because* they are
+derived from the manifest and the loaded records, not by string surgery on
+page paths. Keep it that way. Until the errata lands, §6.4's "derived from
+the page path by F2's frozen derivation rule" and §9(4)'s "stated
+verbatim" must be emitted as the **manifest-mediated rule** (enumerate
+`locales`, construct `/data/{clientCode}/{kind}/{id}.json` from the
+record), never as the unconditioned page-path formula — otherwise llms.txt
+publishes a derivation that 404s every pt-BR entity JSON under errata
+option 2, violating seo-standard §9's stable-data-URL actionability rule
+and the machine plane's own precision doctrine ([DR-2026-08-18]). No PT16
+edit is directed now; this ruling fixes the implementation posture and the
+llms.txt wording slot.
+
+## Revision-neighborhood sweep (new defects)
+
+None blocking; three directives, one observation.
+
+- **N-1 (MINOR — §2, one-line rewording).** "458 of those rows already
+  carried **partial availability**, so the omit policy bites immediately"
+  is wrong on disk: those 458 wave-1 rows carry `availableLocales: []` —
+  no locale anywhere, hence no page anywhere; per-locale partiality exists
+  on exactly two managed rows today (`fiefCondition`
+  `CompleteFiefMission`/`GovernmentAssign`, missing `fr`; verified). The
+  inherited r0 reviewer phrasing was enshrined unverified — the same
+  failure mode M-C corrected. Conclusion survives with honest wording:
+  458 rows excluded entirely, two rows exercise per-locale omission.
+- **N-2 (MINOR — §4.2 + AC-S3, pin the kind gate).** The `entities`
+  membership cell says "cartesian product of `locale_availability.jsonl`
+  `availableLocales` × shipped locales, per id × kind" with no
+  managed-kind intersection, and the artifact **now carries three DEFERRED
+  kinds** (element 5,078 · group 790 · place 534 ≈ 6.4 k ids × up to 9
+  locales) alongside 31 managed ones. §2's universe and F2 §6's kind set
+  imply the filter and the registry join likely absorbs it, but the one
+  operational sentence a generator/test author encodes omits it — bare
+  iteration would list thousands of permanently unroutable URLs in
+  children AC-S2 would still pass. State `∩ MANAGED_KINDS` in the cell and
+  mirror it in AC-S3's expected-set formula.
+- **N-3 (MINOR — §13 blocker labels).** AC-R3 "BLOCKED-ON(F4 list routes)"
+  and AC-J1 "BLOCKED-ON(F4 entity routes)" name routes no F4 deliverable
+  ships — F4's scope boundary is shell-only (locale roots + catch-all),
+  and pieces.mdx sequencing puts kind lists in PT03 and entity pages in
+  PT04a, after the PT16 skeleton; AC-R4's entity/list legs ride the same
+  pieces. Retarget the marks so the suite's expected-block state matches
+  the real build order (AC-T4's "BLOCKED-ON(F4 middleware)" is correct —
+  the pre-shim answers `/en/*` regardless of target existence).
+- **N-4 (observation, no action).** F2's status header self-declares
+  "DRAFT for the review chain," while PT16 §11 records it LANDED/frozen.
+  Treated here as frozen authority per the arbiter brief; if F2's own
+  chain amends §4/§6, PT16's `## r1 conflicts` section must be re-synced.
+
+Curl-verifiability re-check over the amended AC bodies: S4 (regex +
+string-equality script), R3 (`curl -sI` + meta/canonical grep), T4
+(`curl -sI` Location), J5 (three-source diff script), O2 (`curl -sI` +
+literal default-card assert on staged machines), I1 (curl + byte count) —
+all remain falsifiable by their stated commands; none loosened into
+unfalsibility by the r1 wording (O2's fresh-clone report-not-fail clause
+is the declared F4 §8 AC-12 precedent and still binds hard on staged
+machines).
+
+## Count summary
+
+| Measure | Count |
+|---|---|
+| Review findings RESOLVED | 12 (M-A..M-F, m-1..m-6) |
+| WEAKENED / UNRESOLVED | 0 / 0 |
+| New sweep findings | 3 MINOR (N-1..N-3) + 1 observation (N-4) — non-blocking |
+| Cross-spec errata items surfaced | 1 (pt-BR segment collision; two one-clause resolution options, primary = F4 §2 `pt-br`→`pt-BR`) |
+| ACs | 35, all curl/script-verifiable |
+
+**Verdict: APPROVE-FOR-BUILD** — with the pt-BR errata ruling above bound
+to the orchestrator, N-1..N-3 riding the next touch of the spec, and the
+actual build gated on the pack's rule-8 data gate (PROGRESS P2/Batch 3).

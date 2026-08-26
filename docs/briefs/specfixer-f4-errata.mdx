@@ -1,0 +1,34 @@
+# Brief — Spec Fixer: F4 app shell errata (post-arbiter)
+
+Fresh Fixer agent; never spawn subagents; never commit; Wartales pack
+only. Revise exactly ONE file: `docs/spec-f4-app-shell.mdx`. Two
+prescriptions only — change nothing else.
+
+Inputs:
+1. `docs/arbiter-pt16-seo.mdx` — the pt-BR collision ruling (binding):
+   **primary fix = F4 side.** Exercise F4 §2's reserved locale-table
+   override so the PAGE segment stays lowercase `pt-br` (URL law,
+   DR-2026-08-20 unchanged) while the DATA plane composes
+   `/data/pt-BR/…` via the client code: add/adjust the one override
+   table row (`pt-br` → clientCode `pt-BR`) and update every derived
+   mention the arbiter enumerates (§6 derivation examples, AC bodies
+   referencing data URLs, §9 files-touched if the table lives in a new
+   file). The goal: F2 §6's unconditioned formula must compose correctly
+   when fed the manifest-mediated mapping — if F4's table alone cannot
+   guarantee that, state precisely what the api.manifest entry must
+   carry (do not edit F2).
+2. `docs/arbiter-f4-shell.mdx` finding **N1** (non-gating MINOR): fix
+   §6.2's carve-out wording — tokens.css L167–171 DOES define
+   `--radius-*` scalars (`0rem`), so the "scalars the canon does not
+   define" claim is false; correct the sentence and extend the hygiene
+   grep mandate to cover non-color canon values (radius lengths, font
+   stacks) with a failing command.
+
+Rules of engagement:
+- Tag touched AC bodies `(r1b)`; append `## Revision r1b (errata)` with
+  the two prescriptions, resolutions, sections touched.
+- Do not touch any other file; do not commit.
+
+Done = both prescriptions applied, revision section complete, AC set
+executable, locale table self-consistent end-to-end (page segment vs
+client code distinguishable in every example).
