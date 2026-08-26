@@ -443,9 +443,11 @@ footer groups; the page `<h1>` belongs to pages, never to the shell.
    closing the AC 12/13 verification gaps): status codes for the nine
    roots; redirect Location + permanence; `lang` attributes; prefixed href
    correctness; wordmark/nav/footer presence; absence of `/en/` internal
-   hrefs and of any search control; `data-shell-slot="search"` empty and
-   `data-search-swap-root` present on the main wrapper of every served
-   page (AC 11); 404 legs — `/de/<unknown>` answers 404 with localized
+   hrefs; the shell rendering no search input or search word beyond F5's
+   mounted search-field host (r2b); `data-shell-slot="search"` present —
+   empty until F5 mounts, then containing exactly the F5 search-field host
+   and nothing else — with `data-search-swap-root` present on the main
+   wrapper of every served page (AC 11); 404 legs — `/de/<unknown>` answers 404 with localized
    chrome and `<html lang="de">`, `/xx/foo` answers 404 with no locale
    redirect (AC 4, AC 14); the Noto split-subset stylesheet link PRESENT
    on `/zh`
@@ -493,11 +495,15 @@ footer groups; the page `<h1>` belongs to pages, never to the shell.
    uses a `rounded-*` utility (r1b).
 10. **Hygiene laws hold:** zero stock-palette classes, zero raw numeric
     spacing utilities, zero `oklch(` in shell/app sources (test-enforced).
-11. **Search slot honored, swap root placed (r1):** `data-shell-slot="search"`
-    present and empty in served header HTML; `data-search-swap-root`
-    present on the served main content wrapper of every page (smoke) —
-    F5's inbound seam, spec-f5-search §5.1 + §13 H-3; no search input, no
-    "Search" nav word, no `/search` route or link anywhere.
+11. **Search slot honored, swap root placed (r1, r2b):**
+    `data-shell-slot="search"` present in served header HTML — empty until
+    F5 mounts, then containing exactly the F5 search-field host and
+    nothing else (staged behavior: green at F4-only time AND after F5
+    lands); `data-search-swap-root` present on the served main content
+    wrapper of every page (smoke) — F5's inbound seam, spec-f5-search
+    §5.1 + §13 H-3; the shell itself renders no search input or "Search"
+    nav word beyond F5's mounted host, and there is no `/search` route or
+    link anywhere.
 12. **Assets resolve:** every `/fonts/*.woff2` and `/assets/ui/*.png` ref
     reachable (curl 200) on a staged machine; on a fresh clone the dev
     server still renders (bevel/stack fallbacks) and the missing-ref state
@@ -625,9 +631,17 @@ examples spell the `client code` column (`/data/pt-BR/…`).
 |---|---|---|---|---|
 | 1 | [`arbiter-pt16-seo.mdx`](./arbiter-pt16-seo.mdx) Adjudication (binding errata; primary fix = F4 side) | exercise the §2 reserved locale-table override so the PAGE segment stays lowercase `pt-br` ([DR-2026-08-20-locale-urls] unchanged) while the DATA plane composes `/data/pt-BR/…` via the client code | override recorded as EXERCISED on the existing row (`pt-br` → clientCode `pt-BR`, cells unchanged — the divergence is the point); new composition law: page→data joins resolve the stripped segment through the table, never page-path string surgery (verbatim F2 §6 composition of `/pt-br/item/Gold` would emit `/data/pt-br/…`, outside F2's declared set); stated precisely what `api.manifest.json` must carry — additive `locales.pageSegments: {"pt-br": "pt-BR"}` with a three-way resolution rule — because F4's table alone cannot guarantee F2 §6 composes (`prefixed` is frozen to client codes by F2 §15 AC8); F2 untouched; routing array annotated page-plane; §7.2 pins the single divergent join as test law | §2, §3, §7 item 2, §9 seam |
 | 2 | [`arbiter-f4-shell.mdx`](./arbiter-f4-shell.mdx) finding N1 (MINOR, non-gating) | correct the false carve-out claim; extend the hygiene grep to non-color canon values with a failing command | carve-out deleted: tokens.css L167–171 DOES define `--radius/--radius-sm/md/lg/xl` (all `0rem`; tokens.test.ts pins each at 0), so no canon-undefined scalar exists and the old "scalars the canon does not define (`--radius-*: 0`)" sentence was false; globals.css now declares NO `--radius-*` at all and `rounded-*` utilities are banned (square is F1 §2.4 canon); aliasing law extended beyond colors — radius lengths, font stacks, durations: any non-`var()` right side whose left side matches a canon token name fails shell-hygiene (§7 item 5), which remains AC 9's failing command for both slices; font mappings pinned to `var()` right sides with the name-collision spelling left as a verify-at-install duty beside the §1 gate | §6, §7 item 5, §8 AC 9 |
+| r2b | [`arbiter-f5-search.mdx`](./arbiter-f5-search.mdx) §3 adjudication (binding cross-spec errata, routed as E-2) | re-stage the two search-slot legs whose assertions become false the day F5 mounts — smoke.mjs is a standing runner (`npm run smoke`), so an unqualified emptiness leg goes permanently red post-F5 and AC-11 becomes unverifiable-green, i.e. unfalsifiable as an exactness claim | slot leg restated: `data-shell-slot="search"` present; EMPTY until F5 mounts, then containing exactly the F5 search-field host and nothing else; absence legs rescoped from global absence to ownership — the shell renders no search input or "Search" nav word beyond F5's mounted host (post-mount the closed-state chrome word renders in served HTML from F5's side, which killed the old absolute bans); swap-root leg and `/search`-route/link absence untouched — both survive F5 unchanged; every amended leg stays green at F4-only time AND after F5 lands, zero code-level conditionals because F4 has not built yet (`site/scripts/`, `app/**` absent on disk) | §7 item 6, §8 AC 11 |
 
 Boundary fences intact after r1b: PT01 wholesale home replacement · PT02
 footer deepening deferred · PT16 hreflang/sitemap/JSON-LD still excluded
 (the casing seam now records the RESOLVED arbitration instead of a
 provisional freeze, plus the manifest-mediated data-plane join) · PT17
 mechanism-only · F5 outbound slot-only / inbound attribute-only.
+
+Ledger continues with r2b above (heading kept so the
+[Revision r1b](#revision-r1b-errata) anchor stays valid; r1b rows stand
+byte-intact). Boundary fences after r2b: unchanged from r1b — F4 still
+ships only the slot mount and the swap-root attribute; the amendment
+rewords what the standing checks ASSERT across the F5 mount, never what
+F4 builds.
