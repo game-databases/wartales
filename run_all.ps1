@@ -65,7 +65,7 @@ $script:StageInfo = @{
     };
     'emit' = @{
         status = 'BUILT';
-        desc = 'validation-only pass: locale availability regen (locale_bridge_dig) + validate_all -> validation-report.json + VALIDATION-REPORT.md reconciled to census 11,473 (spec-stages-datasets section 5)';
+        desc = 'validation + artifact pass: locale availability regen (locale_bridge_dig) + validate_all -> validation-report.json + VALIDATION-REPORT.md reconciled to census 11,473 (spec-stages-datasets section 5) + F5 search index emitted from avail+overlays into site/public/data/search x10, byte-deterministic (spec-f5-search section 3)';
     };
 }
 
@@ -330,6 +330,7 @@ function Invoke-Emit {
            '--reldir', 'extracted/relinks',
            '--report', 'extracted/validation-report.json',
            '--md', 'extracted/VALIDATION-REPORT.md')
+        ,@('pipeline/tools/search_index_emit.py', '--buildid', $BuildId)
     )
     return Invoke-PipelineSteps -Stage 'emit' -Python $Python `
         -Steps $steps -DryRun:$DryRun

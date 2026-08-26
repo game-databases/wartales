@@ -26,3 +26,6 @@ pipeline/tools/_verify/
 pipeline/tools/__pycache__/
 # session-local claude state
 .claude/
+
+# search indexes are regenerable emit-stage outputs (run_all step 3) — local like fonts/ui textures
+site/public/data/

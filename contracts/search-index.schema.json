@@ -1,0 +1,111 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "wartales/search-index@1",
+  "title": "Wartales F5 header-search index artifact",
+  "description": "Published contract for site/public/data/search/{locale}.json and manifest.json (spec-f5-search §3). Emitted by pipeline/tools/search_index_emit.py as run_all.ps1 stage `emit` step 3. Derived, disposable artifact (FRAMEWORK §2.1/§2.9): membership = namedLocales verbatim, names = overlay values verbatim (markup included), hrefs composed at emit time from the declared route table below. Deterministic: fixed key order (rows kind,id,name,href; top level schema,locale,buildId,rows), ensure_ascii=False UTF-8 LF, no clock, buildId is the only freshness stamp.",
+  "searchableKinds": {
+    "description": "SEARCHABLE_KINDS frozen in the emitter; asserted ⊆ wave_kinds.MANAGED_KINDS (40 kinds) there, == manifest.kinds here, == TS KIND_ORDER in site/src/lib/search/searchRows.ts. Growth lands with wave-2 overlays per spec-f5 §2's recount-and-refreeze law.",
+    "value": ["item", "skill", "class"]
+  },
+  "routeTable": {
+    "description": "derived-from-F2-§6 (frozen URL law): entity pages WITHOUT a /db prefix; pivot composes bare (DR-2026-08-20-locale-urls); segments are F4 §2's lowercase page-plane ids — client codes never leak into hrefs where the segment differs. A rename of F2 §6 propagates as this table edit plus a rerun, never a frontend change.",
+    "pivotClientCode": "en",
+    "segments": {
+      "en": null,
+      "pt-BR": "pt-br"
+    },
+    "defaultSegmentPolicy": "segment == client code",
+    "shapes": {
+      "pivot": "/{kind}/{id}",
+      "nonPivot": "/{seg}/{kind}/{id}"
+    }
+  },
+  "definitions": {
+    "row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id", "name", "href"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["item", "skill", "class"],
+          "description": "A SEARCHABLE_KINDS member — kind names from wave_kinds, never sheet names."
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Stable game id (avail join key; URL ids verbatim, slugs only additive per F2 §4)."
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The game string for that locale, markup included — stripping is a matcher concern (spec-f5 §4.3), never an artifact transform."
+        },
+        "href": {
+          "type": "string",
+          "pattern": "^/(item|skill|class)/[^\\/]+|^/(de|es|fr|ko|pl|pt-br|ru|zh)/(item|skill|class)/[^\\/]+$",
+          "description": "Composed from the routeTable for this file's locale; pivot bare, pt-BR keyed file carries /pt-br/… (never /pt-BR/…); never contains /search."
+        }
+      }
+    },
+    "localeFile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "locale", "buildId", "rows"],
+      "properties": {
+        "schema": { "const": "wartales/search-index@1" },
+        "locale": {
+          "type": "string",
+          "enum": ["en", "fr", "de", "es", "pl", "pt-BR", "ru", "ko", "zh"],
+          "description": "DATA-plane client code — the artifact vocabulary (URL segments are presentation-only and appear inside hrefs, not here). ja is community-lane omit-until-translated and never appears."
+        },
+        "buildId": {
+          "type": "string",
+          "pattern": "^[0-9]+$",
+          "description": "The extraction freshness stamp (machine plane, D2-compatible); no timestamps anywhere in the artifact."
+        },
+        "rows": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/row" },
+          "description": "Sorted by (SEARCHABLE_KINDS index, id asc); one row iff locale ∈ namedLocales for that avail row — byte-identical (kind,id) list across all nine files."
+        }
+      }
+    },
+    "manifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "buildId", "locales", "kinds", "rowCount"],
+      "properties": {
+        "schema": { "const": "wartales/search-index@1" },
+        "buildId": { "type": "string", "pattern": "^[0-9]+$" },
+        "locales": {
+          "type": "array",
+          "minItems": 9,
+          "maxItems": 9,
+          "items": {
+            "type": "string",
+            "enum": ["en", "fr", "de", "es", "pl", "pt-BR", "ru", "ko", "zh"]
+          }
+        },
+        "kinds": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["item", "skill", "class"] },
+          "description": "== emitter SEARCHABLE_KINDS, order-significant (tie-break + grouping order for the matcher)."
+        },
+        "rowCount": {
+          "type": "object",
+          "additionalProperties": false,
+          "propertyNames": {
+            "enum": ["en", "fr", "de", "es", "pl", "pt-BR", "ru", "ko", "zh"]
+          },
+          "minProperties": 9,
+          "maxProperties": 9
+        }
+      }
+    }
+  },
+  "oneOf": [
+    { "$ref": "#/definitions/localeFile" },
+    { "$ref": "#/definitions/manifest" }
+  ]
+}

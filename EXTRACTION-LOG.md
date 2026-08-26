@@ -106,7 +106,7 @@ unblock pointer.
 | 3 | decompile | **NOT BUILT** (stage unwired; outputs shipped) | `extracted/decompiled/…` — BOTH layers already exist and are verified: [`hl/`](extracted/decompiled/) `.dis.hx` operand mirrors + CFG (Dig 8) and [`hl-src/`](extracted/decompiled/) structured text, 1,584 modules / 52,114 functions / 2,508,050 ops = 100.00 % coverage (Dig 13) | produced OUT-OF-BAND by the pinned tools (`hlboot_probe.py --emit` → `logic/hl-structure/`, then `hl_disasm.py` / `hl_decompile.py`, both §2-pinned); determinism proven by two independent full emits diffed recursively (0 differences). The stage stub itself still exits 3 until the walk wires these tools in ([docs/decompile-dig-1.mdx](docs/decompile-dig-1.mdx); rider R2 remainder) |
 | 4 | datasets | **BUILT** | `extracted/data/<kind>.jsonl` (40 managed kinds) | waves 1+2 regenerated into `_draft` by `cdb_emit.py`, `cdb_verify.py` GATE, `promote_drafts.py --plane data`, canonical re-verify ([spec-stages-datasets §3](docs/spec-stages-datasets.mdx)) |
 | 5 | relink | **BUILT** | `extracted/relinks/<from>__<to>.jsonl` (51 pair files) + `RELATIONS.md` + `relinks/matrix.json` | promote the seed pairs, canonical verify over BOTH planes, catalog derived from canonical bytes ([spec-stages-datasets §4](docs/spec-stages-datasets.mdx)) |
-| 6 | emit | **BUILT** | `relinks/locale_availability.jsonl` + overlays (regen) + `validation-report.json` + `VALIDATION-REPORT.md` | validation only — availability regen (`locale_bridge_dig.py`) + `validate_all.py` reconciling everything to census 11,473 ([spec-stages-datasets §5](docs/spec-stages-datasets.mdx)) |
+| 6 | emit | **BUILT** | `relinks/locale_availability.jsonl` + overlays (regen) + `validation-report.json` + `VALIDATION-REPORT.md` + `site/public/data/search/` ×10 (`{locale}.json` ×9 + `manifest.json`) | validation + artifact pass — availability regen (`locale_bridge_dig.py`), `validate_all.py` reconciling everything to census 11,473 ([spec-stages-datasets §5](docs/spec-stages-datasets.mdx)), then the F5 search index emitted from avail + wave-1 overlays by [`pipeline/tools/search_index_emit.py`](pipeline/tools/search_index_emit.py) — membership = `namedLocales`, hrefs from the declared route table (pivot bare; `pt-br` segment), byte-deterministic across runs ([spec-f5-search §3](docs/spec-f5-search.mdx)) |
 
 A full no-arguments run currently walks harvest → PASS, map → PASS, then
 fails loudly at decompile (exit 3) — correct while stage-3 wiring is unbuilt;
@@ -194,6 +194,25 @@ one commit, never a hand-edit of a single constant:
 
 ## 6. Log history
 
+- 2026-08-26 — F5 search-index emitter joins stage `emit` as step 3
+  (CodeWriter, brief [docs/briefs/codewriter-f5-search.mdx](docs/briefs/codewriter-f5-search.mdx);
+  spec [docs/spec-f5-search.mdx](docs/spec-f5-search.mdx) §3).
+  [`pipeline/tools/search_index_emit.py`](pipeline/tools/search_index_emit.py)
+  reads ONLY `relinks/locale_availability.jsonl` + `locales/<l>/{item,skill,class}.json`
+  and emits `site/public/data/search/{en,fr,de,es,pl,pt-BR,ru,ko,zh}.json`
+  + `manifest.json` (schema `wartales/search-index@1`,
+  [contracts/search-index.schema.json](contracts/search-index.schema.json)):
+  membership = `namedLocales` verbatim (3,219 rows/locale on buildid
+  20318128; class facet exactly 278), names verbatim with markup,
+  hrefs composed from the declared route table derived-from-F2-§6
+  (pivot bare, `/pt-br/…` segment for the `pt-BR` file), rows sorted by
+  (kind order, id), fixed key order, `ensure_ascii=False`, LF — two
+  consecutive runs sha256-identical over all ten files (verified this
+  session). Consistency gates exit 2 naming the offending file:
+  flag-without-value, value-without-flag, unknown locale, missing
+  searchable-kind overlay. Honesty chain mechanical at every hop:
+  `wave_kinds.MANAGED_KINDS` (asserted ⊆ at import) → emitter
+  `SEARCHABLE_KINDS` → `manifest.kinds` → TS `KIND_ORDER`.
 - 2026-08-26 — Rule-8 gate rider R2 doc-truth pass (DocFixer; brief
   [docs/briefs/docfixer-r2-gate.mdx](docs/briefs/docfixer-r2-gate.mdx);
   findings in
