@@ -18,9 +18,9 @@ items lives at the bottom.
 | Phase | Status |
 |---|---|
 | P0 Bootstrap & research (recon, toolchain, competitors, locales, spec) | **DONE — spec FROZEN 2026-08-24** (arbiter delta APPROVE-FOR-FREEZE) |
-| P1 Extraction: harvest → decompile → datasets → relink → PROOF | **NEARLY CLOSED** — run_all stages 1 harvest + 2 map BUILT; **stages 4–6 BUILT** (blind parallel CodeWriter+TestWriter landed; review pair running). Residue ledger: R1 HBSON **CLOSED** (dig 7, 3,536/3,536 byte-exact) · R2 achievements **RESOLVED** keyless (235 rows, dig 10) · R3 disassembler **COMPLETE** (dig 8, 2.5M ops; structured-text step = dig 13 in flight) · R6 sdlboot **CLOSED** (dig 9) · R7 battle terrain **CLOSED** (dig 12, 97 scenes decoded) · R8 world↔tile transform **CLOSED** (dig 11, px=wx·4/py=wy·4 proven). Open: R3b decompiler (running), R9 locale wave-2 overlays, R10 relink matrix upgrade, R5 fr stamping rule |
-| P2 Data-completeness gate (rule 8 arbiter) | opens after R3b/R9/R10 land + stages review chain clears |
-| P3 Site build (DB, map, builder, calculators, guides/news, i18n, UGC, SEO/AEO) | F1 tokens **DONE** (r4 verdict + r5 closeout measured); rest gated on P2 |
+| P1 Extraction: harvest → decompile → datasets → relink → PROOF | **NEARLY CLOSED** — run_all stages 1–6 all BUILT and SHIPPED (arbiter APPROVE-FOR-SHIP-COMMIT, `af29425a`). Residue ledger: R1 HBSON **CLOSED** (dig 7, 3,536/3,536 byte-exact) · R2 achievements **RESOLVED** keyless (235 rows, dig 10) · R3 disassembler **COMPLETE** (dig 8, 2.5M ops) · R3b decompiler **CLOSED** (dig 13: every fn readable structured text; OCallClosure typing ledgered as follow-up) · R6 sdlboot **CLOSED** (dig 9) · R7 battle terrain **CLOSED** (dig 12, 97 scenes decoded) · R8 world↔tile transform **CLOSED** (dig 11, px=wx·4/py=wy·4 proven). Open: R9 locale wave-2 overlays (dig 14 running) · R10 relink matrix upgrade (dig 15 running) · R5 fr stamping rule (rides dig 14) |
+| P2 Data-completeness gate (rule 8 arbiter) | opens after R9 (dig 14) + R10 (dig 15) land + commit; Batch-2 launch |
+| P3 Site build (DB, map, builder, calculators, guides/news, i18n, UGC, SEO/AEO) | F1 tokens **DONE** (r4 verdict + r5 closeout measured); F2/F4/F5/PT16 specs drafting now (Batch 1); builds gated on P2 |
 | P4 Visual critic loop vs references + e2e smoother | not started |
 | P5 Definition-of-done verification + missingdata.md | not started |
 
@@ -57,6 +57,27 @@ through the full pipeline law (PrepareTask → blind build → double review
   land; DoD sweep + missingdata.md last.
 
 ## Log
+
+### 2026-08-26 — Batch 1 airborne; R3b closed; drive pressure escalated
+
+- **Six parallel subagents launched** (Agent tool, per owner directive):
+  dig 14 locale wave-2 (R9, reconciles prior partial scratch), dig 15
+  relink matrix (R10, startChoice.props.pattern edge family seeded),
+  and Documentator specs for F2 published contracts / F4 app shell /
+  F5 header search / PT16 SEO-AEO. Spec-writing is planning, legal
+  before the rule-8 gate; builds stay gated on #13.
+- **Dig 13 verified landed**: `extracted/decompiled/hl-src/` structured
+  text for every function (capture odds f#7774, damage preview f#8320
+  readable); constant-name strings join code ↔ ConstantKind rows.
+  Closure call-site typing (8,964 sites) ledgered as next decompile
+  upgrade; heavy emits staged on D: when C: filled mid-dig.
+- **Toolchain committed into the standalone repo**: pipeline/tools code
+  + pinned binaries (~4.6 MB) now tracked so run_all is reproducible
+  from a fresh clone; `_verify/` fixtures stay local (game-derived,
+  rule 5); `.claude/` session state ignored.
+- **C: pressure worsened: 2.2 GB free at 100%** (was 7.7 GB). Safe lever
+  pulled (npm cache clean, +0.3 GB); real fix needs the owner call on
+  cross-pack Temp scratch — Q2 escalated to urgent.
 
 ### 2026-08-25 — wave 1+2 results: R1/R2/R6/R7/R8 closed; stages built under review
 
@@ -229,6 +250,6 @@ through the full pipeline law (PrepareTask → blind build → double review
 | # | Question | Why it blocks | Workaround in flight |
 |---|---|---|---|
 | Q1 | Domain placement for Wartales (dedicated vs hybrid vs hub path)? Not on the 51-product roster yet. | D3 domain+trademark is an owner-only gate. | Localhost-first build proceeds regardless; provisional roster entry recorded in decision-register. |
-| Q2 | **C: drive at 7.7 GB free (100% warning)** — ~16 GB of other packs' scratch sits in `Temp` per the stages TestWriter's environment note; not wartales-owned, not cleaned by this pack. | Repo drive exhaustion would break every concurrent pack build on NE8K. | This pack keeps its scratch in gitignored `wartales/output/` (~0.6 GB total) and temp-on-D: where needed; owner call on cross-pack Temp cleanup. |
+| Q2 | **C: drive at 2.2 GB free (100%, degraded from 7.7 GB on 08-25)** — ~16 GB of other packs' scratch sits in `Temp` per the stages TestWriter's environment note; not wartales-owned, not cleaned by this pack. Dig 13 already had to stage heavy emits on D: because of this. | Repo drive exhaustion would break every concurrent pack build on NE8K, including this one's six in-flight agents. | Safe lever pulled 2026-08-26 (npm cache clean, +0.3 GB); this pack keeps its scratch in gitignored `wartales/output/` and temp-on-D: where needed; owner call on cross-pack Temp cleanup is now urgent. |
 
 <!-- END OF PROGRESS — updated after every completed unit -->
