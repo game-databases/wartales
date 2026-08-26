@@ -1,0 +1,227 @@
+# Code review — F5 header search build (d35c42e + aa12024)
+
+Fresh Code Reviewer, 2026-08-26. Subject: the built F5 — CodeWriter
+`d35c42e` + TestWriter `aa12024` — against
+[`spec-f5-search.mdx`](./spec-f5-search.mdx#0-scope-in-one-line)
+(build-ready r1+arbiter+r2). Review only — no fixes, no commits. Both
+commits' trees read in full; every load-bearing law re-verified **on this
+machine**, not taken from the build reports.
+
+## Verdict: NEEDS-FIX
+
+One MAJOR: a failed artifact fetch renders the *zero-match* state — a
+fabricated measured `0` for whatever the reader typed — with no in-session
+retry, violating the numbers-stand-alone doctrine on the piece's own core
+surface ([M-1](#findings)). Everything else is faithful: normalization is
+codepoint-exact, the matcher tiers and total order are exact, the emitter
+is deterministic and recount-governed, both strict-xfail divergences are
+ruled **ACCEPT-AS-XFAIL** below, and files-touched carries three
+beyond-letter items, none gating.
+
+| Category | Count |
+|---|---|
+| BLOCKER | 0 |
+| MAJOR | 1 (M-1) |
+| MINOR | 8 (m-1 … m-8) |
+| Strict-xfail divergences | 2 / 2 ACCEPT-AS-XFAIL (0 FIX-REQUIRED) |
+| Security findings | 0 (sweep clean apart from M-1's error-state leg) |
+
+Independent reproduction on this machine:
+
+- `npx tsc --noEmit` (site/): **exit 0**.
+- `npm test` (vitest, node + jsdom projects): **159/159 green**,
+  including `searchRows.test.ts` executed under BOTH projects (DR clause
+  5) and `search-artifact.test.ts` against the emitted tree.
+- `pytest pipeline/tests/test_search_index.py`: **18 passed,
+  1 xfailed** (strict) — the two divergences held as measured by the
+  TestWriter.
+- Emitter determinism on the REAL corpus: two fresh `search_index_emit.py`
+  runs to scratch dirs → sha256 **identical across all ten files**
+  (`en.json 170b593e9df3 … manifest 5198626f550c`), and byte-identical to
+  the tree under `site/public/data/search/`.
+- Frozen anchors recounted from `extracted/relinks/locale_availability.jsonl`
+  this session: avail 14,456 rows / 34 kinds; searchable subset 3,779 =
+  458 + 102 + 3,219 (item 2,125 / skill 1,373 / class 281); class facet
+  278/locale; pt-BR file carries 0 hrefs outside `/pt-br/…`; pivot bare.
+- ko jamo law re-proven codepoint-exact in Node: `normalize(한국)` =
+  `U+1112 U+1161 U+11AB U+1100 U+116E U+11A8`, compatibility jamo fold to
+  choseong/jungseong only (`U+1102`, never jongseong), equivalence false,
+  prefix property true — matches spec r2's N-1 proof digit for digit;
+  `Włóczęga → wloczega`, `Łódź → lodz`.
+- Live-server legs NOT re-run (no server up on :3000/:3001 at review
+  time); `GET /search → 404` stays smoke-owned
+  (`site/scripts/smoke.mjs:707–710`, r2b legs landed pre-F5 in 6bd451d).
+
+## A. Spec fidelity
+
+- **§4.3 normalization steps 1–8** (`normalize.ts`): exact step-for-step —
+  tags→space, bracket macros→space, `::color::`→space, NFKD, `\p{M}`
+  strip, lowercase, then the explicit `ł→l` fold (correctly AFTER
+  lowercasing, which is what produces foldable U+0142), whitespace
+  collapse + trim last. One implementation, no normalized column shipped
+  anywhere in the artifact (checked: rows are exactly `kind,id,name,href`).
+- **§4.2 tiers + total order** (`searchRows.ts`): tier1 `n===q`; tier2
+  word-edge — the implementation checks EVERY occurrence
+  (`wordEdgeMatch`), which is strictly stronger than the spec letter and
+  cannot mask a later post-space hit behind a position-0 miss; tier3
+  `includes`. Sort: tier asc → normalized-length asc → KIND_ORDER → id
+  lexicographic; shuffle-stability asserted over four deterministic
+  permutations per query (no RNG).
+- **MIN_QUERY_CHARS = 2** exported, asserted `=== 2`, guard `q.length < 2`
+  → `[]` (defense in depth under the component's own gate).
+- **§5.2 state machine, row by row**: closed→open on click AND Enter
+  (native button semantics supply the Enter leg); Escape drops query +
+  restores + collapses + refocuses the word (single stroke out); ✕ clear
+  and emptying BOTH restore while staying open; len ≥ 2 swaps; len < 2
+  restores; blur has no handler anywhere (deliberate non-behavior
+  preserved — confirmed no `onBlur` in the delivered tree).
+- **Hidden-never-unmounted**: swap sets `hidden` on
+  `[data-search-swap-root]` and portals a host inserted immediately BEFORE
+  it; suite asserts `document.contains(root)` + subtree intact +
+  `scrollTop` preserved + `<details>`/checkbox state surviving; unmount
+  cleanup restores the page even if React dies mid-detour.
+- **Missing swap root throws** (`SiteSearchField.tsx:243–250`) — no header
+  fallback mode, exactly §5.1's composition-error law.
+- **No form / no submit**: rendered-DOM sweep green; every button is
+  `type="button"`; Enter navigates via the top hit's real anchor (link
+  semantics, not submission).
+- **§5.4 results view**: grouped in KIND_ORDER, group headers carry FULL
+  counts from the uncapped hit set while `MAX_RENDERED_ROWS = 50` caps
+  rendering (suite proves 30/15/10 headers over 50 rendered rows and that
+  no invented digits appear); zero state renders `0` + echoed query and
+  nothing else; anti-slop banned-copy sweep green.
+- **§7 a11y**: `role="search"`, aria-labelled input independent of the
+  vanished visible word, polite live region announcing the bare count,
+  ArrowDown/ArrowUp wiring, sr-only h1 landmark boundary.
+- **§8 chrome**: all eight keys shipped en-verbatim
+  (`Search/Clear/Search/Search/{count}/Items/Skills/Classes`), partial
+  dictionary falls back per key without crashing (probed through six prop
+  spellings × two shapes).
+
+## B. Emitter correctness
+
+- **Recount-governance**: no frozen number exists in the emitter —
+  `rowCount` is computed from emitted rows, the cross-locale identical-id
+  law is ASSERTED at emit time (divergence → exit 2 naming the file), and
+  the printed digest is informational. The 3,219/278 anchors live only in
+  the TS suite, where they gate real drift.
+- **Three exit-2 gates real**: flag-without-value, value-without-flag,
+  locale-set divergence each reproduced via pytest (18 passed); the
+  missing-overlay precondition and usage exit-3 also verified. Gate
+  ordering is safe: the locale-set gate runs before the flag/value walks,
+  so an unknown locale can never reach the overlay lookups.
+- **Byte-determinism**: fixed key order (rows `kind,id,name,href`; top
+  `schema,locale,buildId,rows`; manifest `schema,buildId,locales,kinds,rowCount`),
+  sorted rows, `ensure_ascii=False`, LF, atomic `.part` + `os.replace`,
+  no clock/randomness — reproduced sha256-equal ×10 across two runs on
+  the real corpus (and equal to the committed-tree-local artifacts).
+- **Route table**: pivot bare, `pt-BR → /pt-br/` composed from F4's
+  segment law, all other segments identity — verified on every row of all
+  nine files (0 violations), plus the schema-level and suite-level
+  segment-vocabulary assertions.
+- **Honesty chain**: `SEARCHABLE_KINDS ⊆ MANAGED_KINDS` assert at import
+  (emitter:52–60) + pytest hop (`MANAGED_KINDS == 40`,
+  `manifest.kinds == SEARCHABLE_KINDS`) + TS hop (`KIND_ORDER` deep-equals
+  `manifest.kinds`). Mechanical at every hop; no transcription anywhere.
+- **Strict-xfail adjudications** — see [D](#d-the-two-strict-xfail-divergences).
+
+## C. Security / robustness sweep
+
+- **Artifact fetch path**: URL is `/data/search/${clientCode}.json` where
+  `clientCode` resolves ONLY through the F4 locale table
+  (`segmentToClientCode` → `LOCALES.find(id === seg)`, else pivot) — nine
+  fixed values, no user-controlled path segment, no traversal.
+- **DOM injection**: grep of delivered `site/src/**` shows zero
+  `dangerouslySetInnerHTML`/`innerHTML`; names render as text nodes; the
+  only attribute receiving data is `href` (React-escaped), and its shape
+  is fixed at emit time (`/{seg}/{kind}/{id}`) — a hostile artifact could
+  not execute script through this renderer.
+- **Portal host**: created imperatively, insertion guarded on
+  `parentNode`, no user data placed in attributes; removal paths are
+  idempotent under StrictMode double-effects.
+- **Query privacy**: nothing leaves the browser — one same-origin static
+  fetch, no query logging (§12 honored in code, not just prose).
+- **Error states**: M-1 below is the one defect the sweep found.
+
+## D. The two strict-xfail divergences
+
+Both are encoded exactly right: `strict=True`, probe evidence quoted in
+the reason, an XPASS-removal instruction, and companion positive tests
+that hold the ACTUAL guarantee. Adjudicated on substance:
+
+### XF-A — silent filter of non-searchable availability rows vs §9 item 5's "refused (exit 2)" letter → **ACCEPT-AS-XFAIL**
+
+The letter cannot bind. §3.1's gate list ("Consistency gates (each a hard
+exit 2)") is exhaustive and contains no such gate; §2's own growth law
+expects avail to grow PAST the trio (34 kinds on disk today, wave-2 adds
+more), so a blanket exit-2 on any non-searchable row would brick stage
+`emit` on unrelated corpus growth and contradict §3.1's selection mandate
+("Inputs read … Nothing else — the emitter selects, shapes, places").
+What matters — artifact purity — is proven positively
+(`test_non_searchable_kind_never_reaches_the_artifact`: exit 0, kinds and
+rows ⊆ trio), and re-proven in this review's pytest run. **Errata
+candidate:** reword §9 item 5's refusal clause to artifact-purity form
+("a kind outside SEARCHABLE_KINDS never reaches the artifact"), and
+consider the gate actually worth having: exit 2 when a NON-searchable
+kind carries non-empty `namedLocales` — today a wave-2-ready kind ships
+silently unsearchable, which is the true partial-wave risk §2 names.
+
+### XF-B — stray overlay locale-dir blindness vs §3.1's union letter → **ACCEPT-AS-XFAIL**
+
+Measured disk reality kills the naive enforcement: `extracted/locales/`
+carries non-locale directories TODAY (`ui/`, `_draft-achievements/`), so
+a literal directory sweep exits 2 on the production corpus. The emitter
+reads overlays only through the nine-code lens (overlays dict keyed by
+`LOCALES`), so a stray dir contributes zero bytes to any artifact; and
+the plane that actually drives membership IS guarded — `ja` appearing in
+avail's fields/namedLocales trips exit 2
+(`test_unknown_locale_in_avail_refused_exit_2`, green). **Errata
+candidate:** restate §3.1's locale-set gate over avail's locale
+vocabulary plus the nine READ paths, with an explicit allowlist for tool
+dirs; optionally warn on unknown *locale-shaped* dirs (`xx`,
+`xx-YY`) so a future official-locale addition cannot pass silently.
+
+## E. Integration one-sidedness
+
+- Shell files touched: exactly one — `search-slot.tsx`, whose null body
+  becomes the field host; `data-shell-slot="search"` survives the
+  takeover; no search machinery anywhere else in shell; smoke.mjs
+  untouched by both commits (its r2b staged-semantics legs landed in F4's
+  6bd451d, before F5 — verified via `git log`), so the emptiness leg was
+  reconciled on the F4 side as E-2 required.
+- Chrome merge mechanics per §8/m5: the interim resolver self-hosts the
+  key inventory, documents the H-4 merge obligations (stubbed
+  byte-identical ×9, `{count}` placeholder parity, resolver deleted at
+  merge), and accepts injected dictionaries until then.
+- Route-absence sweeps: green with an explicit ABSENT ledger
+  (robots/sitemap/capture dormant and REPORTED, not skipped); the
+  detector carries a planted-violation red-proof; `/en/search` maps onto
+  `/search` through the pivot policy exactly as §1 requires.
+
+## Findings
+
+| id | sev | location | finding |
+|---|---|---|---|
+| M-1 | MAJOR | `site/src/components/header/SiteSearchField.tsx:169–185, 226–229` + `SearchResultsView.tsx:98–104` | A failed artifact fetch is swallowed (`catch(() => {})`, comment claims "zero-state stays honest") and the field renders the ZERO-MATCH state — `0` beside the echoed query, live region announcing "0" — for ANY query the reader types, including exact tier-1 names. That is not zero matches; it is a fabricated measured value where the doctrine demands plain-word absence ([DR-2026-08-22-numbers-stand-alone] §1: a fail-closed cell must read as missing, never as a filled number), and §5.4 scopes the `0`+echo state to genuine zero matches. No retry while the field stays open (effect deps `[open, clientCode]` only; recovery requires close+reopen). Blast radius widened by m-1: `site/public/data/` is now gitignored, so any environment that builds without first running stage `emit` serves 404 artifacts → guaranteed fake zeros. Fix is small: track load failure (or retry whenever swapped with empty rows — the promise cache makes it free) and withhold the `0` line until rows are really loaded; add a fetch-reject leg to the component suite. |
+| m-1 | MINOR | `.gitignore` (+3, d35c42e) | Beyond AC-1's diff envelope, which says the commit touches "exactly run_all.ps1, EXTRACTION-LOG.md, the emitter, and the ten emitted JSON files — nothing else". Substance is RIGHT — game-derived artifact stays local per AGENTS.md rule 5, matching the `extracted/`, fonts and ui-texture precedents, comment documents it, EXTRACTION-LOG registers the outputs — but the ten JSONs can never satisfy AC-1's letter, and suite 4 now depends on a pre-test emit run in fresh clones. Errata candidate: amend AC-1/§11 to "artifacts local-only; envelope = code + registry". |
+| m-2 | MINOR | §11 vs both commits | `site/package.json` is listed as an F5-edited file (three additive devDeps) but NEITHER commit touches it — `@testing-library/react`/`jsdom`/`@vitejs/plugin-react` already arrived with F4's fix round 6bd451d (verified at `d35c42e^`). Harmless stale premise; errata candidate for §11. |
+| m-3 | MINOR | `site/tsconfig.json` (aa12024) | Gains `"**/*.test.tsx"` exclusion — beyond §11's four-file edited list. Needed for tsc cleanliness today, but it puts all five F5 suites (~1.9k lines) outside tsc's program, extending F4-review N2's recorded concern: type-only mistakes in tests now surface never (vitest's transform strips types without checking). Record the choice; drop it when vitest types join tsconfig. |
+| m-4 | MINOR | `contracts/search-index.schema.json:46` | The href `pattern`'s alternation anchoring is `^A|B$` (parses as `(^A)|(B$)`), and JSON Schema patterns are unanchored searches — so `/item/x/y` or any string CONTAINING `/item/<seg>` validates. Latent only (nothing runs ajv over contracts; the vitest suite asserts href exactness independently) — wrap both branches in one non-capturing group with a single `^…$`. |
+| m-5 | MINOR | `SiteSearchField.test.tsx:231–245` | §5.3.2 promised the "grows across the row" structural claim asserted against a fixture; the suite asserts only that the `data-search-open` host HAS a non-empty className — a regression that keeps the input word-width would stay green. Pin the geometry law (absolute/inset-x-0 classes) when the stylesheet hook settles. |
+| m-6 | MINOR | `SiteSearchField.test.tsx` (AC-14/AC-16 legs) | AC-14's Tab leg (results reachable in DOM order, §7) is unasserted (native ordering presumed); AC-16's "unit test on the resolver" is satisfied indirectly through component prop-injection — `createSearchChrome` has no direct unit, though per-key fallback is covered end-to-end. Letter-vs-coverage residuals for the TestReviewer's ledger. |
+| m-7 | MINOR | `pipeline/tools/search_index_emit.py:205–215` | Duplicate `(kind,id)` availability rows silently collapse (last-wins in `named`) and would ship duplicate artifact rows. Real corpus verified clean and suite 4's duplicate check catches it downstream, but §3.1's house discipline is exit-2-naming-the-offending-file AT the emitter — a one-line seen-set guard buys it. |
+| m-8 | MINOR | `SearchResultsView.tsx:45–58` | Hits whose kind ∉ KIND_ORDER are silently DROPPED by `groupHits` while `searchRows` deliberately sorts them last rather than refusing — unreachable with the contracted artifact (suite 4 pins kinds ⊆ trio) but a silent-drop trap for the §12 map-search reuse the matcher was explicitly written to enable. |
+
+## Count table
+
+| Severity | Count |
+|---|---|
+| BLOCKER | 0 |
+| MAJOR | 1 |
+| MINOR | 8 |
+| Strict-xfail rulings | 2 ACCEPT-AS-XFAIL, 0 FIX-REQUIRED |
+
+Verdict stands: **NEEDS-FIX** — close M-1 (small component fix + one
+failure-leg test) and F5 is CLEAN; the eight minors are backlog-grade,
+and both spec-letter divergences should move into the next spec revision
+as errata per §D rather than into code.
