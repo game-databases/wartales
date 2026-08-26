@@ -157,4 +157,71 @@ Totals reconcile: 55,350 verified cells = Σ ok×9 (3,508+2,364+278)×9 +
 Σ (drift cells are absent everywhere, hence not emitted and not checked);
 availability rows 3,779 = 2,125 + 1,373 + 281.
 
+## 8. Dig 14 extension — all CDB text kinds + UI namespace + R5 stamps
+
+Sections 1–7 above remain the frozen wave-1 record (item / skill /
+class); every number in them is still reproduced byte-exactly by the
+extended [locale_bridge_dig.py](../pipeline/tools/locale_bridge_dig.py).
+Dig 14 (2026-08-26) widens the contract:
+
+1. **Kind set 34 × 9 locales.** 27 ref-driven kinds follow §2 exactly,
+   plus positional nested addressing: a ref's `subSheet` segments
+   (`confessions@data@choices@texts`) map onto the export's `<line{k}>`
+   wrappers by array index. Overlay values mirror the draft shape at the
+   ref positions; unresolved cells prune (omit-until-translated holds).
+   Availability `fields[locale]` keys become the entity's own field-path
+   templates (`data[]choices[]tipText` form; top-level `desc` keeps its
+   `description` alias) — wave-1 rows keep the exact frozen
+   `{description, name}` shape. Normalization note: relative to what the
+   dig-2 tool actually wrote (class rows keyed `{name}` only), all 281
+   class rows gained an explicit `"description": false` — zero semantic
+   diff. Refless inline prose in A-kind struct columns (the notify
+   `props.texts` family) emits since the r2 fix round under its verbatim
+   export path key (`props.texts[0].text`), gated by per-kind
+   `FALLBACK_TEXT_PATTERNS`, never where the entity's own refs already
+   address the path; frozen wave-1 kinds are excluded from it entirely.
+2. **Mechanism B — id-join kinds (no refs exist).** place / group /
+   element are datafile-backed (CDB has no inline lines to export refs
+   from) and battle / fiefPlace / fiefAdministration / fiefMission hold
+   prose inside typeStr-17 struct columns: their drafts carry dev-pivot
+   French inline, the export carries the translations. Join = row id ↔
+   export entry tag (0 export-only ids × 7 kinds × 9 locales); each
+   sheet's prose-column vocabulary is pinned as full-path patterns in the
+   tool (`STRUCT_TEXT_PATTERNS`), and a text cell stores its FULL raw
+   span so `<br/>`/`<img>` children stay verbatim per §2. Occurrence
+   counting is per element (r2 fix): sharing one counters dict across
+   sibling `<lineN>` wrappers had silently dropped repeated tags at
+   index ≥ 1.
+3. **UI-string layer** `extracted/locales/ui/<locale>.json` (+ 
+   `_inventory.json`, 9 tables + inventory): keys are `id` for top-level
+   `<t>`, `group/id` inside a top-level `<g id>` block, and the full
+   `outer/inner/id` chain inside nested groups (`_id` honored verbatim;
+   accent-stripped ids like `dbutant` preserved). The master `texts.xml`
+   IS the French file — no `texts_fr.xml` exists. Measured vintage delta:
+   en carries 2,148 strings (197 nested groups / 1,259 nested keys
+   included); fr carries 1,897 and lacks 251 en keys — 111 of them within
+   the depth ≤ 1 namespace first emitted — with `extra_vs_pivot` 0;
+   each of the 251 corresponds one-for-one to an id-less `<t>` row in the
+   fr master, i.e. the French text usually exists but is not addressable
+   by key. This is the site-chrome i18n namespace, separate from game
+   content ([localization-architecture §4](../../_foundation/localization-architecture.md)).
+4. **R5 stamping rule:** rows sourced from a headerless bridge file are
+   stamped `"stampedBy": "buildid-fallback"` with pack buildid 20318128
+   in [locale_availability.meta.json](../extracted/relinks/locale_availability.meta.json)
+   — never invented timestamps. Headerless files: `export_fr.xml` AND the
+   UI master `texts.xml` (same fr vintage). Stamps are file-level
+   constants, so the table is keyed by file + locale rather than
+   duplicated onto ~14k rows.
+5. **Measured deltas vs §5–§7:** pack-wide drift = 4,629 of 14,456
+   entities absent-everywhere (9,827 bridge ≥1 string in every locale);
+   filler-class cells are exactly **3 instances pack-wide** by the
+   exhaustive symmetric census (any entity × field-template whose
+   presence differs across the 9 locales): 
+   `fiefCondition/CompleteFiefMission` +
+   `fiefCondition/GovernmentAssign` descriptions absent in fr only, and
+   `element/FiefdomMarketplace01Barber`
+   `dialog.Next1.choices[].props.disableReason` present in fr only — the
+   only breaks of §6's zero-filler finding. Full proof numbers:
+   [data-dig-log Dig 14](data-dig-log.mdx).
+
 <!-- END OF wartales/docs/locale-key-convention.mdx -->

@@ -1742,6 +1742,13 @@ the survey, nothing to roll back. Tracked tree was clean at pickup.
    reaches `data[].choices[].texts[]`, depth 3). Overlays mirror the draft
    shape with resolved strings at ref positions; unresolved cells and
    emptied containers are pruned (omit-until-translated, no filler).
+   r2 extension: prose sitting in typeStr-17 struct columns that NO ref
+   addresses (the notify `props.texts` family — the draft's only ref
+   points at a `title` leaf the exporter never writes) now emits too,
+   under its verbatim export path key (`FALLBACK_TEXT_PATTERNS`, 10
+   kinds, 7,083 cells = 787 × 9 locales, perfectly parallel); frozen
+   wave-1 kinds are excluded and their measured strays stay a ledgered
+   residual.
 2. **Mechanism B — id-join structural (7 kinds).** place / group /
    element (datafile-backed; CDB holds no inline lines) plus battle /
    fiefPlace / fiefAdministration / fiefMission (prose inside typeStr-17
@@ -1754,7 +1761,10 @@ the survey, nothing to roll back. Tracked tree was clean at pickup.
    `export_en.xml`) so a text cell stores its FULL raw span — inline
    `<br/>`/`<img>` children stay verbatim in the string per
    [locale-key-convention §2](locale-key-convention.mdx); everything else
-   is structure to recurse through.
+   is structure to recurse through. Occurrence counting is PER ELEMENT:
+   the first emit shared one counters dict across sibling `<lineN>`
+   wrappers, silently dropping repeated tags at index≥1 (12,295
+   cell-slots on 388 entities — fixed in r2 below).
 
 **R5 stamping rule applied (decided 2026-08-26):** rows sourced from a
 bridge file with no version/revision/date header are stamped
@@ -1770,26 +1780,34 @@ all); a row's stamp resolves through the locales it lists.
 **UI-string layer (site-chrome namespace, separate from game content,
 localization-architecture §4):** master `texts.xml` IS the French dev-pivot
 (no `texts_fr.xml` exists); parsed with `texts_<l>.xml` ×8 into
-`extracted/locales/ui/<locale>.json` — keys are `id` for top-level `<t>`
-and `group/id` for grouped entries (`_id` attribute honored verbatim;
-accent-stripped ids like `dbutant` preserved). Group inventory +
-coverage in `ui/_inventory.json`: **40 groups + 4 top-level keys;
-889 strings per locale, fr 778 — the fr master genuinely lacks 111 keys
-every other locale has** (measured vintage delta, extra_vs_pivot 0
-everywhere).
+`extracted/locales/ui/<locale>.json` — keys are `id` for top-level `<t>`,
+`group/id` inside a top-level `<g>`, and the full `outer/inner/id` chain
+inside nested `<g>` blocks (`_id` honored verbatim; accent-stripped ids
+like `dbutant` preserved). Group inventory + coverage in
+`ui/_inventory.json`: **en 2,148 strings = 4 top-level keys + 2,144 in 40
+top-level groups, including 197 nested groups holding 1,259 keyed
+strings** (the first emit walked direct children only and silently
+excluded that nesting — quantified in r2 below). fr carries 1,897:
+`extra_vs_pivot` is 0 everywhere and en−fr = **251 keys**, of which 111
+sit in the pre-r2 (depth ≤ 1) namespace; all 251 correspond one-for-one
+to id-less `<t>` rows in the fr master — the French text is usually
+there, just not addressable by key.
 
 **Emitted artifacts**
 
-- `extracted/locales/<locale>/<kind>.json` × 9 × 34 kinds — **85,264
-  overlay entity rows** (9,474 entities with ≥1 string per locale; fr
-  9,472 — see filler below).
+- `extracted/locales/<locale>/<kind>.json` × 9 × 34 kinds — **88,441
+  overlay entity rows** (9,827 entities with ≥1 string per locale; fr
+  9,825 — see filler below).
 - `extracted/relinks/locale_availability.jsonl` regenerated: **14,456
   rows over 34 kinds** (was 3,779 over 3). Row schema extends wave-1:
   `fields[locale]` maps the entity's OWN field-path templates
   (`data[].choices[].tipText` style) to presence booleans; wave-1 rows
-  keep the exact frozen `{description, name}` shape.
+  keep the exact frozen `{description, name}` shape (a deliberate
+  normalization relative to the dig-2 emit, which keyed class rows
+  `{name}` only — zero semantic diff: all 281 class rows gained an
+  explicit `"description": false`).
 - `extracted/relinks/locale_availability.meta.json` (new, R5 table).
-- `extracted/locales/ui/` ×10 + `_inventory.json` (new).
+- `extracted/locales/ui/` — 9 locale tables + `_inventory.json` (new).
 
 **Proofs (all reproducible via the tool; report in
 `output/_dig-locale-wave2/report.json`)**
@@ -1797,42 +1815,85 @@ everywhere).
 1. **Dual-extractor raw-span, exhaustive:** every emitted overlay string
    re-extracted by an algorithmically independent scanner (quote-aware
    `str.find` walk, explicit stack, no regex tokenizer, shared component
-   grammar): **198,899 / 198,899 matched — 0 mismatched, 0 absent**
-   across all 34 kinds × 9 locales (A 96,811 + B 102,088).
+   grammar): **217,611 / 217,611 matched — 0 mismatched, 0 absent**
+   across all 34 kinds × 9 locales (A refs 96,145 + A inline-prose
+   fallback 7,083 + B 114,383).
 2. **Dual-parser structure (en):** tree builder vs ElementTree over all
    28 ref-driven sheets — row sets equal, leaf-path signatures equal,
    **0 mismatches**; the 7 struct sheets are proven by extractor
    agreement instead (their prose cells carry inline children a
    childless-only ET signature cannot name).
-3. **UI dual-extractor:** **7,890 / 7,890** stored strings match the
-   scanner's independent `(group, t-id)` map across all 10 files.
-4. **Drift reconciliation, exact:** 14,456 entities = 9,474 bridged +
-   4,982 absent-everywhere ✓; per kind × locale,
+3. **UI dual-extractor:** **19,081 / 19,081** stored strings match the
+   scanner's independent `(group-path, t-id)` map across all 9 source
+   files (nested-group keys included).
+4. **Drift reconciliation, exact:** 14,456 entities = 9,827 bridged +
+   4,629 absent-everywhere ✓; per kind × locale,
    ok+empty+missing == refs and missing == absent-entity-cells +
-   partial-cells (all true; e.g. item en: 318 absent entities → 323 refs
-   + 28 partial = 351 of 3,859 refs).
-5. **Filler census (instance level, extended set): exactly 2 instances
-   pack-wide** — `fiefCondition/CompleteFiefMission` and
-   `fiefCondition/GovernmentAssign` descriptions resolve in 8 locales and
-   are absent in fr only. The dig-2 "perfectly parallel" finding therefore
-   extends to all 34 kinds except this one measured fr-vintage delta.
+   partial-cells hold for every kind except `skill.cells_total_matches`
+   (= false by exactly the 80 ledgered `levels` refs: refs denominator
+   2,826 vs states 2,746; the decomposition itself is exact everywhere —
+   e.g. item en: 318 absent entities → 323 refs + 28 partial = 351 of
+   3,859 refs).
+5. **Filler census (exhaustive, symmetric): exactly 3 instances
+   pack-wide**, enumerated as every (entity, field-template) whose
+   locale-presence vector is non-uniform across the 9 client locales,
+   both mechanisms, both directions:
+   `fiefCondition/{CompleteFiefMission,GovernmentAssign}` descriptions
+   resolve in 8 locales and are absent in fr only (fr-vintage gap), and
+   `element/FiefdomMarketplace01Barber`
+   `dialog.Next1.choices[].props.disableReason` exists in fr only
+   (fr-extra; the other eight Next1 blocks carry no choices at all).
+   The dig-2 "perfectly parallel" finding therefore extends to all 34
+   kinds except these three measured deltas.
 6. **Round-trip sample:** 148 entities (wave-1 sizes + 3 per new kind,
-   seed 20318128): 127 resolve in all nine; **all 21 failures are drift
-   entities failing in every locale** (e.g. `item/LegOfSmilodonRecipe`,
-   `input/Skill5`) — data gaps, not addressing failures.
+   seed 20318128): **128 resolve in all nine; 20 failures = 19 drift
+   entities with no export entry anywhere** (e.g. `item/
+   LegOfSmilodonRecipe`, `input/Skill5`) **+ `fiefCondition/
+   GovernmentAssign`, which resolves 8/9 and fails fr only** — that one
+   is filler census instance #5 above, a data gap, not an addressing
+   failure.
+   The failure list ships untruncated with per-failure export-entry
+   presence so this classification reproduces from the report alone.
 7. **Wave-1 non-regression, byte-exact:** the HEAD (dig-2) tool was run
    from git beside the extended tool — all **27 item/skill/class overlay
    files reproduce byte-identically**, and the 3,779 wave-1 availability
-   rows keep their frozen shape. Two regressions were caught and fixed by
-   this oracle during development (alias key `desc`→`description` lost in
-   overlays; skill `levels` refs leaking past the frozen field set).
+   rows keep their frozen shape (re-proven after r2 against the pre-r2
+   artifacts). Two regressions were caught and fixed by this oracle
+   during development (alias key `desc`→`description` lost in overlays;
+   skill `levels` refs leaking past the frozen field set).
 
 **Residual ledgered:** skill `levels` subSheet carries 80 refs (74
 resolve en) outside the frozen wave-1 field set — excluded above, left to
-an owner call before any schema change to frozen artifacts. Mechanism-B
-duplicate draft ids (element 102, group 1, place 2 extra occurrences) are
-prefab occurrences of one entity: availability/overlays dedupe by id,
-occurrence rows remain in the datasets.
+an owner call before any schema change to frozen artifacts. Likewise
+measured-but-not-emitted stray prose in the frozen kinds (item
+`props.actionTitle` + `tool.preventRemove` 17 cells, skill
+`props.descPassiveGroup` + `props.playerDesc` 27 cells, ×9 locales,
+recorded in `report.frozen_kind_stray_prose_measured_not_emitted`).
+Mechanism-B duplicate draft ids (element 102, group 1, place 2 extra
+occurrences) are prefab occurrences of one entity:
+availability/overlays dedupe by id, occurrence rows remain in the
+datasets.
+
+**Fix round r2 (2026-08-26; audits
+[verify-dig14-a](verify-dig14-a.mdx) F-1..F-3 +
+[verify-dig14-b](verify-dig14-b.mdx) B1/M1–M3/m1–m4):** four coverage
+defects fixed in place and every headline figure above recomputed from
+the final report — (B1) refless inline prose in A-kind struct columns
+now emits (the dead-`title` class: ~380 entities whose only refs miss
+while all nine export locales carry the translated text;
+`notify/G2TierryAbodeDaugther`, mislogged as drift by the first emit,
+resolves 9/9); (M1) per-element counters recover 12,295 dropped
+repeated-tag cell-slots on 388 entities; (M3) nested `<g>` groups
+included (+197 groups / +1,259 keyed strings per locale); (M2) filler
+census rebuilt exhaustive + symmetric → exactly 3 instances; (m1)
+failures list untruncated; (m2/m3/F-1/F-2) stale proof figures replaced
+and the reconciliation claim qualified; (m4) fr-delta wording made
+texts-vs-keys precise. Auditor correction: verify-dig14-b's lost-prose
+class credited 2 `credits` entities that were false positives (their
+`linesTrad` positional refs already addressed them — emitted since r1).
+Post-fix state re-proven: wave-1 byte-identical (27/27), determinism
+double-run byte-equal to the canonical tree, independent full-corpus
+accounting sweep green (`output/_dig14-fix/x6_verify_final.py`, V1–V9).
 
 <!-- END OF wartales/docs/data-dig-log.mdx -->
 

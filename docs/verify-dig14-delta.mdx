@@ -1,0 +1,346 @@
+# Verify — Dig 14 delta: the post-fix locale wave-2 tree
+
+**Verdict: PASS** — all seven briefed items pass against the tree as it
+ships now. Every fix claimed by the r2 round is present and holds under
+independent re-derivation: the fallback class emits (12/12 sampled cells
+byte-exact; `G2TierryAbodeDaugther` resolves 9/9; the credits pair proven
+auditor false positives), the repeated-tag recovery is real (6/6 sampled
+cells provably dropped by a faithful reconstruction of the r1 bug;
+B-side 114,383 recounted), the availability shift reconciles exactly
+(+353/−353, every one of the 14,456 rows reproduced by my own
+extractor), the UI nested recount matches (en 2,148 = 4 + 40 groups
+(+197 / 1,259); fr 1,897; depth ≤ 1 absence 111 re-proven), the filler
+census reproduces exhaustively at exactly 3, all 21 recomputed doc
+figure-groups reproduce, and wave-1 stays byte-identical to a fresh HEAD
+regen with exact determinism.
+
+One new finding (**D-1**, MINOR, non-blocking): the emitter's attribute
+regex cannot read `<t id ="…">` attributes carrying a space before `=`,
+so 6 genuinely key-addressable fr chrome strings are silently skipped,
+and the docs sentence "each of the 251 [missing fr keys] corresponds
+one-for-one to an id-less `<t>` row" is true only for 245/251. Details
+under item 4.
+
+Auditor: fresh Delta Verifier; no subagents; no commits. Writes confined
+to this file and scratch `output/_verify-dig14d/`. All extraction below
+uses MY OWN parser (`_verify-dig14d/xcommon.py`: expat byte-offset
+events → raw spans, unescape-once, transparent-`<lineN>` collapse,
+per-element occurrence counters — shares no code with
+[locale_bridge_dig.py](../pipeline/tools/locale_bridge_dig.py)'s
+hand-rolled tokenizer; self-test: my flatten of `place/G1Sport` (fr)
+deep-equals the shipped overlay including the recovered
+`props.sport.rules[1].desc`). Python 3.14.7; probes runnable from
+scratch (`p1_b1_fallback.py` … `p8_deadtitle.py`, transcripts
+`p1.out.txt` … `p8.out.txt`).
+
+---
+
+## 1. B1 fallback emissions — PASS
+
+Recounted the fallback class directly from the SHIPPED overlays (10 A
+kinds × 9 locales, keys matched against the documented
+`FALLBACK_TEXT_PATTERNS` vocabulary):
+
+```
+[1] per kind: bonus 567 | counter 918 | fiefAlignment 81 | fiefEvent 423 |
+    groupType 162 | itemType 270 | notify 3960 | region 180 |
+    startChoice 459 | trait 63
+    TOTAL: 7083 | per locale: [787 x9] | parallel: True
+    report inline_prose_fallback_A: equal: True
+```
+
+**Sample of 12 across 4 kinds** (deterministic, seed 14), each
+re-extracted from its own export locale by entity id with my expat
+extractor — 12/12 byte-equal:
+
+```
+OK es    counter/AmbushDone            :: props.title          'Sinvergüenza'
+OK pt-BR notify/S1RuinsRun             :: props.texts[0].text  'Uma pedra do tamanho de uma maçã…'
+OK ko    notify/IR1BorderCrocopork     :: props.texts[0].text  '악어돼지가 ::name::을(를) 물었습니다(<status>::injury::</status>).'
+OK zh    notify/H1RuinsEvent2Tapestry  :: props.texts[0].text  '但你是怎么回到这儿来的？'
+OK ru    notify/MercenariesCulprit     :: props.texts[0].text  'Один из бойцов Братства понесет наказание…'
+OK pl    notify/E2R5SubRegionEnd       :: props.texts[0].text  'Wyzwoliliście baronię Mayance…'
+OK fr    groupType/RatInvasion         :: descs.defender       "Vos pieds s'enfoncent dans une sorte de boue…"
+OK de    itemType/Bow                  :: props.nameCraftCategory 'Bögen'
+OK zh    notify/E1EleorAbbeyeArtefact  :: props.texts[0].text  '文物不在里面，但你们找到了一张地图…'
+OK pt-BR groupType/Scholars            :: props.tavern.desc    'Pode aparecer se um bardo tiver sido atribuído.'
+OK ko    itemType/Polearm              :: props.nameCraftCategory '장창'
+OK zh    notify/DecipherCodexPage      :: props.stackTitle     '日志已破译'
+sampled=12 kinds=4 ['counter','groupType','itemType','notify'] bad=0 []
+```
+
+Inline markup survives verbatim through the fallback path (the ko cell
+carries a nested `<status>` child inside the stored span).
+
+**G2TierryAbodeDaugther resolves 9/9**, each translation distinct, each
+equal to my own extraction:
+
+```
+en 'Your questions made Hella cry.' | fr 'Vos questions ont fait pleurer Hella.'
+de 'Eure Fragen haben Hella zum Weinen gebracht.' | es 'Vuestras preguntas hicieron llorar a Hella.'
+pl 'Wasze pytania doprowadziły Hellę do płaczu.' | pt-BR 'Suas perguntas fizeram Hella chorar.'
+ru 'Из-за ваших вопросов Гелла разрыдалась.' | ko '질문 때문에 헬라가 울음을 터뜨립니다.'
+zh '你的问题让赫拉哭了。'
+resolves: 9 /9 | distinct translations: 9
+```
+
+**Credits pair confirmed false positives.** verify-dig14-b flagged
+`credits/{Wartaleswasdeveloped,Copyright}` as holding stray unaddressed
+prose at `linesTrad[0].text`. Their draft rows carry a positional ref
+for exactly that address:
+
+```
+Wartaleswasdeveloped: draft refs -> text@credits@linesTrad[0]
+Copyright:            draft refs -> subtitle@-[]; text@credits@linesTrad[0]
+en: linesTrad[0].text resolved='Wartales was developed with the support of the ''' emitted==resolved: True
+fr: … emitted==resolved: True   (both ids, all 9 locales resolve+emit: True)
+non-empty leaves outside every ref address: {}   (both entities)
+```
+
+The ref's `subSheet` segments + array index address
+`<linesTrad><line0><text>` — the leaf B called stray IS ref-driven and
+has been emitted under the draft-shape key since the first emit. Nothing
+was lost; the class correction (382 → 380) is right, and my strict
+recount of the remaining class is under item 3.
+
+## 2. M1 recovery — PASS
+
+I reconstructed the r1 defect faithfully (line branch passing the
+parent's counters dict through — `_verify-dig14d/pconst.py::
+flatten_buggy_r1`) and selected 6 shipped overlay cells that the
+reconstructed buggy walk provably does NOT emit. All 6 are present now
+and byte-equal to my extractor:
+
+```
+OK ko    element/ConfessionNewPlaceDiscovered      :: dialog.Choices.choices[1].props.customTxt
+        byte==shipped: True | r1-buggy flattener emits this path: False -> dropped in r1
+OK pt-BR element/ConfessionNewPlaceDiscovered      :: dialog.Choices.choices[4].props.tipText
+OK fr    element/T6PiratesTavern3SettingManager    :: props.goals[0].props.helpTips[2].text
+OK pl    element/ConfessionNewPlaceDiscovered      :: dialog.Choices.choices[3].props.customTxt
+OK fr    element/B1FortSmugglersLeader             :: dialog.Ter1.choices[2].props.customTxt
+OK de    fiefPlace/FiefPlace_Market                :: props.effects[1].desc
+-> 6/6 present now + byte-correct vs raw XML, all 6 absent under r1 semantics
+```
+
+**B-side total 114,383 independently recounted** from the shipped
+overlays (all 7 mechanism-B kinds × 9 locales):
+
+```
+disk cells by kind: battle 225 | element 106904 | fiefAdministration 396 |
+                    fiefMission 216 | fiefPlace 414 | group 1629 | place 4599
+TOTAL disk cells: 114383 == report claims 114383 -> MATCH | report mismatched/absent: 0
+```
+
+Full byte-verification of 3 whole kinds against the raw exports (every
+cell of every entity of every locale re-extracted by my parser):
+place 4,599/4,599 · group 1,629/1,629 · fiefMission 216/216 — **0
+mismatches**, 0 missing entities; plus an element spot-check (200 random
+entities × 9 locales): 7,128 cells compared, 0 mismatches
+(`p2.out.txt`).
+
+## 3. Availability delta — PASS
+
+Raw tally of the shipped jsonl:
+
+```
+rows=14456 bridged=9827 drift=4629 sum=14456
+wave-1 subset rows=3779 field shapes={('description','name')} violations=0
+```
+
+Then I REBUILT the bridging classification for **all 14,456 entities**
+with my own extractor (refs via the documented walk; fallback + struct
+cells via my flattener; pre-fix modeled as: no fallback emission at all
++ the reconstructed r1 defect on mechanism B):
+
+```
+entities compared=14456 mismatches=0 []                 <- shipped table fully reproduced
+MY rebuilt PRE-FIX  bridged=9474 drift=4982             <- audit-era figures, hit exactly
+MY rebuilt POST-FIX bridged=9827 drift=4629             <- shipped figures
+shift: +353 bridged / -353 drift
+shift sources: A-fallback-class entities=353 | B-recovered entities=0
+reconciliation: 675 entities carry fallback cells (en);
+  353 of them were ref-dead everywhere -> newly bridged;
+  322 already bridged by refs (cells added, status unchanged)
+```
+
+The ±353 shift therefore reconciles exactly to the fallback class, and
+mechanism B contributed zero new bridged entities (its recovered cells
+all sit on entities that already carried index-0 prose — consistent with
+verify-dig14-b's "no entity loses ALL cells"). Examples of shifted
+entities: `counter/BaseSong`, `counter/TavernSong`,
+`fiefAlignment/AlignmentNeutral`, `fiefEvent/Fief_Gov_*` — all `0 → 9`
+locales.
+
+Class-size closure: verify-dig14-b's 382 = **353** strict
+(refs-miss-everywhere ∧ fallback prose exists) **+ 35** bonus entities
+that actually had a resolving ref (e.g. `R1FarmSupplyFront`: its `desc`
+ref resolves AND its dev-pivot `props.title` is now emitted beside it)
+**+ 2** credits false positives **− 8** notify entities B's sweep missed
+(my recount finds 319 notify vs B's 311). 382 − 2 − 35 + 8 = 353.
+
+`locale_availability.meta.json` byte-unchanged:
+
+```
+now     sha256 d0a2dd8bbb7f009a…
+pre-fix sha256 d0a2dd8bbb7f009a… | identical: True
+```
+
+## 4. UI completeness — PASS (with finding D-1)
+
+My own expat walker over the 9 texts sources, deep-compared against the
+shipped tables (values included): en/de/es/pl/pt-BR/ru/ko/zh all
+deep_equal=True; en pivot inventory:
+
+```
+strings=2148 = 4 top-level keys + 2144 keys in 40 top-level groups
+nested groups=197 holding 1259 keyed strings   -> MATCH (claimed 2148 = 40 (+197/1259) + 4)
+shipped _inventory.groupInventory ties to my recount: True | topLevelKeys==4
+UI raw-span matched 19081/19081, 0 bad (report cross-check)
+```
+
+fr: shipped table holds 1,897 strings; `extra_vs_pivot` 0 everywhere.
+Absence re-proven within the stated depth: restricting both key sets to
+the pre-r2 depth ≤ 1 namespace gives en−fr = **111** exactly; 110 of
+them have no `id="…"`/`_id="…"` hit anywhere in master `texts.xml`, and
+the 111th (`trait_levels/confirm`) only substring-hits unrelated
+`<t id="confirm">` rows in other groups — the master's
+`<g id="trait_levels">` holds six id-less `<t>` rows (`Débutant` …
+`Maître`), i.e. the French text exists but is genuinely unaddressable by
+key. Full-namespace en−fr = 251 (as claimed).
+
+### D-1 — MINOR: 6 keyed fr rows the emitter cannot see (`<t id ="…">`)
+
+Master `texts.xml` contains six `<t>` rows whose attribute has a space
+before `=` — `<t id ="noRecipe">` etc., all under
+`ui/brewBarrel/noValidBarrel/`. Standard XML reads them fine (my expat
+walker keys all 6); the emitter's `_TAGOPEN` attribute scan requires the
+quote immediately after the name, so they land in parseProblems as
+"<t> without id/_id" (6 lines, unquantified) and are dropped:
+
+```
+master texts.xml <t … id ="…"> rows: 6 -> ['alreadyDone','noBonus','noLevel','noRecipe','noResources','noUnitAssigned']
+keys my parser reads but the shipped fr table lacks: 6 ['ui/brewBarrel/noValidBarrel/alreadyDone', …]
+disclosed only as unquantified parseProblems lines: 6 e.g. 'ui/brewBarrel/noValidBarrel: <t> without id/_id @79332'
+other 8 locales' files carry spaced-id rows: 0 everywhere
+```
+
+Consequences: the true addressable fr namespace is **1,903** (1,897
+shipped + 6), full-namespace en−fr is 251 = **245 truly id-less + 6
+skipped-with-id**, and the docs sentence "all 251 correspond one-for-one
+to id-less `<t>` rows in the fr master" (Dig 14 log entry +
+[locale-key-convention §8.3](locale-key-convention.mdx#8-dig-14-extension-all-cdb-text-kinds-ui-namespace-r5-stamps)
++ [PROOF.md](../extracted/PROOF.md) R9) is correct only for 245/251.
+Impact: 6 site-chrome strings, fr only, one nested brew-barrel group;
+the depth ≤ 1 claim (111) is unaffected (the 6 sit at depth 3).
+Suggested one-liner fixes: widen the attr regex to `([\w.\-]+)\s*=` (or
+quantify these 6 in the inventory) and reword the sentence to "245
+id-less + 6 with a space-broken `id` attribute".
+
+## 5. Filler census — PASS
+
+Exhaustive symmetric sweep rebuilt from the shipped overlays themselves
+(every (entity, field-template) presence vector across the 9 client
+locales, all mechanisms, both directions):
+
+```
+non-uniform instances: 3
+  fr-extra                 element/FiefdomMarketplace01Barber :: dialog.Next1.choices[].props.disableReason  present_in=[fr]
+  pivot-present-locale-gap fiefCondition/CompleteFiefMission :: description  present_in=[de,en,es,ko,pl,pt-BR,ru,zh]
+  pivot-present-locale-gap fiefCondition/GovernmentAssign    :: description  present_in=[de,en,es,ko,pl,pt-BR,ru,zh]
+vs report.filler_census (total=3): same set: True
+```
+
+Raw-source proof each instance is a genuine content delta, not an
+emitter artifact:
+
+```
+Barber Next1: fr has <choices>: True | en has <choices>: False
+fr Next1.choices disableReason rows: [('DlgHairDress', 'Votre troupe doit être physiquement présente dans le fief…')]
+fiefCondition/CompleteFiefMission: entry+<desc> present [en,de,es,pl,pt-BR,ru,ko,zh] | absent [fr]; fr sheet has 18 entries vs en 20
+fiefCondition/GovernmentAssign:    entry+<desc> present [en,de,es,pl,pt-BR,ru,ko,zh] | absent [fr]
+```
+
+## 6. Docs truth — PASS
+
+Every headline figure group in the Dig 14
+[log entry](data-dig-log.mdx), [PROOF.md](../extracted/PROOF.md) R9/R5/
+§2 bridge row, and [convention §8](locale-key-convention.mdx) recomputed
+from `output/_dig-locale-wave2/report.json` + disk as shipped NOW —
+**21/21 reproduce** (`p6.out.txt`): kind set 34 = 27+7; fallback 10
+kinds / 7,083 = 787×9 parallel; UI en 2,148 = 4 + 40 (+197/1,259), fr
+1,897, missing_vs_pivot 251, extra_vs_pivot 0, UI raw-span 19,081/19,081
+· 0 bad; overlays 88,441 rows (en 9,827 / fr 9,825); availability
+14,456 = 9,827 + 4,629; proof 1 = 217,611/217,611 (96,145 + 7,083 +
+114,383, 0 bad); dual-parser en 28 sheets / 0 row / 0 path mismatches, 7
+struct sheets skipped; round-trip 148/128/20 = 19 drift +
+GovernmentAssign (present in exactly 8/9 exports), failures list
+untruncated (20 detailed records with per-locale entry presence);
+skill.cells_total_matches false by exactly the ledgered 80 `levels` refs
+(refs 2,826 vs states-total 2,746) with missing_decomposes exact
+everywhere; item-en decomposition 318 → 323 + 28 = 351 of 3,859
+reproduces digit-for-digit; filler exactly 3 (2 pivot-gap + 1 fr-extra);
+frozen strays item 17 / skill 27 cells ×9; dup ids element 102 /
+group 1 / place 2; export-only ids 0 × 7 × 9; flatten_struct path
+collisions 0. The purged figures are gone from the surfaces that quoted
+them:
+
+```
+$ grep -rn "198,899|198899|96,811|96811" --include='*.mdx' --include='*.md' .
+-> only verify-dig14-a/b, dig14-fixer-r1.mdx, and this brief (historical citations)
+-> data-dig-log.mdx, PROOF.md, locale-key-convention.mdx: clean
+```
+
+Two figures I chased beyond the obvious, both clean: PROOF §2's
+"82.5% item / 86.1% skill / 98.9% class" cell coverage reproduces
+exactly from the shipped dig-2 artifact (`output/_dig2_report.json`
+coverage records: 3508/4250 = 82.54, 2364/2746 = 86.09, 278/281 =
+98.93 — ok-counts identical in today's `cell_states_A`, as required for
+byte-frozen kinds), and its "318 items / 137 skills / 3 classes have no
+export entry" = today's `drift_absent_everywhere` per kind exactly. END
+sentinels present in both `docs/data-dig-log.mdx` and
+`docs/locale-key-convention.mdx`. Only residual docs defect is D-1's
+one-for-one sentence above.
+
+## 7. Integrity — PASS
+
+Wave-1 regression, re-proven from git by me (not trusted from the fixer
+round): HEAD tool extracted (`git show
+HEAD:pipeline/tools/locale_bridge_dig.py` — 458-line dig-2 version,
+KINDS pinned to item/skill/class) and run redirected into scratch via
+`run_tool.py head` (write roots repointed; `extracted/**` untouched):
+
+```
+wave-1 overlays byte-identical vs fresh HEAD regen: 27/27 differing: 0
+wave-1 availability rows: 3779 | semantic agreement: 3779 | frozen {description,name} shape rows: 3779
+```
+
+Determinism double-run of the CURRENT worktree tool into scratch
+(`run_tool.py cur det_run1` / `det_run2`, 15 s each):
+
+```
+run1 files: 319 | run2 files: 319 | same names: True
+run1 vs run2 differing files: 0
+availability.jsonl regen==canonical: True | meta.json: True | report.json: True
+canonical locale artifacts: 317 | differing from run1/run2: 0 (the 318th canonical file,
+  _draft-achievements/en.json, is the dig-10 overlay this tool never emits)
+trait/en sha run1 == run2 == shipped: e470b9c162f5
+```
+
+Untouched-surface sweep against the fixer's own pre-fix snapshot
+(`output/_dig14-fix/pre_state_hashes.json`, 216 relink + achievement
+files hashed): achievements overlays changed: none; relink files
+changed: only `locale_availability.jsonl` itself — the one file the fix
+round was required to regenerate. `meta.json` byte-identical (item 3).
+
+---
+
+## Probe inventory (scratch `output/_verify-dig14d/`)
+
+`xcommon.py` (my expat extractor) · `pconst.py` (shared vocabularies +
+r1-defect reconstruction) · `p1_b1_fallback.py` → `p1.out.txt` ·
+`p2_m1_recovery.py` → `p2.out.txt` · `p3_availability.py` → `p3.out.txt`
+· `p4_ui.py` → `p4.out.txt` · `p5_filler.py` → `p5.out.txt` ·
+`p6_docs.py` → `p6.out.txt` · `p8_deadtitle.py` → `p8.out.txt` ·
+`run_tool.py` + `lbd_HEAD.py` + `regen_head/` + `det_run1/` +
+`det_run2/` (integrity legs). Nothing outside this deliverable and the
+scratch directory was written; no commits made.
