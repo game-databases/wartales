@@ -1,0 +1,706 @@
+# Wartales — F5 header search spec (piece F5)
+
+Status: DRAFT for Reviewer → Arbiter → CodeWriter+TestWriter · authored
+2026-08-26 by the Documentator from brief
+[`docs/briefs/documentator-f5-search.mdx`](./briefs/documentator-f5-search.mdx).
+Inputs read in full: root `AGENTS.md`,
+`_foundation/decision-register.md` (binding entry:
+[DR-2026-08-22-search-is-not-a-page]),
+`_foundation/localization-architecture.md`, `_foundation/site-sections.md`,
+`_foundation/seo-standard.md`, `_foundation/design-standard.md`,
+`_foundation/domain-doctrine.md`, `FRAMEWORK.md` §2/§4/§8,
+[`../spec.md`](../spec.md) (frozen),
+[`pieces.mdx`](./pieces.mdx) (F5 row + sequencing law),
+[`locale-key-convention.mdx`](./locale-key-convention.mdx),
+[`cdb-kind-map.mdx`](./cdb-kind-map.mdx),
+[`../pipeline/tools/wave_kinds.py`](../pipeline/tools/wave_kinds.py),
+[`../run_all.ps1`](../run_all.ps1) stage registry,
+[`../PROGRESS.mdx`](../PROGRESS.mdx).
+
+Shorthands: **DR** = the decision-register entry
+[DR-2026-08-22-search-is-not-a-page] · **avail** =
+`extracted/relinks/locale_availability.jsonl` · **overlay** =
+`extracted/locales/<locale>/<kind>.json` · **wkk** = `wave_kinds.py` ·
+**NWG** = new-world.guide (design-standard §2 structural reference).
+
+Batch posture (PROGRESS execution plan): this is Batch-1 *spec prep* —
+spec-writing is planning, not frontend, so it precedes the rule-8 gate;
+**the build itself stays gated** on the Batch-2 completeness arbiter
+(pieces sequencing law: F4/F5 land after the gate, before PT03/PT04).
+
+## 0. Scope in one line
+
+Ship the three halves of piece F5 — (a) a deterministic pipeline emitter
+that turns the locale overlays + avail into a per-locale JSON search-index
+artifact under `site/public/data/search/`, (b) ONE pure matcher module
+`searchRows` importable identically by server and browser code, and (c) the
+header search field that swaps results in place per the DR — plus the
+negative contract that no `/search` route exists anywhere. Nothing else in
+the shell changes.
+
+## 1. Authority chain
+
+The DR is binding, every clause. Quoted verbatim:
+
+> 1. **There is no search route.** `/en/search` is a 404 — absent from the
+>    header, the footer, `robots.txt` and the capture list.
+> 2. **The header owns the field.** Closed, "Search" is a word in the nav.
+>    Open, it is an input that grows across the row the nav was using.
+> 3. **Results replace the page's own content in place** once two
+>    characters are typed; the content returns when the field is cleared
+>    or Escape is pressed. The content is hidden, never unmounted, so
+>    scroll position and state survive the detour.
+> 4. **Two characters** — one letter matches most of the catalog and the
+>    reader has not said anything yet. The number is the owner's.
+> 5. **One matching function, both sides.** `searchRows` runs on the
+>    server and in the browser, so what matches cannot depend on which
+>    side answered.
+
+Clause 1's literal `/en/search` maps onto this pack's locale scheme as
+follows: EN is the pivot at bare paths
+([DR-2026-08-20-locale-urls]), so the route that must not exist is
+`/search`; a `/{pivot}/*` spelling follows the pivot-prefix policy (301 to
+bare path) and must therefore end in a 404, never a 200. Section 6 makes
+both executable.
+
+Other bindings consumed here:
+
+- **pieces.mdx F5 row**: "Header search field (no /search route; 2-char
+  trigger; in-place swap; same matcher both sides)", data dep = **search
+  index artifact**, reference bar = the DR.
+- **FRAMEWORK §2.9**: shipped JSON index; index is a *derived, disposable
+  artifact*, not a data plane (§2.1); the static JSON API (§2.10) publishes
+  the search index. §2.9 names MiniSearch under ~100k entities — departed
+  from deliberately, reason recorded in
+  [§4.6](#4-6-decision-record-minisearch-not-adopted-for-v1).
+- **[DR-2026-08-22-inputs-answer-as-you-type]**: the field acts reactively
+  on typed content; gated clause — no `<form>`, no `type="submit"` anywhere
+  in the delivered tree.
+- **[DR-2026-08-22-copy-earns-its-place] §3**: interface-explaining
+  sentences banned — the named example is literally "a search empty-state
+  teaching how to search".
+- **AGENTS.md rule 8 / [DR-2026-08-19-data-before-frontend]**: frontend
+  consumes contracts, never derives data — hence the index is emitted by
+  the pipeline (where the data lives), and the browser only fetches and
+  matches.
+- **localization-architecture §1/§2/§4/§5**: one page per entity per
+  locale; availability drives membership; chrome i18n is its own namespace;
+  filler policy `omit-until-translated` (frozen in
+  [`../spec.md`](../spec.md)).
+- **seo-standard §2** "noindex internal search results" is superseded for
+  this pack by the stronger DR form: there are no search-result URLs at
+  all, so there is nothing to noindex — only absence to prove.
+- **[DR-2026-08-18-pipeline]**: the emitter joins the single entrypoint
+  (`run_all.ps1` stage `emit`), idempotent, standalone-runnable,
+  EXTRACTION-LOG-registered.
+- **design-standard §3/§5**: selected state honesty, no caption chrome,
+  12px floor for the visible word, quiet confidence (numbers/counts, no
+  narration).
+
+## 2. Ground truth and vocabulary
+
+- **Locales** (frozen in spec.md, client-verified): `en, fr, de, es, pl,
+  pt-BR, ru, ko, zh` — exactly nine. File names and artifact keys use
+  **client codes** (so `pt-BR`, `zh`; BCP-47 presentation mapping is a
+  concern of the URL layer, which F4 owns). `ja` is community-lane,
+  `omit-until-translated` — **never** in the artifact.
+- **Kinds**: the canonical inventory is `MANAGED_KINDS` in wkk — 40 kinds,
+  asserted so in the module. Kind-vs-sheet trap stands: kind `recipe`
+  (sheet `craft`), kind `class` (sheet `unitClass`). Facet values in this
+  feature are always kind names from that set, never sheet names.
+- **Searchable subset**: a kind enters the index only when it has (a) a
+  route contract and (b) localized names. Today that is exactly the wave-1
+  bridged kinds:
+
+  ```python
+  SEARCHABLE_KINDS = ["item", "skill", "class"]   # frozen; ⊂ MANAGED_KINDS
+  ```
+
+  Growth procedure is the wkk precedent (`EXPECTED_PAIR_FILES` re-freeze):
+  when R9/dig-14 lands wave-2 overlays (and PT02 pins their routes), the
+  list is extended in the emitter and the frozen numbers below are
+  re-derived in the same commit. Until then the emitter refuses any kind
+  whose overlays are absent (exit 2), so silent partial waves cannot ship.
+- **Membership source**: avail, schema
+  `{kind, id, availableLocales[], namedLocales[], fields:{<locale>:{name:bool,...}}}`
+  (locale-key-convention §3). A row exists for locale `L` iff
+  `L ∈ namedLocales`.
+- **Name values**: read from overlay `<locale>/<kind>.json`, shape
+  `{ "<entityId>": { "name"?: str, "description"?: str } }`
+  (locale-key-convention §3). Names may carry Heaps rich-text markup — the
+  matcher strips it before normalizing ([§4.3](#4-3-name-normalization)).
+- **Frozen numbers** (locale-key-convention §5/§7, buildid 20318128):
+  availability rows total **3,779** (item 2,125 / skill 1,373 / class 281);
+  drift entities with no bridge leaf in *any* locale total **458** (item
+  318 / skill 137 / class 3); cell-presence is **perfectly parallel across
+  all nine locales**. Consequences this spec pins:
+  - the class facet contributes exactly **278 rows per locale**;
+  - the per-locale row total is identical in all nine files and is
+    bounded **278 ≤ N ≤ 3,321** (= 3,779 − 458);
+  - the id-set is byte-identical across locales (parallel presence ⇒ same
+    named set).
+
+## 3. Contract — the search-index pipeline artifact
+
+### 3.1 Emitter
+
+New tool `pipeline/tools/search_index_emit.py`, registered in stage
+`emit` as the **third step, after `validate_all.py`**
+([`../run_all.ps1`](../run_all.ps1) `Invoke-StageEmit`), so stage 6 keeps
+its existing steps byte-for-byte and the index is emitted only after the
+canonical planes validated:
+
+```
+pipeline/tools/locale_bridge_dig.py
+pipeline/tools/validate_all.py ...        (unchanged)
+pipeline/tools/search_index_emit.py --buildid <BuildId>
+```
+
+CLI: `--availability`, `--overlays`, `--out`, `--buildid` all with
+EXTRACTION-LOG-resolved defaults; `--list`-style help; standalone run
+allowed ([DR-2026-08-18-pipeline]). Exit codes follow the house pattern:
+`0` ok, `2` precondition/consistency failure (names the offending file),
+`3` usage.
+
+Inputs read: avail + `extracted/locales/<locale>/{item,skill,class}.json`.
+Nothing else — the emitter derives no game data (rule 8); it selects,
+shapes, and places rows.
+
+Consistency gates (each a hard exit 2):
+
+- every availability row whose kind ∈ SEARCHABLE_KINDS and
+  `fields[L].name is true` must have a `name` string in overlay `L` —
+  flag-without-value is corruption;
+- every overlay name entry must correspond to an availability row with the
+  flag true in that locale — value-without-flag likewise;
+- locale set of overlays ∪ avail ∩ SEARCHABLE_KINDS must be exactly the
+  nine official codes.
+
+### 3.2 Output shape (under `site/`)
+
+```
+site/public/data/search/manifest.json
+site/public/data/search/en.json          fr.json  de.json  es.json
+site/public/data/search/pl.json          pt-BR.json
+site/public/data/search/ru.json          ko.json  zh.json
+```
+
+Per-locale file — compact JSON (sorted keys, `ensure_ascii=False`, UTF-8,
+LF):
+
+```json
+{
+  "schema":  "wartales/search-index@1",
+  "locale":  "de",
+  "buildId": "20318128",
+  "rows": [
+    { "kind": "item", "id": "A1AstronomerLetter",
+      "name": "Astronomers Letter", "href": "/db/item/A1AstronomerLetter" }
+  ]
+}
+```
+
+Row keys are exactly `{kind, id, name, href}` — four, no more. `name` is
+the game string for that locale, markup included (stripping is a matcher
+concern, [§4.3](#4-3-name-normalization)); the artifact stays the faithful
+data plane and machine consumers get the raw name (§2.10 static JSON API).
+**No normalized column is shipped**: normalization implemented twice
+(Python emitter + TS matcher) is a drift engine, and the matcher computes
+it lazily over ≤3.3k rows in negligible time — one implementation, in
+TypeScript, is the whole guarantee.
+
+`manifest.json`:
+
+```json
+{
+  "schema":   "wartales/search-index@1",
+  "buildId":  "20318128",
+  "locales":  ["en","fr","de","es","pl","pt-BR","ru","ko","zh"],
+  "kinds":    ["item","skill","class"],
+  "rowCount": { "en": 3247, "fr": 3247, "...": "identical in all nine" }
+}
+```
+
+No timestamps, no observation times — determinism is the contract; the
+buildId is the only freshness stamp (machine plane, D2-compatible).
+
+### 3.3 The href route table (declared seam)
+
+`href` is composed **at emit time** from one declared table — links are
+data, not something the frontend derives:
+
+| kind | pivot href | non-pivot href |
+|---|---|---|
+| item  | `/db/item/{id}`  | `/{locale}/db/item/{id}` |
+| skill | `/db/skill/{id}` | `/{locale}/db/skill/{id}` |
+| class | `/db/class/{id}` | `/{locale}/db/class/{id}` |
+
+Locale prefixes per [DR-2026-08-20-locale-urls] (pivot bare). The `/db/…`
+shape follows the NWG structural reference (design-standard §2) and is
+**provisional pending PT02/PT03 IA freeze** — recorded as a contract hole
+([§13](#13-contract-holes-found)); a route change is an emitter-table edit
+plus a rerun, never a frontend change.
+
+### 3.4 Determinism
+
+Two consecutive runs produce byte-identical files (sha256 over all ten).
+Rows sort by `(SEARCHABLE_KINDS index, id)`; objects serialize with fixed
+key order; no clock, no randomness. This is what makes the artifact
+assertable and patch-diffable (E3 versioned truth rides the buildId).
+
+## 4. Contract — the `searchRows` matcher
+
+### 4.1 Module rules
+
+- Location: `site/src/lib/search/searchRows.ts` +
+  `site/src/lib/search/normalize.ts`. Pure TypeScript, no runtime deps.
+- Imports of these modules may touch **nothing environmental**: no
+  `window`, `document`, `navigator`, `localStorage`, `fetch`, no `node:`
+  builtins, no React. Server code (future map search, API emitters) and
+  the client island import the same file — DR clause 5 is satisfied by
+  construction, and an executable guard enforces it
+  ([§10](#10-acceptance-criteria) AC-11).
+
+```ts
+export interface SearchRow  { kind: string; id: string; name: string; href: string }
+export interface SearchHit  { row: SearchRow; tier: 1 | 2 | 3 }
+export const MIN_QUERY_CHARS = 2;   // DR clause 4 — the owner's number
+export function searchRows(rows: readonly SearchRow[], query: string): SearchHit[];
+```
+
+`searchRows` returns ALL hits, best-first; rendering caps are the
+component's business ([§5.4](#5-4-results-view)). It returns `[]` for
+`normalized(query).length < MIN_QUERY_CHARS` — defense in depth; the
+component never calls it below the threshold anyway.
+
+### 4.2 Matching tiers
+
+Let `q = normalizeName(query)` and `n = normalizeName(row.name)`:
+
+- **Tier 1** — `n === q` (exact).
+- **Tier 2** — prefix at a word edge: `n.startsWith(q)`, or `q` occurs at
+  position `i > 0` with `n[i-1] === ' '` (post-normalization the only
+  separator is the space).
+- **Tier 3** — `n.includes(q)` (substring; this is the tier that makes
+  zh matching work, since normalization leaves hanzi intact).
+
+Total order over hits: `tier asc`, then `n.length asc` (shorter name =
+more specific), then `row.kind` in `SEARCHABLE_KINDS` order, then
+`row.id asc` lexicographic. Shuffling the input array cannot change the
+output order — asserted by test.
+
+### 4.3 Name normalization
+
+`normalizeName(s: string): string`, defined once in `normalize.ts`:
+
+```ts
+s.replace(/<[^>]*>/g, " ")      // 1. Heaps rich-text tags → space
+ .normalize("NFKD")             // 2. canonical + compatibility decompose
+ .replace(/\p{M}/gu, "")        // 3. drop combining marks
+ .toLowerCase()                 // 4. case-fold equivalent for our scripts
+ .replace(/\s+/g, " ").trim()   // 5. collapse whitespace
+```
+
+Why this exact pipeline covers the brief's zh/ko/ru demands:
+
+- **ru** — NFKD splits `ё` (U+0451) into `е` + U+0308, so step 3 folds
+  `ё → е`; accented/cased Cyrillic folds the same way. Query `Ёж`
+  matches `еж`.
+- **fr/de/es/pl/pt-BR** — diacritics fold (`é→e`, `ł→l`, `ß` excepted,
+  see holes); case folds.
+- **ko** — NFKD decomposes syllables to conjoining jamo (category Lo, so
+  step 3 never eats them); both sides normalize identically, so a
+  partially-typed jamo query (`ㅎㅏ`) already matches `한…` mid-word —
+  desirable for a field that answers as you type
+  ([DR-2026-08-22-inputs-answer-as-you-type]).
+- **zh** — hanzi pass through NFKD/NFD unchanged (step 2 folds full-width
+  variants); matching is plain substring, no segmentation needed at this
+  corpus size.
+- Step 1 defends against markup leaking into names; replacing with a
+  space (not `""`) keeps words from fusing.
+
+Known accepted gaps (recorded, not silently suffered): `ß` does not fold
+to `ss`; Turkish `İ` is out of scope (no `tr` locale).
+
+### 4.4 Both sides, one answer
+
+The client island fetches `/data/search/<locale>.json` on first field-open
+(lazy, cached in-module) and calls `searchRows`. Any server consumer
+imports the same module and feeds it the same rows read from disk. There
+is no second matcher, no server-side shortcut, no index-construction
+config that could diverge — what matches cannot depend on which side
+answered.
+
+### 4.5 Complexity budget
+
+Per keystroke: normalize ≤3.3k short strings + linear scan — low
+single-digit milliseconds on commodity hardware, far inside the
+scripted-interaction <200 ms CWV budget (FRAMEWORK §8). No debounce is
+required at this size; if profiling ever says otherwise, debounce is a
+component-local concern and must not touch the matcher.
+
+### 4.6 Decision record: MiniSearch not adopted for v1
+
+FRAMEWORK §2.9 names "shipped JSON index + MiniSearch under ~100k
+entities". Departure reasons, for the arbiter to judge: (a) MiniSearch's
+default tokenizer splits on non-alphanumerics and performs no CJK
+segmentation — hanzi queries degrade to whole-field prefix and hangul
+jamo typing breaks, i.e. it fails exactly the zh/ko bar the brief sets;
+working around it means custom tokenizers, which reintroduces the
+config-drift surface clause 5 forbids; (b) at ≤3.3k rows/locale a linear
+scan is sub-millisecond, so the library buys nothing measurable; (c) the
+shipped-JSON half of §2.9 is honored literally — the artifact IS the
+index. Revisit triggers: any single-locale index exceeding ~100k rows, or
+faceted *relational* filtering entering scope (§2.9's Meilisearch
+threshold). Map-search reuse ([§12](#12-out-of-scope)) inherits
+`searchRows` unchanged either way.
+
+## 5. Contract — the header search field
+
+### 5.1 Composition
+
+- `site/src/components/header/SiteSearchField.tsx` — the field + state
+  machine (`"use client"`).
+- `site/src/components/header/SearchResultsView.tsx` — the in-place
+  results surface.
+- The swap target is **any element carrying `data-search-swap-root`**.
+  This is the F4 seam: the app shell puts that attribute on its main
+  content wrapper (one-line integration, recorded in
+  [§13](#13-contract-holes-found)). The field never imports shell code;
+  tests mount their own fixture root.
+
+### 5.2 States
+
+```
+closed ──activate(click/Enter on word)──▶ open
+open   ──Escape───────────────────────▶ closed (query dropped, content restored, focus → word control)
+open   ──clear(✕ control or emptying)─▶ open, content restored   (DR: "cleared … restores")
+open   ──len(normalize(q)) ≥ 2────────▶ swapped (results replace content in place)
+open   ──len drops below 2────────────▶ restored
+```
+
+Deliberate non-behavior: **blur does not close or restore** — the DR
+names exactly two restore paths (cleared, Escape); inventing a third
+(on-outside-click) would fight the in-place model. Recorded so the
+reviewer does not "fix" it.
+
+### 5.3 DR-verbatim behavior contract
+
+Each clause with its enforcing mechanism:
+
+1. *"Closed, 'Search' is a word in the nav."* — closed state renders the
+   localized chrome word (`search.word`, en "Search") as a real control
+   occupying only its word-width in the nav row. No icon-only ghost, no
+   box.
+2. *"Open, it is an input that grows across the row the nav was using."*
+   — activation swaps the word for a text input laid out across the nav
+   row (grid-column expansion of the same row; the nav items yield the
+   row to it). Focus moves into the input. Visual styling rides F1
+   tokens; the structural claim (same row, full-row input) is asserted.
+3. *"Results replace the page's own content in place once two characters
+   are typed"* — on the 2-char crossing, `data-search-swap-root` gains
+   the `hidden` attribute and the results view renders in the layout slot
+   the content vacates (top-of-page framing: the reader sees results
+   from the top, scroll reset is acceptable ONLY because the previous
+   content is hidden — see next clause for what survives).
+4. *"hidden, never unmounted, so scroll position and state survive the
+   detour"* — the content subtree stays in the DOM (`document.contains`
+   holds; React never unmounts it). Its scroll containers keep scrollTop;
+   component state (open tabs, form entries) persists because no element
+   is destroyed. Restoration removes `hidden` — the page continues
+   exactly where it left.
+5. *"the content returns when the field is cleared or Escape is pressed"*
+   — both paths, plus the Escape collapse of [§5.2](#52-states).
+6. Clause 1 (no route) is [§6](#6-contract--no-search-route); clause 5
+   (one matcher) is [§4](#4-contract--the-searchrows-matcher).
+
+### 5.4 Results view
+
+- Grouped by kind in `SEARCHABLE_KINDS` order; each group header is the
+  localized kind label + its hit count as a bare number (chip-word rules:
+  a counted number carries no word beyond its label —
+  [DR-2026-08-21-drop-chip-words-and-updated-column]).
+- Every result row is a real `<a href>` to the artifact's `href` (crawl-
+  able grammar even though the surface itself is transient), showing the
+  game's own `name` for the locale. No descriptions, no icons in v1
+  ([§12](#12-out-of-scope)).
+- Render cap: first **50** hits overall (`MAX_RENDERED_ROWS = 50`, the
+  network page-size choice [DR-2026-08-18-page-size]; a named constant,
+  not a derivation). Group headers always show the FULL count from the
+  complete hit set, so capping never lies about coverage.
+- Zero matches: the count line reads `0` beside the echoed query — a
+  plain-word fact. **No instructional copy, no suggestions module, no
+  "did you mean"** ([DR-2026-08-22-copy-earns-its-place] §3; design-
+  standard §5.4). Nothing teaches how to search.
+- Faceting is the grouping itself; a kind-filter chip row is v1-optional
+  and ships only if it stays purely client-side and reactive.
+
+### 5.5 Input-gate compliance
+
+No `<form>`, no `type="submit"` anywhere in the delivered tree
+([DR-2026-08-22-inputs-answer-as-you-type] gated clause). The clear
+affordance is `<button type="button">`. Activation of the closed word is
+likewise `type="button"` with the word as its accessible name. Typing
+drives everything; Enter navigates to the current top hit (link
+semantics, not submission).
+
+## 6. Contract — no search route
+
+Negative space, enforced positively:
+
+1. **Router**: no route file under any `app/**` path named `search` —
+   ever, including nested and locale-segment variants. No redirect, no
+   rewrite: a 301 would acknowledge the URL; the DR wants absence (404).
+2. **Served behavior**: `GET /search` → 404; `GET /en/search` → 301 to
+   `/search` (pivot-prefix policy) → 404 — net effect never 200.
+   Executable once the app exists; until F4 lands, the checker below
+   covers the static guarantees and the served check is listed as an
+   integration criterion ([§13](#13-contract-holes-found)).
+3. **robots.txt**: the string `search` appears in no directive (no
+   `Disallow: /search` — that line would advertise the URL's existence).
+4. **Sitemaps**: no `sitemap` source references `/search`; generated XML
+   contains no such `<loc>`.
+5. **Capture list**: the e2e crawl manifest (PT16-owned when it lands)
+   never gains a `/search` entry.
+6. **Internal links**: no `<Link>`/`href` in the delivered tree points at
+   `/search`.
+
+All six are swept by one executable test
+(`search-route-absence.test.ts`, [§9](#9-test-spec-for-testwriter)) that
+fails on any hit and reports the file+line — written so that it keeps
+guarding the repo after F4/PT16 land (vacuous "tree absent" today is a
+pass with an explicit `ABSENT:` report line, not a silent skip).
+
+## 7. Keyboard and accessibility basics
+
+- Landmark: the field sits in `role="search"`.
+- The input carries `aria-label` (`search.fieldLabel`) — the visible word
+  is gone once open, so the label must not depend on it.
+- Live region: a visually-hidden `aria-live="polite"` span announces the
+  hit count as a bare number after each keystroke-driven change. Plain
+  words only; no enum vocabulary (user-language DR).
+- `ArrowDown` from the input moves focus to the first rendered result
+  link; `Tab` reaches results in DOM order (they follow the header).
+  `ArrowUp` returns to the input.
+- Escape: restore + collapse + focus the closed-word control (single
+  stroke out, per [§5.2](#52-states)).
+- Hit area, focus ring, and the visible word respect the 12px floor and
+  token system (design-standard §3; F1 tokens).
+- The results surface is preceded by an `h1`-level visually-hidden
+  heading ("Search") so screen-reader users get a landmark boundary —
+  chrome, not copy; it explains nothing.
+
+## 8. Chrome i18n seam
+
+Keys owned by this piece (namespace `search`), en values shipped,
+consumed through a props/injected-dictionary seam with en fallback:
+
+| key | en |
+|---|---|
+| `search.word` | `Search` |
+| `search.clear` | `Clear` |
+| `search.fieldLabel` | `Search` |
+| `search.resultHeading` | `Search` |
+| `search.countTemplate` | `{count}` |
+| `search.kind.item` / `.skill` / `.class` | `Items` / `Skills` / `Classes` |
+
+Non-locale work is deliberate: the chrome matrix belongs to F4
+(pieces F4 row owns "chrome i18n namespace"); merging these keys into it
+is the recorded handoff. Per localization-architecture §4 a locale's
+chrome ships only when complete — until then non-pivot locales fall back
+to the en strings rather than mixing prose. Placeholder is empty by
+design (an instructional placeholder is banned copy). Game-kind facet
+labels are chrome (site taxonomy), not game strings.
+
+## 9. Test spec for TestWriter
+
+Vitest (already the site runner, `site/package.json`). New
+`site/vitest.config.ts` with two projects:
+
+- **node** — matcher units, artifact assertions, route-absence sweep.
+- **jsdom** (+ `@testing-library/react`, `react`, `react-dom`,
+  `jsdom`, `@vitejs/plugin-react` added to devDependencies) — the
+  component suite.
+
+New dependencies are the only `package.json` edits besides nothing else;
+`npm test` stays `vitest run`.
+
+Suites:
+
+1. `normalize.test.ts` — table-driven: `ё→е` folding; fr accents
+   (`Épée→epee`); pl `ł`; markup strip (`<b>X</b>` → ` x `); jamo
+   decomposition (`한국` ↔ `ㅎㅏㄴㄱㅜㄱ` equivalence); hanzi immutability
+   (`长剑` stable); full-width fold (`ＸＹ→xy`); whitespace collapse;
+   idempotence (`f(f(s)) === f(s)`).
+2. `searchRows.test.ts` — **runs in BOTH projects** (same file, executed
+   twice) asserting deep-equal outputs per query over a fixture corpus
+   containing ru/fr/ko/zh names: tier assignment, total-order stability
+   under input shuffle, `MIN_QUERY_CHARS` guard, empty-query `[]`.
+   Identical arrays across projects is the executable form of DR clause 5.
+3. `SiteSearchField.test.tsx` — renders with a fixture
+   `data-search-swap-root` div pre-filled with scrollable content:
+   - closed shows the word; activate → input focused, row-growth class
+     present;
+   - 1 char → root still visible; 2nd char → root `hidden === true` AND
+     `document.contains(rootContent)` AND `root.scrollTop` preserved AND
+     results groups render with counts and artifact hrefs;
+   - clear control → restored, field still open; emptying text → same;
+   - Escape → restored + collapsed + focus on the word control;
+   - blur → neither closes nor restores (deliberate, [§5.2](#52-states));
+   - rendered cap 50 with full group counts;
+   - DOM sweep: zero `<form>`, zero `[type=submit]`;
+   - zero-match shows `0` + echoed query and matches the banned-copy
+     sweep (no "press/no results help/type" instructional strings).
+4. `search-artifact.test.ts` (node) — reads
+   `site/public/data/search/*.json` + manifest:
+   - exactly the nine locale files, names == frozen official set;
+   - manifest `rowCount[L] === rows.length` for all L; `buildId` present;
+     `kinds` == `SEARCHABLE_KINDS`;
+   - identical sorted `(kind,id)` list across all nine files;
+   - every `kind ∈ SEARCHABLE_KINDS`, and `SEARCHABLE_KINDS` is checked
+     element-wise against the 40-kind mirror transcribed verbatim from
+     wkk (transcription kept honest by the Python-side assertion in (5));
+   - row keys exactly `{kind,id,name,href}`; `name` non-empty; `href`
+     starts `/`, contains no `/search`, matches the route table for its
+     locale/kind;
+   - class rows per locale == **278** (frozen anchor, §2); per-locale
+     total within `[278, 3321]` and equal across locales;
+   - membership spot-bijection: sample rows verified against avail
+     (`L ∈ namedLocales`).
+5. `pipeline/tests/test_search_index.py` — synthetic mini avail + mini
+   overlays in tmp: happy path byte-determinism (two runs, sha256 equal);
+   flag-without-value → exit 2; value-without-flag → exit 2; unknown
+   locale → exit 2; kind outside `SEARCHABLE_KINDS` refused (exit 2) —
+   and this suite imports `wave_kinds.MANAGED_KINDS` directly, keeping
+   the transcription in (4) honest.
+
+## 10. Acceptance criteria
+
+Executable unless phrased otherwise; every command runs from the pack
+root.
+
+- **AC-1** — `pwsh ./run_all.ps1 emit` completes exit 0 and produces
+  `site/public/data/search/{en,fr,de,es,pl,pt-BR,ru,ko,zh}.json` plus
+  `manifest.json`; the pre-existing two emit steps are unchanged
+  (`git diff` touches only the appended step + registry comment).
+- **AC-2** — a second immediate `emit` run leaves all ten files
+  byte-identical (recorded sha256 pair in the run log).
+- **AC-3** — bijection holds: for every locale L and every avail row with
+  kind ∈ SEARCHABLE_KINDS, `L ∈ namedLocales ⇔` exactly one row in
+  `L.json`; and every row of `L.json` satisfies `L ∈ namedLocales`.
+  (Full scan, not sampled.)
+- **AC-4** — the nine files carry one identical sorted `(kind,id)` list;
+  class contributes exactly 278 rows per locale; per-locale total is
+  within `[278, 3321]`.
+- **AC-5** — row/manifest shape exactness: row keys `{kind,id,name,href}`;
+  `name` non-empty; `href` per the §3.3 table for its locale; no `href`
+  contains `/search`; manifest fields per §3.2; `vitest run` (node
+  project) green including `search-artifact.test.ts`.
+- **AC-6** — `pwsh ./run_all.ps1 --dry-run emit` prints the emitter as
+  the third step, after `validate_all.py`, with resolved defaults;
+  `--list` shows the emit stage description updated.
+- **AC-7** — `pytest pipeline/tests/test_search_index.py` green:
+  determinism, the three exit-2 corruption gates, and the
+  non-searchable-kind refusal.
+- **AC-8** — matcher parity: `vitest run` executes `searchRows.test.ts`
+  under BOTH projects; all fixture queries (incl. `ё`→`е`, fr accents,
+  ko jamo partial, zh substring) produce deep-equal arrays in both.
+- **AC-9** — normalize unit table green (all §9.1 cases + idempotence).
+- **AC-10** — component suite green: every §9.3 bullet, including the
+  hidden-not-unmounted + scroll-preservation triple assertion and the
+  blur non-behavior.
+- **AC-11** — environment-purity guard: a test greps
+  `normalize.ts`/`searchRows.ts` for `window|document|navigator|
+  localStorage|fetch|node:` and fails on any hit.
+- **AC-12** — input gate: rendered-DOM sweep proves no `<form>` and no
+  `type="submit"` in the component tree.
+- **AC-13** — route absence: `search-route-absence.test.ts` green — no
+  `app/**/*search*` route file; `robots.txt` (if present) contains no
+  `search` directive; no sitemap source or generated XML references
+  `/search`; no internal `href` targets `/search`; each absent tree is
+  reported as an explicit `ABSENT:` line.
+- **AC-14** — a11y suite bullets green: `role="search"` present; input
+  has `aria-label`; live region announces the count; ArrowDown/ArrowUp/
+  Tab/Escape focus behavior per §7.
+- **AC-15** — anti-slop sweep on rendered strings: none of the
+  component's user-visible strings matches the instructional/absence
+  patterns (how-to-search, "no results found"-style apologies); zero
+  state renders count `0` + query echo only.
+- **AC-16** — chrome seam: all §8 keys resolve for en; injecting a
+  partial dictionary falls back to en per key without crashing (unit
+  test on the resolver).
+
+## 11. Files touched
+
+New:
+
+- `pipeline/tools/search_index_emit.py`
+- `pipeline/tests/test_search_index.py`
+- `contracts/search-index.schema.json` (published contract, F2 convention:
+  row + manifest schemas, `SEARCHABLE_KINDS`, route table)
+- `site/src/lib/search/normalize.ts`
+- `site/src/lib/search/searchRows.ts`
+- `site/src/lib/i18n/search-chrome.ts` (keys + en dictionary + fallback
+  resolver)
+- `site/src/components/header/SiteSearchField.tsx`
+- `site/src/components/header/SearchResultsView.tsx`
+- `site/vitest.config.ts`
+- `site/src/lib/search/__tests__/normalize.test.ts`
+- `site/src/lib/search/__tests__/searchRows.test.ts`
+- `site/src/lib/search/__tests__/search-artifact.test.ts`
+- `site/src/lib/search/__tests__/search-route-absence.test.ts`
+- `site/src/components/header/__tests__/SiteSearchField.test.tsx`
+
+Edited:
+
+- `pipeline/run_all.ps1` (emit stage: append step 3 + StageInfo desc)
+- `EXTRACTION-LOG.md` (stage registry entry for the emitter)
+- `site/package.json` (devDependencies: `react`, `react-dom`,
+  `@testing-library/react`, `jsdom`, `@vitejs/plugin-react`)
+
+Untouched by design: all existing pipeline tools, `extracted/**`,
+tokens/styles, `run_all.sh` (pure forwarder).
+
+## 12. Out of scope
+
+- Icons/thumbnails on result rows (needs the icon CDN piece; rows stay
+  text+facet).
+- Description-text search, fuzzy scoring beyond the three tiers, pinyin/
+  romaja transliteration, synonym rings.
+- Meilisearch or any external search service (§4.6 revisit triggers).
+- The map-page search reuse — the matcher is written to be reusable, but
+  no map code ships here.
+- Locale chrome translations beyond en (F4's matrix), URL-prefix
+  machinery, the shell itself.
+- The served-404 check (`GET /search`) — executable only once an app
+  exists; tracked as integration criterion H-2 below.
+- Any UGC/analytics on the field (no query logging anywhere in this
+  piece — nothing to log it with, by design).
+
+## 13. Contract holes found
+
+- **H-1 — route table provisional.** §3.3's `/db/{kind}/{id}` follows the
+  NWG reference but PT02/PT03 own the real IA (slugs per seo-standard §1
+  may replace ids). Change = emitter table edit + rerun; consumers of the
+  artifact are unaffected. Must reconcile before DB-core pages land.
+- **H-2 — served-404 + capture-list legs need the app.** The DR's
+  clause-1 guarantees are fully specified here; two of their proofs
+  (served `GET /search` → 404; capture-list exclusion) become executable
+  only when F4's router and PT16's crawl manifest exist. Both checks are
+  pre-written in `search-route-absence.test.ts`'s sweep list — they
+  activate as their trees appear.
+- **H-3 — `data-search-swap-root` placement.** F4 must put the attribute
+  on its main-content wrapper; until then the component degrades to a
+  no-op swap (results render in the header's own fallback slot). One-line
+  integration, but it crosses the piece boundary and must not be
+  forgotten when F4 lands.
+- **H-4 — chrome key merge.** §8's namespace merges into F4's chrome
+  i18n file; until the merge the field self-hosts the keys. Key names are
+  the negotiation surface.
+- **H-5 — `ß`/`ss` and future orthographic folds.** Recorded gap in
+  §4.3; if German players report misses, the fix extends `normalizeName`
+  (one place, both sides inherit it) — never a per-surface workaround.
+- **H-6 — wave-2 growth.** `SEARCHABLE_KINDS` re-freeze (§2) must land in
+  the same commit as R9's wave-2 overlays and PT02's routes for those
+  kinds; the emitter's refusal gate (exit 2) is what forces the
+  reconciliation rather than trusting it.

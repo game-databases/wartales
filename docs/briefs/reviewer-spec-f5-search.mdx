@@ -1,0 +1,57 @@
+# Brief — Spec Reviewer: F5 header search
+
+Fresh Reviewer agent; never spawn subagents; never commit; Wartales pack
+only. Produce ONE review: `docs/review-spec-f5-search.mdx`. Review only —
+propose no fixes, edit nothing.
+
+Read IN FULL before judging: `docs/spec-f5-search.mdx` (the subject);
+`_foundation/decision-register.md` [DR-2026-08-22-search-is-not-a-page]
+IN FULL — every clause, then check the spec quotes it verbatim and
+mechanizes each one; FRAMEWORK.md §2.9 + §2.2 (locale overlay model);
+`docs/pieces.mdx` F5 row; `pipeline/tools/wave_kinds.py` (MANAGED_KINDS
+ground truth); `extracted/relinks/locale_availability.jsonl` (row counts
+the spec cites: 3,779 avail rows / 458 drift); `docs/spec-f4-app-shell.mdx`
+§5 (reserved `data-shell-slot="search"` seam — verify the two specs'
+handoff matches BOTH ways); `site/src/styles/tokens.css` (F1 canon,
+never-touch law); current `site/` tree as found.
+
+Review axes (findings classified BLOCKER / MAJOR / MINOR, anchored to
+spec section + source):
+
+1. **DR fidelity** — DR-2026-08-22 clauses vs §5.3 mechanisms, 1:1 and
+   verbatim-quoted. A clause with no mechanism or a paraphrased quote =
+   BLOCKER.
+2. **Traceability** — frozen numbers (3,779 / 458 / 278-per-locale class
+   rows / N bounds), MANAGED_KINDS ⊃ SEARCHABLE_KINDS claim, ×9 locale
+   set, provisional route table shape: trace each to disk. Invented
+   numbers = BLOCKER.
+3. **Index artifact soundness** — emit-stage step-3 wiring claim vs how
+   stages actually register steps (EXTRACTION-LOG stage table +
+   validate_all gates); `site/public/data/search/{locale}.json` row
+   schema `{kind,id,name,href}` coherence with F2's URL law and href
+   values; byte-determinism achievable as specified.
+4. **Matcher correctness** — `searchRows` pure-module server+client
+   import rules realizable in Next App Router; normalization tiers
+   genuinely cover ё→е, fr accents, ko jamo, hanzi substring; NFKD
+   ordering sane; ß gap honestly ledgered not silently dropped;
+   MiniSearch departure justified.
+5. **Header state machine** — closed=word-in-nav → open=grows-across-row,
+   2-char trigger, hidden-never-unmounted swap preserving scroll/state,
+   Escape/clear restore, no form/submit: implementable as specified on
+   the F4 shell anatomy? Swap-root placement hole (H-3) resolved or
+   correctly gated?
+6. **Route-absence sweep** — router 404 + robots/sitemap absence +
+   pivot-prefix mapping of literal `/en/search`: complete, mechanical,
+   testable.
+7. **AC executability** — all 16 ACs falsifiable by named vitest suites /
+   artifact assertions; dual-environment parity battery covers node+jsdom
+   claims.
+8. **Boundary integrity** — F5 must not design page routes (PT03), SEO
+   (PT16), or shell chrome beyond the slot contract; chrome i18n seam
+   (`search.*`) merges into F4's namespace without redefining its parity
+   gate. Files-touched list (14 new, 3 edited) verified against tree;
+   tokens.css/tokens.test.ts never-touch honored.
+
+Verdict at top: **NEEDS_REVISION** (blockers/majors enumerated) or
+**READY_FOR_ARBITER**. Be harsh; cite evidence per finding. End with a
+count summary table.
