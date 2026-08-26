@@ -1,0 +1,41 @@
+# Brief — Code Reviewer: F4 app shell build
+
+Fresh Code Reviewer; never spawn subagents; never commit; Wartales pack
+only. Deliverable: `docs/review-f4-code.mdx`. Review only — no fixes.
+
+Subject: the built F4 shell (commit `c4f312f`, tree under `site/`) vs
+`docs/spec-f4-app-shell.mdx` (build-ready, r1b/r2b erratas included).
+Read IN FULL: the spec; your brief inputs below; then the code.
+
+Axes (findings BLOCKER / MAJOR / MINOR, anchored file:line):
+1. **Spec fidelity** — every §5–§6 contract implemented as written:
+   middleware dispatch laws (301 external `/en*`, no negotiation,
+   unknown-segment 404, trailing-slash canonical), manifest-driven
+   render-only-existing nav, staged search slot per AC-11's r2b text
+   (`data-search-swap-root` on `<main>`, empty-until-F5 semantics),
+   chrome i18n stub law (13 keys ×9 byte-identical + ledger), token
+   wiring via @theme over canon, g-suffix spacing utilities only.
+2. **Deviation adjudication** — the builder reported six deliberate
+   deviations. Rule each **JUSTIFIED** (evidence sound, spec laws
+   preserved) or **DEFECT** (spec diluted): (a) Next 16 middleware
+   dispatch rewrite; (b) served-404 documents composed at serving layer;
+   (c) pivot switch links as plain anchors + sr-only anchor row;
+   (d) ui/utils.ts one file beyond §9's letter; (e) THE CROSS-PAIR
+   TOUCH — its edit to the sibling-owned scripts/smoke.mjs pivot-301
+   leg (claim: `.replace(/\/$/,"")` made root Location unpassable for
+   ANY conformant app — verify against the actual response semantics);
+   (f) tooling artifacts (site/AGENTS.md, site/CLAUDE.md committed;
+   tsconfig excludes tests from tsc).
+3. **Canon protection** — tokens.css/tokens.test.ts byte-untouched;
+   no re-declarations outside aliasing form anywhere.
+4. **Correctness/security sweep** — middleware redirect/rewrite paths
+   (open-redirect surface, locale injection into hreflang/lang attrs),
+   generateStaticParams/setRequestLocale SSG claims, error boundaries.
+5. **Files-touched exactness** — created/modified vs §9; anything
+   missing or extra = finding (BLOCKER if it touches another piece's
+   surface without spec warrant).
+6. **Quality bar** — FRAMEWORK §2 conventions, TypeScript strictness,
+   shadcn primitive copies un-mangled, dead code none.
+
+Verdict at top: **CLEAN** / **NEEDS-FIX** (enumerated). End with count
+table. Be harsh — cite line evidence for every finding.

@@ -1,0 +1,34 @@
+# Brief — Test Reviewer: F4 app shell test suite
+
+Fresh Test Reviewer; never spawn subagents; never commit; Wartales pack
+only. Deliverable: `docs/review-f4-tests.mdx`. Review only — no fixes.
+
+Subject: the F4 test suite (commit `600b0e6`: 4 vitest suites +
+scripts/smoke.mjs, written BLIND) plus the CodeWriter's later surgical
+edit to smoke.mjs's pivot-301 leg (commit `c4f312f`). Read IN FULL:
+`docs/spec-f4-app-shell.mdx` §7–§8 (the contract the tests claim to
+enforce), all five test files, the vitest run output state, and the
+suite-vs-implementation diff story.
+
+Axes (findings BLOCKER / MAJOR / MINOR):
+1. **AC coverage** — every one of the 14 ACs enforced by ≥1 executable
+   assertion; map AC→test and expose gaps (an AC with no failing path =
+   MAJOR).
+2. **Vacuous-assertion hunt** — loops over possibly-empty sets, absence
+   laws over absent targets, mocks that always pass, regexes that match
+   everything; try to make each suite green against a BROKEN shell
+   mentally (or empirically: temporarily mutate a copy under scratch if
+   needed — NEVER mutate the real tree).
+3. **Blind-law integrity** — do assertions encode implementation
+   details the spec doesn't mandate (brittle coupling) or stay at
+   contract level?
+4. **Smoke runner correctness** — leg guards (`WARTALES_SMOKE_LIVE=1`)
+   honest SKIPs vs silent passes; the disputed pivot-301 normalization:
+   rule whether `.replace(/\/$/,"")` truly made Location "/" unpassable
+   and whether the fix is minimal + faithful; exit-code semantics.
+5. **Suite hygiene** — no vitest.config, tokens suite untouched, node-env
+   imports relative, placement per §7, no flaky timing/cleanup traps
+   (node:test after() class of bug), deterministic fixtures.
+
+Verdict at top: **SOUND** / **NEEDS-FIX** (enumerated). Count table at
+end.
