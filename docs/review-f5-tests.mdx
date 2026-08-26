@@ -1,0 +1,258 @@
+# Test review — F5 header-search suite
+
+**Verdict: SOUND.** Zero BLOCKER, zero MAJOR, eight MINOR. All five vitest
+suites and the emitter pytest suite are green on the tree as it exists right
+now (**159/159** vitest across node+jsdom, of which **97 are F5 cases**, and
+pytest **18 passed + 1 xfailed(strict)**); every acceptance criterion
+AC-1..AC-16 has at least one executable assertion behind it except three
+narrowly-scoped legs that are orchestrator-owned by design (AC-1/AC-6
+execution, AC-13's served-404) and one genuinely missing leg (AC-14's Tab
+row). The vacuous-hunt break battery — seven hand-made mutants against
+scratch copies — was caught six times out of seven, including surgical
+detections worth recording; the one survivor is a test-*attribution* gap,
+not a pass-while-broken hole, because a second independent law refuses the
+same corruption. The two spec-letter divergences are correctly encoded as
+ONE strict xfail whose bite I proved empirically (adopting the letter flips
+it to `[XPASS(strict)]` and fails the suite).
+
+Reviewed: commits `d35c42e` (the five vitest suites, matcher/normalize/
+component implementation) and `aa12024` (`site/vitest.config.ts` projects,
+`pipeline/tests/test_search_index.py`, `search-slot.tsx` wiring, tsconfig
+exclude), judged against [`spec-f5-search.mdx`](./spec-f5-search.mdx) r2
+read in full, the TestWriter/TestReviewer briefs, and the landed
+implementation files. Review-only pass — nothing fixed, nothing committed.
+
+## What was executed on this machine (not just read)
+
+- **Full vitest run** (`site`, `vitest run` v3.2.7): **Test Files 11 passed
+  (11) / Tests 159 passed (159)** in 5.32 s. F5 breakdown: normalize 8 ·
+  searchRows **22 × 2 environments** (node AND jsdom both visible in the run
+  log — AC-8's double execution confirmed live) · search-route-absence 9 ·
+  search-artifact 18 · SiteSearchField 18 = 97 F5 cases; the 62 pre-F5 cases
+  stayed green inside the `node` project.
+- **Full pytest run** (`pipeline/tests/test_search_index.py`, Python 3.14):
+  **18 passed, 1 xfailed** in 1.74 s; the xfail reports XFAIL, not XPASS.
+- **Break rig** at `site/.f5review-scratch/` (full mirror of `site/src` plus
+  a projects config identical to the landed one but rooted at the mirror;
+  **deleted afterwards**, residue-checked with scoped `git status` — the
+  tracked tree was never touched):
+  - CONTROL (unbroken mirror) → 70/70 green over the three suites under
+    attack, proving the rig faithful.
+  - **V1** — delete the explicit `ł→l` fold from `normalize.ts` → normalize
+    frozen-table RED (suite 1 catches alone; correct — the searchRows
+    fixture carries no Polish names).
+  - **V2** — swap the §4.2 total order to length-before-tier in
+    `searchRows.ts` → **RED in BOTH projects simultaneously** (8 failures),
+    the parity battery failing consistently on each side.
+  - **V3** — gate on raw typed length instead of normalized length →
+    exactly the two normalization-sensitive below-threshold cases RED
+    (`" a "`, `"   "`), the raw-length cases staying green: surgical.
+  - **V4** — add an onBlur collapse below threshold to the field → blur
+    non-behavior leg RED (§5.2's recorded non-behavior is enforced, not
+    decorative).
+  - **V5** — group headers render the rendered slice instead of the FULL
+    hit count → cap test RED alone ("capping never lies" is load-bearing).
+  - Incidental red-first proof: rooted at the mirror, `search-artifact.test.ts`
+    went loudly RED naming the absent artifact directory — absence never
+    passes silently.
+  - **P1** — delete Gate 2 (value-without-flag) from the emitter → **suite
+    stays green (survivor)**; analysis below, graded MINOR.
+  - **P2** — emit with `sort_keys=True` →
+    `test_fixed_key_order_and_row_sort_and_shape` RED on the manifest key
+    order; the r1-m7 law has teeth on the Python side (and the vitest
+    artifact suite re-asserts row/top-level order from raw bytes on the TS
+    side).
+  - **XFPROBE** — make the scratch emitter adopt the spec letter literally
+    (refuse non-searchable avail kinds + unknown overlay locale dirs) → the
+    dual-divergence test flips to **[XPASS(strict)] and FAILS the suite**
+    (2 failed: the xpass plus the purity test whose same-commit update
+    obligation the reason text names). The marker is genuinely strict.
+- Probes against the emitter source confirming the xfail reason's measured
+  claims, run as subprocess pairs: a stray fully-formed `icon` kind filters
+  silently (exit 0, purity holds); a stray `ja/` overlay directory is
+  invisible because the locale-set gate iterates the loaded dict (nine keys),
+  not the directory listing — both exactly as the reason text records.
+
+## Axis 1 — AC coverage map (gaps exposed)
+
+| AC | Enforced by | Verdict |
+|---|---|---|
+| AC-1 | pytest registration layer (emitter listed AFTER `validate_all.py`, bridge ordering, EXTRACTION-LOG entry); execution of `pwsh ./run_all.ps1 emit` + diff envelope stay orchestrator-owned (stated in the module docstring) | PARTIAL by design |
+| AC-2 | pytest byte-determinism: two runs into SEPARATE out dirs, sha256 over all ten, `len(d1)==10` gated before comparing, per-file diff named | synthetic core FULL; the real-artifact recorded pair remains a run-log fact |
+| AC-3 | vitest artifact suite: FULL bijection both directions ×9 locales, every row, PLUS `fields[L].name` flag check, duplicate-row guard, and the frozen universe recount (14456/3779/3219) guarding the anchor itself | FULL |
+| AC-4 | canonicalized `(kind,id)` identity ×9; class facet == 278 with equal facet sizes across locales; total == 3219 exact | FULL |
+| AC-5 | row keys `{kind,id,name,href}` exact AND IN ORDER from raw text; top-level + manifest key order (the serialization-order law, r1 m7) asserted on BOTH sides (vitest raw-bytes + pytest `object_pairs_hook`); href recomputed independently from the §3.3 segment table per row ×9; no `/search`; manifest shape | FULL |
+| AC-6 | static ordering legs only; NO assertion anywhere exercises `--dry-run` output or `--list` description | GAP (M-3) |
+| AC-7 | determinism + flag-without-value + value-without-flag + unknown-locale all exit 2 naming an offender; usage exit 3; missing input exit 2; refusal letter strict-xfailed with positive purity pin | FULL minus letter divergence (correctly encoded) |
+| AC-8 | one file executed under both projects, env-declaring guard runs the whole frozen table in each | FULL (self-enforcement note, M-7) |
+| AC-9 | frozen table executed-green including codepoint-exact ko jamo trio, ß-gap asserted AS a gap, idempotence over all inputs, no-markup/no-case/no-trim invariants | FULL |
+| AC-10 | every §9.3 bullet executable: 1-char/2-char crossing, `hidden` + `document.contains` + scrollTop triple, details-open + checkbox state survival, groups-with-counts-and-hrefs, clear-stays-open, emptying, Escape restore+collapse+refocus, blur ×2, cap 50 with full counts, DOM form/submit sweep, zero state | FULL |
+| AC-11 | lexical sweep over comment- and string-stripped sources of both modules for exactly the six banned tokens | MET as written; §4.1 also bans React — unswept (M-5) |
+| AC-12 | document-wide sweep mid-interaction: zero `<form>`, zero `[type=submit]`, every button `type="button"` | FULL |
+| AC-13 | six-leg sweep with detector self-test (red-proof through the pivot-policy mapper), router+links LIVE (app tree exists), robots/sitemap/capture dormant with printed `ABSENT:` ledger, links sweep poisoned by `walkedSourceFiles > 0`; `/en/search` mapped onto `/search` and asserted flagged | FULL static; served-404 deferred H-2 by design |
+| AC-14 | role=search landmark, aria-label independence, polite live region announcing a bare number, ArrowDown/ArrowUp focus round-trip, Escape refocus (in component suite) | MISSING the Tab-reaches-results leg (M-4) |
+| AC-15 | zero state renders `0` + query echo; eight banned-copy patterns swept over rendered body text | FULL (zero-state-scoped, matching AC-15's wording) |
+| AC-16 | en resolution of word/fieldLabel/clear through the live component; partial-dictionary probe across TWO shapes × SIX prop spellings asserting per-key en fallback without crashing; resolver-module inventory test pinning all §8 en values | FULL |
+
+## Axis 2 — vacuous hunt
+
+No empty-set loops survive scrutiny: every iteration sits behind a count or
+non-empty gate (`TABLE.length > 0`, `seen == 3219×9`, `checked == 3219×9`,
+`len(d1)==10`, `doc["rows"]` truthy, `checked > 0`, `walkedSourceFiles > 0`,
+`buttons.length > 0`). Absence laws are never evaluated over absent trees
+without an explicit `ABSENT:` line, and the route-absence detectors carry
+their own planted-violation self-test. Mocks cannot always pass: the fetch
+stub returns a fixture keyed by URL, and every behavioral claim downstream
+of it is asserted against concrete DOM outcomes. The tolerant import shims
+(`normalizeName|normalize|default`, `SiteSearchField|default`) fail LOUD
+naming the export surface found when nothing callable exists — verified by
+construction in `beforeAll` error paths, not trusted.
+
+The break matrix above is the empirical half of this axis. The one survivor:
+
+- **P1 (surviving mutant).** With Gate 2 deleted, the landed
+  value-without-flag mutation still exits 2 — refused instead by the
+  cross-locale sorted-`(kind,id)` identity gate, so
+  `test_value_without_flag_refused` cannot tell WHICH law fired. Worse, the
+  single-locale corpus is not the whole class: my all-nine-locales variant of
+  the same corruption (names kept everywhere, membership dropped everywhere)
+  exits **0 silently** once Gate 2 is gone — though the artifact it then
+  ships is still internally pure (membership = namedLocales still holds), so
+  no §3.2/§3.4 contract is breachable through this window; what is lost is
+  §3.1's named diagnostic. Graded MINOR (M-1): assert the message NAMES the
+  offending overlay/entity (§3.1 says it must anyway — today only
+  non-empty output is checked), and/or add the all-locale corpus.
+
+## Axis 3 — blind-law integrity
+
+Assertions sit at contract level throughout: export names, constants,
+attributes and thresholds they pin (`MIN_QUERY_CHARS=2`, `KIND_ORDER`,
+`MAX_RENDERED_ROWS=50`, `data-search-open`, `data-search-swap-root`,
+`role="search"`) are each pinned BY THE SPEC (§4.1/§4.3/§5.3.2/§5.4/§7/§8),
+not by the implementation; where the spec does not pin a spelling the tests
+probe alternatives instead of assuming (dictionary shapes × prop spellings;
+export-surface discovery with named failures). Expected values derive from
+spec-executed outputs, and the suite asserts the r2 ko jamo NOT-equivalence
+explicitly so the deleted r1 case cannot be silently re-imported. The ß gap
+is asserted AS a gap so a silent "fix" reads as a conscious spec change.
+
+Provenance honesty: git topology cannot certify the blindness — the five
+vitest suites entered history INSIDE the CodeWriter commit `d35c42e`, while
+an implementation edit (`search-slot.tsx` wiring, §11's composition change)
+landed in the TestWriter commit `aa12024`. Content-level evidence says the
+blindness held regardless (probe-style discovery, zero implementation-derived
+literals beyond spec-pinned ones), but the commit split mislabels which agent
+produced what; recording it here so nobody later cites topology as proof.
+
+## Axis 4 — the strict-xfail encoding
+
+One function, `test_letter_divergences_stray_inputs_exit_2`, marked
+`xfail(strict=True)` carries both divergences: (a) §9 item 5's "kind outside
+SEARCHABLE_KINDS refused (exit 2)" vs measured filter-and-exit-0; (b) §3.1's
+locale-set gate vs a stray overlay-only `ja/` dir being ignored. Judgment:
+
+- **Encoding is right.** `skip` would stop executing the probe entirely;
+  assert-opposite would enshrine the divergence as law and force a spec
+  fight to change behavior; strict-xfail keeps executing, keeps the spec
+  letter as the recorded expectation, tolerates today's measured reality,
+  and FAILS THE SUITE the day the letter is adopted — with a reason string
+  that contains its own removal instruction and the companion-test update
+  obligation. Verified empirically via XFPROBE above: `[XPASS(strict)]`
+  bites, and takes `test_non_searchable_kind_never_reaches_the_artifact`
+  down with it exactly as coordinated (that passing test pins artifact
+  purity positively, so the important invariant never rides the xfail).
+- **Probe evidence checks out independently**: I traced both claims in the
+  emitter source (the emit loop's kind filter; the consistency gate iterating
+  the nine-key loaded dict rather than the directory) and reproduced both
+  behaviors by subprocess.
+- **Granularity residual (M-2)**: two divergences share one marker, so
+  partial adoption (one leg conformant, one not) still reports XFAIL and is
+  invisible. Two separate strict-xfail tests would let each divergence flip
+  its own marker. Cosmetic today — full adoption provably fails loud — but
+  cheap to split.
+
+## Axis 5 — pytest suite quality
+
+- **Honesty chain complete at every hop**: `wave_kinds.MANAGED_KINDS` == 40
+  asserted, `SEARCHABLE_KINDS ⊆ MANAGED_KINDS` asserted against the imported
+  module (plus an import-time assert inside the emitter itself), 
+  `manifest.kinds == SEARCHABLE_KINDS` on a synthetic run, and the final hop
+  `KIND_ORDER == manifest.kinds` deep-equalled against the REAL emitted
+  manifest in the vitest artifact suite. No transcription survives.
+- **sha256×10 soundness**: two subprocess runs write to DIFFERENT output
+  dirs (no in-place overwrite confound), the digest map is size-gated at ten
+  before comparison, and mismatches print per-file. Determinism of the check
+  itself is deterministic (fixed corpus writers, LF, no clock).
+- **Gates**: flag-without-value, value-without-flag, unknown-locale-in-avail
+  (+ offender-naming assertions), missing-input exit 2, usage exit 3, ten-file
+  diff envelope, fixed key order, row sort, UTF-8/LF/no-`\u`/raw-multibyte
+  byte laws. Registration layer pins stage order and log entry statically.
+  Red-first anchor: absent emitter FAILS, never skips.
+- **Corpus hygiene**: mini avail + mini overlays in tmp only; never touches
+  `extracted/`; subprocess timeout 180 s; ~KB-scale fixtures (ENOSPC-safe).
+
+## Axis 6 — hygiene
+
+Projects config mirrors the spec exactly (node excludes the header `.tsx`;
+jsdom includes precisely the component suite + the twice-run matcher suite;
+alias mirrors tsconfig paths; plugin-react pinned 5.x with a stated vite-7
+reason) and pre-F5 suites keep running unchanged in `node`. Pollution control
+is disciplined: RTL `cleanup` + manual-node purge + fetch unstub per test,
+component queries scoped to the RTL container so fixture content can never
+answer for the field, deterministic permutations (no RNG), in-module index
+cache keyed benignly. Fixtures are tiny; the whole-suite run is ~5 s.
+Nits folded into the ledger: `vi.mock("next/navigation")` is dead weight
+(the field imports none of it); `tsconfig.json` now excludes `**/*.test.tsx`
+from tsc, so the component suite is never type-checked (disclosed in the
+commit message; esbuild still transpiles it); the artifact suite couples the
+SITE runner to `extracted/relinks/locale_availability.jsonl` presence —
+correct in-tree (the artifact cannot exist without it anyway) but worth
+knowing when moving suites between hosts.
+
+## Findings ledger
+
+All MINOR; none reopens the landing.
+
+- **M-1** — value-without-flag test cannot attribute its exit 2 to its
+  namesake gate (identity gate masks it); all-locale orphan-name corpus
+  exits 0 with Gate 2 removed; offender-naming asserted only as
+  non-empty output. Fix: assert the message names the offending
+  overlay/entity; add the all-locale corpus.
+- **M-2** — two spec-letter divergences share one strict-xfail function;
+  partial adoption stays invisible. Fix: split into two markers.
+- **M-3** — AC-6 has no executable leg (`--dry-run` step listing, resolved
+  defaults, `--list` description all unasserted); AC-1 execution +
+  diff-envelope and AC-2's real-artifact sha256 pair remain
+  orchestrator-owned facts. Acknowledged in the pytest docstring; exposed
+  here so the map is honest.
+- **M-4** — AC-14's Tab leg (§7: "Tab reaches results in DOM order") is
+  unasserted; ArrowDown/ArrowUp/Escape are covered.
+- **M-5** — AC-11's sweep implements its own letter (six tokens) but §4.1
+  additionally bans React in the matcher modules; an `import react` there
+  would pass the guard. One-token extension fixes it.
+- **M-6** — tier-2's multi-occurrence edge (first occurrence NOT at a word
+  edge masking a later occurrence that IS) is unpinned by the fixture
+  corpus; a first-index-only `wordEdgeMatch` passes the suite. The landed
+  implementation handles it; the law §4.2 states is stronger than what the
+  corpus forces.
+- **M-7** — AC-8's "executed under BOTH projects" is enforced by config
+  content only: deleting the jsdom include entry leaves every test green
+  (each side just stops seeing its twin). A one-line config-shape assertion
+  in the node project would close it.
+- **M-8** — hygiene bundle: dead `vi.mock("next/navigation")`;
+  `**/*.test.tsx` excluded from tsc type-checking; artifact-suite coupling
+  to `extracted/` noted for host moves.
+
+## Counts
+
+| Severity | Count |
+|---|---|
+| BLOCKER | 0 |
+| MAJOR | 0 |
+| MINOR | 8 |
+| **Total** | **8** |
+
+Break battery: 7 mutations attempted (5 vitest-side, 2 pytest-side), 6
+caught, 1 survived (M-1); strict-xfail bite verified (XPASS → suite failure).
+Live runs at review time: vitest 159/159 (97 F5 cases), pytest 18 passed +
+1 xfailed(strict).
