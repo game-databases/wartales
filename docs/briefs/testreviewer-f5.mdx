@@ -1,0 +1,31 @@
+# Brief — Test Reviewer: F5 header search suite
+
+Fresh Test Reviewer; never spawn subagents; never commit; Wartales pack
+only. Deliverable: `docs/review-f5-tests.mdx`. Review only — no fixes.
+
+Subject: F5 test set (five vitest suites under site/src/lib/search/
+__tests__ + components/header/__tests__; vitest.config.ts node+jsdom
+projects; pipeline/tests/test_search_index.py 18+1xfail) from commits
+`d35c42e`/`aa12024`. The suite was written BLIND and converged mid-run
+with the implementation (two early suite defects were self-caught).
+
+Axes (BLOCKER/MAJOR/MINOR):
+1. **AC coverage** — AC-1..AC-16 each enforced by ≥1 executable
+   assertion; expose gaps (esp. AC-10/AC-11 component behaviors and
+   AC-16 serialization order).
+2. **Vacuous hunt** — empty-set loops, absence laws over absent files,
+   mocks that always pass; attempt mental (or scratch-copy empirical)
+   breaks against a broken implementation.
+3. **Blind-law integrity** — assertions at contract level vs brittle
+   implementation coupling; verify the claimed blindness held (no
+   copied internals).
+4. **The two strict-xfails** — judge whether xfail is the right
+   encoding (vs skip vs assert-opposite) and whether the probe evidence
+   justifies them; confirm they are STRICT (an unexpected pass fails).
+5. **Pytest suite quality** — honesty chain, byte-determinism check
+   soundness (sha256×10), gate coverage (exit 2 ×5, exit 3), UTF-8/LF
+   law enforcement.
+6. **Hygiene** — projects config sane, no cross-suite pollution, df/
+   ENOSPC-resilient (no huge fixtures), deterministic.
+
+Verdict at top: SOUND / NEEDS-FIX. Count table end.

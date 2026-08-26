@@ -1,0 +1,42 @@
+# Brief — Code Reviewer: F5 header search build
+
+Fresh Code Reviewer; never spawn subagents; never commit; Wartales pack
+only. Deliverable: `docs/review-f5-code.mdx`. Review only — no fixes.
+
+Subject: the built F5 (commits `d35c42e` + `aa12024`) vs
+`docs/spec-f5-search.mdx` (build-ready r1+arbiter+r2). Read IN FULL:
+the spec, DR-2026-08-22, then the code: `pipeline/tools/
+search_index_emit.py`, `contracts/search-index.schema.json`,
+`site/src/lib/search/**`, `site/src/lib/i18n/search-chrome.ts`,
+`site/src/components/header/{SiteSearchField,SearchResultsView}.tsx`,
+`site/src/components/shell/search-slot.tsx` wiring, run_all.ps1 step,
+EXTRACTION-LOG entries.
+
+Axes (BLOCKER/MAJOR/MINOR anchored):
+1. **Spec fidelity** — §4.3 normalization steps 1–8 exactly (incl.
+   ł→l fold, ko jamo prefix law); tiers 1/2/3 + total order; MIN_QUERY_
+   CHARS=2; 50-row cap with full kind-group counts; zero state = `0` +
+   query echo; hidden-never-unmounted swap rooted at
+   `[data-search-swap-root]` (missing root throws, no fallback);
+   blur non-behavior; no form/submit; Escape/clear restore; DR-verbatim
+   behavior table row by row.
+2. **Emitter correctness** — recount-governance (no magic constants),
+   three exit-2 gates real, byte-determinism (fixed key order, sorted
+   rows, LF, no clock), route-table href composition incl. pt-BR→pt-br,
+   SEARCHABLE_KINDS ⊆ MANAGED_KINDS import-time assert; **adjudicate
+   the TestWriter's two strict-xfailed spec-letter divergences**:
+   silent-filter of non-searchable availability rows vs §9's exit-2
+   letter, and stray-locale-dir blindness vs §3.1 — rule each ACCEPT-
+   AS-XFAIL (record as spec errata candidate) or FIX-REQUIRED.
+3. **Security/robustness** — artifact fetch path injection, DOM
+   injection via names (XSS surface in results rendering), portal host
+   assumptions, error states.
+4. **Integration** — slot contract one-sidedness preserved (F4's shell
+   semantics untouched beyond wiring), chrome merge mechanics per §8/m5,
+   route-absence sweeps hold on the live server.
+5. **Files-touched exactness** — vs §11 (14 new + 4 edited), incl. the
+   utils.ts-style beyond-letter items if any.
+
+Verdict at top: CLEAN / NEEDS-FIX. Count table end. Re-run key
+verifications yourself (npm test, tsc, emitter determinism) rather than
+trusting reports.
