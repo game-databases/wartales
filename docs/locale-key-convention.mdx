@@ -199,11 +199,14 @@ Dig 14 (2026-08-26) widens the contract:
    accent-stripped ids like `dbutant` preserved). The master `texts.xml`
    IS the French file — no `texts_fr.xml` exists. Measured vintage delta:
    en carries 2,148 strings (197 nested groups / 1,259 nested keys
-   included); fr carries 1,897 and lacks 251 en keys — 111 of them within
+   included); fr carries 1,903 and lacks 245 en keys — 111 of them within
    the depth ≤ 1 namespace first emitted — with `extra_vs_pivot` 0;
-   each of the 251 corresponds one-for-one to an id-less `<t>` row in the
+   each of the 245 corresponds one-for-one to an id-less `<t>` row in the
    fr master, i.e. the French text usually exists but is not addressable
-   by key. This is the site-chrome i18n namespace, separate from game
+   by key. (Six further keyed fr rows were recovered from a space-broken
+   `id ="…"` attribute the first emit skipped — dig-14 fix round r3/D-1,
+   [data-dig-log Dig 14](data-dig-log.mdx).) This is the site-chrome i18n
+   namespace, separate from game
    content ([localization-architecture §4](../../_foundation/localization-architecture.md)).
 4. **R5 stamping rule:** rows sourced from a headerless bridge file are
    stamped `"stampedBy": "buildid-fallback"` with pack buildid 20318128

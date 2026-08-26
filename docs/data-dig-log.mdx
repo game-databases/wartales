@@ -1787,11 +1787,14 @@ like `dbutant` preserved). Group inventory + coverage in
 `ui/_inventory.json`: **en 2,148 strings = 4 top-level keys + 2,144 in 40
 top-level groups, including 197 nested groups holding 1,259 keyed
 strings** (the first emit walked direct children only and silently
-excluded that nesting — quantified in r2 below). fr carries 1,897:
-`extra_vs_pivot` is 0 everywhere and en−fr = **251 keys**, of which 111
-sit in the pre-r2 (depth ≤ 1) namespace; all 251 correspond one-for-one
+excluded that nesting — quantified in r2 below). fr carries 1,903:
+`extra_vs_pivot` is 0 everywhere and en−fr = **245 keys**, of which 111
+sit in the pre-r2 (depth ≤ 1) namespace; all 245 correspond one-for-one
 to id-less `<t>` rows in the fr master — the French text is usually
-there, just not addressable by key.
+there, just not addressable by key. (Six further keyed rows under
+`ui/brewBarrel/noValidBarrel/` were recovered after this emit by the
+r3/D-1 regex fix below — their attribute was written `<t id ="…">`,
+with a space before `=`.)
 
 **Emitted artifacts**
 
@@ -1823,9 +1826,10 @@ there, just not addressable by key.
    **0 mismatches**; the 7 struct sheets are proven by extractor
    agreement instead (their prose cells carry inline children a
    childless-only ET signature cannot name).
-3. **UI dual-extractor:** **19,081 / 19,081** stored strings match the
+3. **UI dual-extractor:** **19,087 / 19,087** stored strings match the
    scanner's independent `(group-path, t-id)` map across all 9 source
-   files (nested-group keys included).
+   files (nested-group keys included; 19,081 before the r3/D-1 fix added
+   the six spaced-attribute fr rows).
 4. **Drift reconciliation, exact:** 14,456 entities = 9,827 bridged +
    4,629 absent-everywhere ✓; per kind × locale,
    ok+empty+missing == refs and missing == absent-entity-cells +
@@ -1894,6 +1898,25 @@ class credited 2 `credits` entities that were false positives (their
 Post-fix state re-proven: wave-1 byte-identical (27/27), determinism
 double-run byte-equal to the canonical tree, independent full-corpus
 accounting sweep green (`output/_dig14-fix/x6_verify_final.py`, V1–V9).
+
+**Fix round r3 — D-1 (2026-08-26; finding in
+[verify-dig14-delta](verify-dig14-delta.mdx) §D-1):** the tree parser's
+attribute scan required the quote to follow the attribute name
+immediately, so the six master-`texts.xml` rows written `<t id
+="noRecipe">` (space before `=`, all under
+`ui/brewBarrel/noValidBarrel/`) were logged as "<t> without id/_id" and
+dropped: fr emitted 1,897 UI strings instead of 1,903. Regex widened to
+tolerate whitespace around `=` and the UI layer re-emitted into scratch:
+every artifact reproduced byte-identically except `ui/fr.json` (+ exactly
+the six keys `{alreadyDone,noBonus,noLevel,noRecipe,noResources,
+noUnitAssigned}` under that group) and its `_inventory.json`
+(parseProblems fr 251 → 245); availability jsonl/meta and all content
+overlays byte-untouched; en unchanged at 2,148; UI raw-span now
+19,087/19,087 (0 bad). The full-namespace en−fr delta therefore
+decomposes as **245 id-less `<t>` rows + the 6 recovered keyed rows**
+(the original "251 one-for-one" wording was true only for 245/251); the
+depth ≤ 1 absence of 111 is unaffected (the six sit at depth 3).
+Figures in this entry are stated post-r3.
 
 <!-- END OF wartales/docs/data-dig-log.mdx -->
 

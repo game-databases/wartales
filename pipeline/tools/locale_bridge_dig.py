@@ -325,7 +325,11 @@ def parse_tree(path: Path):
             continue
         attrs = {}
         if m.group("attrs"):
-            attrs = dict(re.findall(r'([\w.\-]+)="([^"]*)"', m.group("attrs")))
+            # \s* around '=' -- master texts.xml carries six
+            # <t id ="noRecipe"> rows (ui/brewBarrel/noValidBarrel,
+            # verify-dig14-delta D-1); a strict scan silently dropped them
+            attrs = dict(re.findall(r'([\w.\-]+)\s*=\s*"([^"]*)"',
+                                    m.group("attrs")))
         if m.group("close"):
             top = stack.pop()
             if top.tag != tag:
