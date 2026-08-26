@@ -1,0 +1,225 @@
+# Verify — Dig 15 relink matrix upgrade (Verifier A, mechanical)
+
+**Verdict: PASS** — items V1–V7 all pass; zero failing item ids.
+(One adjacent check outside dig 15's surface currently fails tree-wide for
+sibling-agent reasons — see V6; it does not touch any dig-15 claim.)
+
+Verifier: fresh mechanical agent, session date 2026-08-26, working only in
+`C:\_reps\game-databases\wartales`. No subagents; no
+commits. Writes: this file + scratch under `output/_verify-dig15a/` only.
+`extracted/relinks/**` proven byte-unchanged by every run below (sha256
+tree snapshots pre/post: only `locale_availability.jsonl` moved, owned by
+the concurrent dig 14 — see V6).
+
+---
+
+## V1. Determinism — deriver dry-run ×2 — PASS
+
+    $ python pipeline/tools/dig15_logic_edges.py --dry-run   # twice, stdout captured
+
+    dryrun1.txt sha256 = 4da567f593b189fde8c5942e66ab44700dba128aae82ae0a323645e6388ab49e
+    dryrun2.txt sha256 = 4da567f593b189fde8c5942e66ab44700dba128aae82ae0a323645e6388ab49e
+    IDENTICAL_STDOUT   (exit=0 both runs; stderr empty)
+
+Head/tail of the identical stdout:
+
+    derived files: 41  edges: 4365  dangling: 0
+      _logic/battle__class.jsonl  40
+      ...
+      _logic/status__skill.jsonl  54
+      _logic/trait__attribute.jsonl  76
+      _logic/trait__bonus.jsonl  62
+    ledgered directions: 1484
+    before: {'partial': 1085, 'missing': 436, 'modeled': 39}
+    after:  {'ledgered:unadjudicated-name-hits': 262, 'ledgered:no-carrier': 761,
+             'ledgered:leaf vocabulary': 217, 'ledgered:schema-empty': 1,
+             'ledgered:terminal registry': 96, 'derived-evidence': 37,
+             'ledgered:code-side only': 23, 'ledgered:audio carve-out': 33,
+             'ledgered:inward-only chain': 66, 'modeled': 39,
+             'ledgered:bitmask vocabulary': 25}
+
+Totals match the claims exactly: **41 files / 4,365 edges / 0 dangling /
+1,484 ledgered**. `--dry-run` writes nothing: full-tree sha256 of
+`extracted/relinks/**` before vs after both runs differs on nothing except
+dig 14's live `locale_availability.jsonl`.
+
+## V2. Sampler re-run — PASS
+
+The dig's own proof artifact must stay read-only, so the sampler module was
+executed **verbatim** (same bytes, same seed) via a wrapper that redirects
+only its SCRATCH constant into my scratch
+(`output/_verify-dig15a/run_sampler.py`):
+
+    $ python output/_verify-dig15a/run_sampler.py
+    exit=0
+    files: 41  edges: 4365  dangling: 0
+    sample: 41  pass: 41
+    families sampled: ['cdb-payload-id-join', 'hscript-enum-ref']
+
+Byte-identity against the dig's stored proof:
+
+    e080ec9ed50b889a0bad9868c4d260d1395a10b54f59e66c20a33f41061edc8e  output/_dig-relink-matrix/verification.json   (before)
+    e080ec9ed50b889a0bad9868c4d260d1395a10b54f59e66c20a33f41061edc8e  output/_verify-dig15a/verification.json       (my rerun)
+    VERIFICATION_IDENTICAL
+
+**41/41 PASS**, seed 15 reproduced exactly; the dig's own
+`verification.json` untouched (same hash after).
+
+## V3. Count integrity — PASS
+
+Independent script (`output/_verify-dig15a/verify_counts_and_dangling.py`,
+own JSONL reader, no dig code imported):
+
+- **[3a] transition-table classes sum to exactly 1,560** —
+  `transition_table.json directions: 1560 … sum of classes: 1560`, class
+  histogram: derived-evidence 37 · no-carrier 761 · name-hits 262 · leaf
+  vocabulary 217 · terminal registry 96 · inward-only 66 · audio carve-out
+  33 · bitmask vocabulary 25 · code-side only 23 · schema-empty 1 · modeled
+  39 — **identical, number for number, to the Dig 15 log table**.
+- **[3b] `_ledger.jsonl` row count == 1484** ✓; per-class tally equals the
+  transition table's `ledgered:*` classes (`MATCH`), and
+  37 + 1484 + 39 = 1560.
+- **[3d] per-family counts agree three ways**: 41 files; filename ↔
+  `_meta.fromKind/toKind` ↔ `_meta.rowCount` ↔ actual edge-line count →
+  `ALL OK`; total edge lines **4,365**; dry-run stdout per-file numbers vs
+  disk → `ALL EQUAL extra=[]`.
+
+## V4. Dangling zero — independent recompute — PASS
+
+Same script, join built from scratch against BOTH planes:
+
+    [4] edges checked: 4365; unresolved vs CANONICAL extracted/data/*.jsonl: 0;
+        vs DRAFT _draft: 0
+    [4] family kinds absent from canonical data dir: []
+    [4] VERDICT: DANGLING ZERO CONFIRMED (canonical join)
+
+Every `fromId`/`toId` of all 4,365 edges resolves in the canonical
+`extracted/data/*.jsonl` id sets — stronger than the dig's own draft-only
+check.
+
+## V5. Spot re-derivation — 6 edges / 6 families — PASS
+
+(`output/_verify-dig15a/spot_rederive.py`; fresh parse per row, my own path
+descent, target ids from canonical datasets.) Required family included.
+
+| family | edge | re-derivation result |
+|---|---|---|
+| startChoice__unitPattern | TroopAdventurers→PlayerStartAdventurer | `.props.pattern == 'PlayerStartAdventurer'`; canonical unitPattern id ✓ |
+| item__skill | AimManual→Aim | `.props.skill == 'Aim'` at `.props.skill`; canonical skill id ✓ |
+| fiefEvent__effect | Fief_Audience01_01→Fief_ProdTCounter_ARatio | value present at `.consequences.effects[0].ref` AND `[1].ref`; canonical effect id ✓ |
+| class__trait | Alpha→Carnivorous | `.props.trait == 'Carnivorous'`; canonical trait id ✓ |
+| itemType__item | Armor→PeopleArmorBase | `.props.baseBonusDefault`; canonical item id ✓ |
+| skill__skill (hscript) | A1ArenaRuleRoot→A1ArenaRuleRootSkill | `script@61 -> 'Skill.A1ArenaRuleRootSkill' match=True`, context `'getPlayerUnits())\n\t\tcast(Skill.A1ArenaRuleRootSkill,…'`; canonical skill id ✓ |
+
+Output tail: `ALL 6 EDGES RE-DERIVED INDEPENDENTLY`. The cited hl-src
+corroboration is exact — `extracted/decompiled/hl-src/src/st/Group.hx.hx`
+line 3268 reads `v6 = v5.pattern;` inside st.Group (the `.pattern`
+consumer the log cites for startChoice.props.pattern→unitPattern).
+
+## V6. Canonical safety — PASS with one explained sibling FAIL
+
+- **Canonical relink count:** top-level `extracted/relinks/*.jsonl` =
+  **53** (51 pair files + `locale_availability.jsonl` +
+  `ui_link_coverage.jsonl`); pair-name files = 51 ==
+  `wave_kinds.EXPECTED_PAIR_FILES`. All 51 pair files mtimed
+  2026-08-25 09:59:25; `matrix.json` 2026-08-25 18:19 (untouched by dig 15,
+  consistent with the frozen-catalog statement).
+- **validate_all** (report/md redirected to scratch; children read-only):
+
+      $ python pipeline/tools/validate_all.py --buildid 20318128 \
+          --report output/_verify-dig15a/validation-report.json \
+          --md output/_verify-dig15a/VALIDATION-REPORT.md
+      validation: FAIL (7/8 checks)
+        [ok] verifier-gates: exit 0, allChecksPassed=True
+        [ok] census-closure: 10207 + 1266 == 11473
+        [ok] census-per-kind: 0 deviations
+        [ok] relink-integrity: pairFiles=51; edges=19130; valid:false=0;
+             valid:null=72 (61+9+2); non-hard=0
+        [FAIL] availability-regenerated
+        [ok] catalog-parity: pairCount=780; uncovered=0; markerMatch=True;
+             mdMatrixRows=780; cellMismatches=0
+        [ok] deferred-present: […frozenMatch=True]
+        [ok] hbson-independent: banned=absent; nonManaged=3
+
+  Every check touching dig-15 material is green (verifier-gates over both
+  canonical planes, relink-integrity 51/19,130/0-false/72-null, catalog
+  parity 780×780 cells). The single FAIL is **not a dig-15 surface**:
+  `availability-regenerated` requires `locale_bridge_dig.py`'s stdout to be
+  JSON, and the concurrent **dig 14** (`docs/briefs/dig-locale-wave2.mdx`,
+  step 1 "extend locale_bridge_dig.py kind set") holds an uncommitted
+  working-tree rewrite of that tool (`git diff`: 1 file changed, **1,034
+  insertions(+), 239 deletions(-)**; mtime 06:24 today) which now prints
+  human-readable text (`kinds: 34 … availability rows: 14456`) instead of
+  the report JSON — so `report=None` → the check fails. Its other half of
+  the same work, `extracted/relinks/locale_availability.jsonl`, was
+  rewritten mid-verification by dig 14 (3,779-row vintage → 14,456 rows;
+  size ~2.96 GB; mtime moved 06:13 → 06:24 → 06:38 while this verify ran),
+  which is also why its sha256 is the ONLY change in my pre/post tree
+  snapshots. Both facts sit squarely on dig 14's declared surfaces; no
+  accusation, just attribution. Re-run validate_all after dig 14 lands.
+- **Provenance note (no action):** commit 585ba72 ("dig 15 landed")
+  predates the final tool state — working-tree
+  `pipeline/tools/dig15_logic_edges.py` (mtime 05:50) carries the
+  pin-aware-sweep/r2-r3 additions as an uncommitted diff, and
+  `pipeline/tools/dig15_ui_coverage.py` is still untracked. The artifacts
+  on disk were emitted by that newer working-tree state (dry-run
+  reproduces them exactly, V1/V3), so the evidence set is self-consistent;
+  the follow-up commit should include these two files.
+
+## V7. Docs coherence — PASS
+
+Every number in the Dig 15 log entry traced to an artifact I counted:
+
+| log claim | artifact | verified |
+|---|---|---|
+| 780 unordered pairs × 2 = 1,560 directions | matrix.json `pairCount`=780; unique unordered pairs 780; transition rows 1,560 | ✓ |
+| 41 `_logic` files / 4,365 edges / dangling 0 | disk census + V1 + V4 | ✓ |
+| 4,047 edges on the 37 matrix directions; rest = skill/bonus/mission self-chains + confessions→trait fold | 37-dir subtotal = 4047; bonus__bonus 127 + skill__skill 148 + mission__mission 6 + confessions__trait 37 = 318; `modeledDirectionNote` present on confessions__trait | ✓ |
+| carrier probes x/x (381/381, 245/245, 22/22, 20/20, 11/11, 40/40, 50/50, 360/360, 43/43, 150/150, 62/62, 28/28, 113/113, 93/93, 25/25, 15/15, 21/21) | `_meta.families[].refsSeen` == quoted N for all 17 quoted probes with `unresolvedRefCount==0` (`ALL OK`). Note: `emitted` < refsSeen on 4 families (battle__item 30, fiefEvent__effect 199, item__effect 94, trait__attribute 76) because repeated (fromId,toId) pairs dedupe in `add()` — resolution-rate reading, not file-edge count | ✓ |
+| token map 25 ordered-pair-upgrade-dig / 12 R3 / 3 self-chain / 1 modeled fold | direction-aware lookup of each family onto its current matrix-cell unblock text: 25 + 12 + 3 + 1 = 41, `unaccounted: []` | ✓ |
+| bar 2: 20 surfaces / 31 relations; covered 19, logic-covered 3, covered-derived 4, covered-deferred 4, gap 1 | ui_link_coverage.jsonl rows=31, surfaces=20, histogram `{covered:19, logic-covered:3, covered-derived:4, covered-deferred:4, gap:1}` | ✓ |
+| texts.xml group corroboration, 213 groups | `texts_groups.txt`: 237 lines, **213 distinct** names | ✓ |
+| audit hit-set == ledger set exactly (262/262, empty both directions); zero no-carrier dirs carry an unpinned payload hit | my OWN pin-aware sweep (pins reconstructed only from matrix modeled joinKeys + emitted evidence locators — no dig code): restricted hit-dir set **262**, `set equality: True`, mine-only `[]`, ledger-only `[]`, no overlap with any other ledger class, **no-carrier dirs carrying an unpinned hit: 0** | ✓ |
+| sampled verification 41/41 PASS, seed 15, transition_table.json paths | V2 (byte-identical reproduction) | ✓ |
+| END sentinel | `<!-- END OF wartales/docs/data-dig-log.mdx -->` present as the log's last line | ✓ |
+
+PROOF.md R10 row numbers (1,560 / 39 / 37 / 41 / 4,365 / 0 / methods /
+1,484 across 9 classes / 761 / 262 / 11/11 / 41/41 seed 15 / 780 / token
+map 25+12+3+1) all reconcile with the same counted artifacts.
+
+### Stale-scratch caveat (resolved, recorded for honesty)
+
+`output/_dig-relink-matrix/sweep_audit_r2.json` (written 05:38) PREDATES
+the final deriver state (05:50) and lists **30 "no-carrier contradictions"**
+from an UNPINNED raw sweep (e.g. activity→class via root key `trait`
+='Thief', battle→itemType via `traps[].kind`='Oil'). These are exactly the
+hits the FINAL pin-aware semantics excludes — `trait` is a modeled join key
+of activity→trait, `traps[].kind`/`effects[].kind` are modeled join keys of
+battle→skill, and `props.attribute` on bonus is typed by the dig itself.
+My independent recomputation at final state confirms the log's claim (0
+contradictions, exact 262/262 equality); the stale r2 artifact is
+superseded scratch, not a defect — but it should not be cited as the audit
+proof without this qualification.
+
+### Observation for the adjudication queue (non-blocking)
+
+Unpinned name-hits also exist INSIDE already-derived directions and are by
+design neither edges nor ledger rows (the ledger covers only unresolved
+directions). Largest: `item.passiveSkill`→skill 283 values,
+`skill.tooltipStatus[].st`→status 772, `item.tool.tavern.bonuses[].bonus`
+132. Several look like real undeclared carriers riding derived directions;
+worth folding into queue item (2) (adjudicate the 262).
+
+---
+
+## Scratch index (all under `output/_verify-dig15a/`)
+
+`dryrun1.txt`/`dryrun2.txt` (+`.err`) — determinism double-run ·
+`sampler_run.txt`, `verification.json` — sampler re-run ·
+`pre/post/final_relinks_hashes.txt` — read-only proofs ·
+`verify_counts_and_dangling.py`, `counts_and_dangling.txt` — V3/V4 ·
+`spot_rederive.py` — V5 · `independent_sweep.py`, `restricted_equality.txt`,
+`independent_sweep.txt` — V7 honesty recomputation ·
+`coherence*.txt` — V7 tallies · `validation-report.json`,
+`VALIDATION-REPORT.md`, `validate_all.txt` — V6 (redirected outputs) ·
+`lbd_stdout.txt`/`lbd_stderr.txt` — dig-14-modified locale_bridge_dig probe.
