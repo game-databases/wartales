@@ -1,0 +1,38 @@
+# Brief — Spec Fixer: F5 header search r2 (narrow, post-arbiter)
+
+Fresh Fixer agent; never spawn subagents; never commit; Wartales pack
+only. Revise exactly ONE file: `docs/spec-f5-search.mdx`. Four
+prescriptions only — change nothing else.
+
+Inputs:
+1. `docs/arbiter-f5-search.mdx` — binding.
+2. `docs/spec-f2-contracts.mdx` §6 as landed — frozen URL law.
+
+Prescriptions:
+
+1. **N-1 (MAJOR):** the re-frozen suite-1 ko case (`한국` ↔
+   `ㅎㅏㄴㄱㅜㄱ` full equivalence) is FALSE under the exact §4.3
+   pipeline in Node — compatibility jamo folds to choseong while
+   syllable finals decompose to jongseong. Replace the equivalence
+   claim with the property the spec actually needs and which HOLDS:
+   `normalize("한국").startsWith(normalize("ㅎㅏ"))` (prefix matching),
+   keep AC-8 as-is, amend AC-9's ko leg to assert the prefix property,
+   tag `(r2)` — and EXECUTE the corrected assertion in Node yourself
+   before freezing it (quote output in `## Revision r2`).
+2. **MINOR:** §2's overlay shape line cites key `description`; disk
+   carries `desc`. Correct the citation (sample one overlay file to
+   confirm).
+3. **MINOR:** "33 kinds" → recount from disk (`extracted/locales/*`
+   kind dirs or availability regen); freeze the measured number.
+4. **E-1 (routed):** §3's provisional route table cites
+   `/db/{kind}/{id}` — contradicts frozen F2 §6 (entity pages WITHOUT
+   `/db`). Re-derive every provisional href from F2 §6's bijective law
+   verbatim; mark the table "derived-from-F2-§6"; delete any remaining
+   PT02/PT03 attribution of that counterparty.
+
+Append `## Revision r2` ledger (id · resolution · sections touched ·
+for N-1 the quoted Node execution proof). Touch no other file; do not
+commit.
+
+Done = all four applied with evidence, ko case executed-green, revision
+ledger complete, AC set executable.

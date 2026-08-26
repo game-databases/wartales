@@ -1,0 +1,213 @@
+# Arbiter — F5 header search spec r1 ([`spec-f5-search.mdx`](./spec-f5-search.mdx))
+
+Fresh Arbiter · 2026-08-26 · brief
+[`briefs/arbiter-f5-search.mdx`](./briefs/arbiter-f5-search.mdx) · judge only,
+nothing outside this file touched, nothing committed, no subagents.
+
+## Verdict: **NEEDS_REVISION** — narrow
+
+All twelve review findings are **RESOLVED** (12 R / 0 W / 0 U); every
+resolution was re-executed against disk this session, not trusted from the
+ledger. What forces one more pass is a **new defect found in the sweep**: the
+r1 revision re-froze the ko jamo suite case without executing it, and the
+frozen expectation is false under the specified pipeline — `AC-9` is red as
+written. One MAJOR residual (N-1), two MINOR doc residuals (N-2, N-3), two
+errata routed for the orchestrator (E-1 cross-spec H-1↔F2; E-2 = my binding
+ruling on the `## r1 conflicts` item). Everything else of the revision
+stands; the build itself stays gated on the pack's rule-8 gate.
+
+---
+
+## 1. Executed evidence base (all run this session)
+
+- **§2 recount snippet re-run verbatim** against
+  `extracted/relinks/locale_availability.jsonl` — reproduces **exactly**:
+  3,779 subset rows (item 2,125 / skill 1,373 / class 281); 458 no-bridge-leaf
+  (item 318 / skill 137 / class 3); 102 fielded-but-nameless (item 4 /
+  skill 98 / class 0); 3,219 named (item 1,803 / skill 1,138 / class 278);
+  458 + 102 + 3,219 = 3,779 closes. **Corpus churn warning:** a concurrent
+  dig session rewrote the file twice during this arbitration (mid-write read
+  caught 06:51; settled generation 06:52; regenerated generation 07:00,
+  `locale_availability.meta.json` buildId 20318128 throughout) — the anchors
+  reproduced identically pre- and post-regen, so the freeze is stable.
+- **flag ↔ namedLocales parity:** 0 mismatches both directions ×9 locales;
+  membership set-equal across all nine; **name bijection** (overlay ids with
+  non-null `name` == `namedLocales`) holds in **27/27** kind×locale cells on
+  the regenerated corpus — the emitter's exit-2 gates stand on solid ground.
+- **§4.3 census re-run:** over 28,971 searchable names ×9 — `<tag>` markup
+  **396**, `[macro]` **9**, `::color::` **0** (exact match to spec); over
+  descriptions: `::color::` spans **6,120** (exact match).
+- **M3 normalization pipeline re-executed in Node** (the runtime that ships),
+  steps 1–8 verbatim from §4.3: `Włóczęga→wloczega`, `Łódź→lodz`, `Ёж→еж`,
+  `Épée→epee`, `<b>X</b>→x`, `<item>OilBrave</item> Concentrate→oilbrave
+  concentrate`, `Leiche von [NAME]→leiche von`, `[Guard]X→x`,
+  `<bad>::value::</bad> X→x`, `ＸＹ→xy`, `长剑` stable, idempotence holds,
+  `ß` persists (ledgered), `İ→i`. The pre-r1 pipeline without step 7 yields
+  `włoczega` — the spec's own account of why step 7 exists is accurate.
+- **DR quote mechanically diffed** against
+  `_foundation/decision-register.md` [DR-2026-08-22-search-is-not-a-page]
+  (register lines 892–908): whitespace-canonicalized comparison — **789 =
+  789 chars, byte-equal**. [DR-2026-08-20-locale-urls] ¶1 pivot-bare/301 law
+  faithfully mapped in §1; FRAMEWORK §2.9 quoted accurately; §8 <200 ms
+  budget present; pieces.mdx F5 row verbatim.
+- **File truth:** root `run_all.ps1` exists, `pipeline/run_all.ps1` does not;
+  StageInfo `'emit'` desc present (~line 66); `Invoke-StageEmit` `$steps` =
+  exactly `locale_bridge_dig.py` then `validate_all.py` (~lines 327–335);
+  `--list`/`--dry-run` flags exist (lines 16–17). `wkk` asserts
+  `MANAGED_KINDS == 40` (two assert lines ~119–120). `site/package.json`:
+  `test: vitest run`, devDeps jpeg-js + vitest only; no `site/vitest.config.ts`;
+  no `site/src/app/**`; **no `site/scripts/` yet** (F4 unbuilt — smoke.mjs
+  does not exist); `contracts/maps.schema.json` confirms the flat naming the
+  new contract follows. spec.md line 44 freezes the nine official codes;
+  line 58 `omit-until-translated`.
+- **Authorities read:** decision register DR entry IN FULL; FRAMEWORK §2.9;
+  pieces.mdx F5 row + sequencing law; `spec-f4-app-shell.mdx` IN FULL
+  (r1-amended §5 slot contract, §7.6 smoke, AC-11, §9 seam reconciliations,
+  Revision r1); `spec-f2-contracts.mdx` §4 id law + §6 URL law;
+  locale-key-convention §1–§7.
+
+## 2. Finding-by-finding rulings
+
+| id | ruling | anchor |
+|---|---|---|
+| B1 | **RESOLVED.** Ceiling re-derived correctly and verified by my own recount (three generations, incl. one live regen): 458 + 102 + 3,219 = 3,779 closes; per-locale total pinned exact 3,219; invented `"en": 3247` replaced with measured nine × 3,219 (§3.2 manifest example matches disk arithmetic); AC band dropped — AC-4/suite 4 assert equality, so ±102 silent drift can no longer pass. | §2 frozen block + recount snippet; §3.2; AC-4; suite 4 |
+| B2 | **RESOLVED.** Both attributes are F4-owned in F4's landed r1 text (F4 §5 search-slot bullet + §5 inbound-seam bullet; F4 AC-11 asserts both; F4 §9 creates `search-slot.tsx`). F5 mounts into `data-shell-slot="search"`, consumes `data-search-swap-root`, header-fallback deleted (missing root = composition error, §5.1); grow-across-the-row owned by F5 via self-placed attribute + own stylesheet with zero F4-file edits (grid items may declare their own `grid-column` — mechanism realizable); structural claim asserted at fixture and again at integration. Residual edge honestly split out to `## r1 conflicts` — adjudicated below (E-2). | §5.1–5.3; §11; H-3; r1 conflicts; F4 §5/§7.6/AC-11 |
+| M1 | **RESOLVED.** §2 now carries three distinct vocabularies; §3.3 composes hrefs from F4 §2's id column — I confirmed F4's table (`pt-br` segment, `pt-BR` client code) and its recorded casing decision (F4 §2, superseding PT16's provisional `/pt-BR/`); pivot composes bare per [DR-2026-08-20-locale-urls] ¶1 (verified in register); suite 4 enforces the vocabulary per row (`pt-BR`-keyed file must carry `/pt-br/…`, never `/pt-BR/…`); AC-5 repeats it. Closed by construction. | §2 vocabularies; §3.3 route table; suite 4; AC-5; F4 §2 |
+| M2 | **RESOLVED.** Edited path corrected to pack-root `run_all.ps1`; `pipeline/run_all.ps1` confirmed absent on disk; §1/§3.1/AC-6 citations agree with it. | §11 Edited |
+| M3 | **RESOLVED.** Step 7 explicit `ł→l` fold added with the correct justification; Node execution reproduces every re-frozen pl case (`Włóczęga→wloczega`, `Łódź→lodz`); pre-r1 failure mode (`włoczega`) reproduced exactly as the spec describes. Matching-quality bar kept. (But see **N-1**: a *different* suite-1 case the same revision re-froze is false.) | §4.3; §9 suite 1 |
+| m1 | **RESOLVED.** Strip extended to bracket macros + `::color::` spans (steps 2–3); my census reproduces all three counts exactly (396/9/0 names; 6,120 desc color spans); trailing-residue gap ledgered in Known accepted gaps. Order (markup before macros) kills wrapped macros — sound. | §4.3 census + gaps ledger |
+| m2 | **RESOLVED.** Normalized-length trigger recorded as a deliberate deviation from DR clauses 3/4 with consequence stated (§5.2), and §5.3.3 points at it. Recording is this repo's sanctioned treatment for paraphrase-level divergence (blur-note precedent the reviewer themselves cited). No DR clause diluted — the owner's number stays 2. | §5.2 recorded deviation; §5.3.3 |
+| m3 | **RESOLVED.** react/react-dom not re-declared; additive devDeps named exactly (`@testing-library/react`, `jsdom`, `@vitejs/plugin-react`); consistent with F4 §1 which installs react/react-dom as dependencies and @types/react(-dom) as devDeps (verified in F4 §1 list). | §9 preamble; §11 |
+| m4 | **RESOLVED.** Transcribed 40-kind mirror deleted. Honesty chain is now mechanical at every hop through an artifact boundary: Python asserts `SEARCHABLE_KINDS ⊆ MANAGED_KINDS` (suite 5 imports wkk directly) and `manifest.kinds == SEARCHABLE_KINDS`; TS asserts `KIND_ORDER deepEqual manifest.kinds` read from the emitted JSON — no TS↔Python literal transcription anywhere. wkk assertion verified on disk. | §4.1 KIND_ORDER comment; suites 4–5 |
+| m5 | **RESOLVED.** Merge mechanics pinned and they match F4's gates mechanically: `_stub-keys.json` listing, `{count}` placeholder-parity participation, byte-identical stubbed values ×9, interim resolver deleted in the merge commit (next-intl becomes sole mechanism). Coherent with F4 §4 gates and launch-gate semantics. | §8 merge mechanics; H-4; F4 §4 |
+| m6 | **RESOLVED.** AC-1 envelope stated per scope: inside `run_all.ps1` exactly appended step + StageInfo desc; tree-wide exactly four sources + ten emitted files. Ten = 9 locales + manifest. Falsifiable now. | AC-1 (r1) |
+| m7 | **RESOLVED.** Serialization pinned to the illustrated fixed order; `sort_keys` excluded with its contradicting output named; §3.4 and the published schema mirror the same order. Emitter, contract, schema cannot disagree. | §3.2; §3.4 |
+
+## 3. Adjudication — `## r1 conflicts` item 2 (binding)
+
+**Ruling: (a) a real cross-spec errata; amend F4's smoke text at builder
+time. Route to the orchestrator now.**
+
+Exact clauses to amend (both currently assert state that becomes false the
+day F5 mounts):
+
+1. **F4 §8 AC-11** — "`data-shell-slot="search"` present **and empty** in
+   served header HTML … **no search input, no 'Search' nav word**". Two legs
+   die post-F5: the slot holds the mounted field host, and the closed-state
+   chrome word renders in served HTML.
+2. **F4 §7.6 smoke check-list line** — "absence of `/en/` internal hrefs and
+   of **any search control**; `data-shell-slot="search"` **empty** and
+   `data-search-swap-root` present …".
+
+Amendment (one clause each, keeping the check green in both eras): the slot
+leg becomes "**present; empty until F5 mounts, then containing exactly the
+F5 search-field host and nothing else**"; the control/word-absence legs
+become "**shell code itself renders no search input or search word beyond
+F5's mounted host**" (or equivalently scope them "pre-F5"). The swap-root
+leg and the `/search`-absence legs stay untouched — they survive F5
+unchanged.
+
+Why (a) and not (b) transient sequencing: `smoke.mjs` is not a one-shot
+acceptance snapshot — it is a standing executable runner F4 ships as a
+script (`npm run smoke`), and this pack's discipline is suites that keep
+guarding after later pieces land (F4 keeps `tokens.test.ts` byte-guarding
+forever; F5's own route-absence test is explicitly designed to keep guarding
+post-F4/PT16 with ABSENT-line reporting). Left unamended, F5's landing turns
+a permanent guard permanently red — noise that masks real regressions — and
+AC-11 becomes unverifiable-green ever again, i.e. unfalsifiable as an
+exactness claim. Timing makes the amendment pure spec text today: F4 has not
+built (`site/scripts/`, `app/**` absent on disk), so the orchestrator routes
+the wording change into F4's spec before its builder writes `smoke.mjs`;
+zero code-level conditionals needed. F5's side needs no change — H-3 and the
+conflicts item recorded the edge honestly, and F5 correctly cannot touch
+F4-owned files.
+
+Conflict item 3 needs no ruling: it defers to F4's recorded `pt-br`
+decision with a one-row flip law, which matches F4 §2/§9 as verified.
+
+## 4. New defects found in the sweep
+
+- **N-1 (MAJOR — verdict-driving). §9 suite 1's ko jamo case is frozen to a
+  false expectation; AC-9 red as written.** Suite 1 asserts "`한국` ↔
+  `ㅎㅏㄴㄱㅜㄱ` **equivalence**"; §4.3 justifies it with "both sides normalize
+  identically". Executed in Node with the exact §4.3 pipeline:
+  `normalize("한국")` = `U+1112 U+1161 U+11AB U+1100 U+116E U+11A8` (syllables
+  decompose with **jongseong** finals), while `normalize("ㅎㅏㄴㄱㅜㄱ")` =
+  `U+1112 U+1161 U+1102 U+1100 U+116E U+1100` — compatibility jamo
+  (`U+3131/U+3134`) fold to **choseong** forms (`U+1100/U+1102`), never to
+  jongseong. Full-string equivalence is **false**; a table-driven TestWriter
+  writes a guaranteed-red case or silently rewrites the expectation — the
+  same defect class the r1 revision existed to close, in a case it re-froze
+  without executing (M3's execution covered pl only). The property the spec
+  actually needs survives: `normalize("한국").startsWith(normalize("ㅎㅏ"))` is
+  **true**, so AC-8's "ko jamo partial" leg is unaffected. Fix is two lines:
+  re-freeze suite 1 to the true assertions (`normalize("한국") ===
+  "한국"`, the startsWith prefix law, and
+  optionally pin the compatibility-jamo mapping
+  `normalize("ㅎㅏㄴㄱㅜㄱ") === "하ᄂ구ᄀ"`), and narrow
+  §4.3's ko bullet from "normalize identically" to "normalize to conjoining
+  jamo, so partially-typed jamo prefix-matches".
+- **N-2 (MINOR). §2 cites the overlay value shape as `{name?, description?}`;
+  disk overlays carry `desc`, not `description`** (verified: en item entries
+  are `{"name": …, "desc": …}`). Inherited from locale-key-convention §3,
+  which documents the alias (`desc` → `description`) but then cites the raw
+  key wrong. Zero mechanism impact — the emitter reads only `name`, and the
+  §4.3 description census (6,120 color spans, exact) clearly ran over real
+  `desc` values — but the shape line should cite the raw key or name the
+  alias before TestWriter copies it.
+- **N-3 (MINOR). §2 aside "avail itself carries 33 kinds" is stale: current
+  disk carries 34 kinds** (14,456 rows unchanged; searchable subset
+  unchanged; verified on two generations). Narrative-only — refresh the
+  number at the next touch. Related observation, no action: wave-2 overlays
+  have now landed for all 34 kinds (reviewer-era "overlay universe ==
+  SEARCHABLE_KINDS" no longer holds), but §2's searchable-subset rule is
+  two-condition ((a) route contract, (b) localized names) and still yields
+  wave-1-only; H-6's same-commit pairing is overtaken by events on the
+  overlay half, and its protective intent survives intact via the emitter's
+  exit-2 refusal gate.
+- **E-1 (ERRATUM — route, do not block build). H-1 misattributes its
+  counterparty: `/db/{kind}/{id}` contradicts a contract that is already
+  frozen, not one pending PT02/PT03 choice.** `spec-f2-contracts.mdx` §6
+  pins entity pages WITHOUT a `/db` prefix (`/{kind}/{id}`, `/{L}/{kind}/{id}`;
+  `/db` reserved for the PT02 landing/taxonomy surface) and explicitly
+  demotes FRAMEWORK's `/db/…` example to "evidence shape, not doctrine";
+  §4 additionally resolves the slug question (ids verbatim; slugs only ever
+  additive). So the IA F5's provisional hrefs point at is decided — today
+  the artifact would ship links contradicting F2's URL law, dead until
+  reconciliation, and H-1's framing invites PT02/PT03 to ratify the
+  contradiction silently. Route: the orchestrator either (i) amends H-1 to
+  name F2 §6 and flips the §3.3 table to `/{seg}/{kind}/{id}` (+ bare pivot
+  `/{kind}/{id}`) before build, or (ii) records an explicit override
+  adopting `/db` with F2 §6's rename-and-301 law. Decided BEFORE PT02/PT03
+  freeze either way; cost stays contained (emitter-table edit + rerun,
+  consumers unaffected). Not verdict-driving alone because nothing consumes
+  the hrefs before DB-core pages exist and H-1 already mandates
+  reconciliation then.
+
+## 5. DR clause mechanization check (post-revision)
+
+Every clause still lands on an executable mechanism: cl.1 → §6 six-leg
+absence sweep with ABSENT-line protocol + H-2 activation plan; cl.2 closed
+half → §5.3.1 chrome word; cl.2 open half → §5.3.2 F5-owned growth
+(self-placed attribute + own stylesheet, no F4 edit — realizable since grid
+items set their own placement); cl.3 → §5.3.3 hidden-on-cross +
+before-element insertion (recorded normalized-length trigger, §5.2); cl.4 →
+`MIN_QUERY_CHARS = 2` constant + matcher-side defense in depth; cl.5 →
+pure-module law (§4.1) enforced by AC-11 grep + dual-project parity battery
+(AC-8). The hidden-not-unmounted triple assertion (§9.3, AC-10) still tests
+exactly what the DR promises. No clause left mechanized only by prose.
+
+## 6. Count summary
+
+| class | count | ids |
+|---|---|---|
+| Review findings RESOLVED | **12 / 12** | B1, B2, M1–M3, m1–m7 |
+| WEAKENED | 0 | — |
+| UNRESOLVED | 0 | — |
+| New sweep defects | 3 | N-1 MAJOR (false frozen jamo case, §9.1/§4.3/AC-9); N-2, N-3 MINOR |
+| Errata routed to orchestrator | 2 | E-1 (H-1 ↔ F2 §6 counterparty), E-2 (= §3 ruling: F4 AC-11 + §7.6 smoke legs) |
+
+**Verdict: NEEDS_REVISION** — residuals enumerated above; scope of the next
+pass is N-1 (mandatory, two lines) plus N-2/N-3 (same-pass doc refreshes)
+and routing E-1/E-2; B1/B2/M1–M3/m1–m7 resolutions are accepted and need no
+rework. Build remains gated on the pack's rule-8 gate regardless of verdict.

@@ -1,0 +1,21 @@
+# Brief — Spec Fixer: F4 app shell errata r2 (smoke legs)
+
+Fresh Fixer agent; never spawn subagents; never commit; Wartales pack
+only. Revise exactly ONE file: `docs/spec-f4-app-shell.mdx`. One
+prescription only — change nothing else.
+
+Input: `docs/arbiter-f5-search.mdx` conflicts ruling (binding):
+amend F4 **§8 AC-11** and **§7.6 smoke legs** so the reserved search
+slot reads: *"slot empty until F5 mounts, then holding exactly the F5
+search-field host; shell renders no search input or search word beyond
+that host."* Rationale to preserve: smoke.mjs is a standing runner — an
+unqualified emptiness leg goes permanently red the day F5 lands.
+
+Mechanics: touch only AC-11's body (tag `(r2b)`) and the §7.6 smoke-leg
+lines; append the entry to the existing `## Revision r1b (errata)`
+section (rename to `## Revision errata ledger` if cleaner, keeping r1b
+rows intact, adding an `r2b` row). No other sections, no other files;
+do not commit.
+
+Done = slot contract states the staged behavior exactly, AC-11 remains
+executable at F4-only time AND after F5 lands.
