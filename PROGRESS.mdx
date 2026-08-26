@@ -24,6 +24,38 @@ items lives at the bottom.
 | P4 Visual critic loop vs references + e2e smoother | not started |
 | P5 Definition-of-done verification + missingdata.md | not started |
 
+## Execution plan — subagent launch batches (owner directive 2026-08-26)
+
+The task board IS the plan; batches below say what launches **together in
+parallel** for maximum subagent utilization. Every piece still goes
+through the full pipeline law (PrepareTask → blind build → double review
+→ arbiter → fix loop).
+
+- **Batch 1 — data closure + spec prep (parallel, ~6 agents):**
+  dig 14 locale wave‑2 (R9+R5) ∥ dig 15 relink matrix (R10) ∥
+  Documentator specs for F2 contracts · F4 app shell · F5 search ·
+  PT16 SEO/AEO. Spec-writing is planning, not frontend — legal before
+  the rule‑8 gate; builds stay gated.
+- **Batch 2 — gate:** verify + commit digs → **rule‑8 completeness
+  arbiter** (#13). F2 spec review chain can run in parallel.
+- **Batch 3 — foundations (after APPROVE, parallel pairs):**
+  CodeWriter+TestWriter for F4 shell → then F5 search ∥ PT16 SEO ∥
+  icon CDN (∥-safe, disjoint surfaces). Reviewers per piece.
+- **Batch 4 — DB core (parallel):** PT02 taxonomy ∥ PT03 lists ∥
+  PT04 entity anatomy/tabs — all consume F2 contracts + canonical data.
+  Critic wave 1 (home/lists/entity) follows each landing.
+- **Batch 5 — map:** PT05 /map page → PT06 inline modules (06 needs 05's
+  module primitive). Critic wave 2a.
+- **Batch 6 — flagship + tools:** PT07 builder MVP ∥ interrogation DB ∥
+  recipe explorer ∥ food calc (all formulas now decoded); then trade
+  planner+atlas. PT08 gallery rides builder. Critic wave 2b.
+- **Batch 7 — content + UGC:** PT10 guides ∥ PT11 news+diff ∥ PT12 lore
+  ∥ PT13 quests ∥ PT14 trackers ∥ PT15 UGC ∥ PT17/PT18. e2e smoother
+  between this and earlier waves.
+- **Standing ops:** patch watch TargetBuildID 21238928 → rerun pipeline
+  = first patch-diff dataset; CWV budgets enforce per template as pages
+  land; DoD sweep + missingdata.md last.
+
 ## Log
 
 ### 2026-08-25 — wave 1+2 results: R1/R2/R6/R7/R8 closed; stages built under review
