@@ -20,3 +20,12 @@ design/critique/*.png
 design/critique/_r3zoom/
 design/critique/_r4zoom/
 grep.exe.stackdump
+
+# PostHog write keys stay out of git (site/.env.example is the placeholder)
+.env
+.env.local
+.env*.local
+!.env.example
+site/.env
+site/.env.local
+site/.next/
