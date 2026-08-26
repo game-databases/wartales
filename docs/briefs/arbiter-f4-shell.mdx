@@ -1,0 +1,39 @@
+# Brief — Arbiter: F4 app shell spec r1
+
+Fresh Arbiter agent; never spawn subagents; never commit; Wartales pack
+only. Deliverable: `docs/arbiter-f4-shell.mdx`. Judge only — edit
+nothing outside your deliverable.
+
+Inputs, read IN FULL:
+1. `docs/review-spec-f4-shell.mdx` — the 12 findings (B1, M1–M4,
+   m1–m7) that drove the revision.
+2. `docs/spec-f4-app-shell.mdx` AS REVISED — including `## Revision r1`
+   response ledger and `(r1)`-tagged AC bodies.
+3. Authorities: FRAMEWORK.md §2.20/§2.7/§2.15/§2.11;
+   `_foundation/localization-architecture.md`;
+   `_foundation/decision-register.md` [DR-2026-08-20-locale-urls],
+   [DR-2026-08-22-search-is-not-a-page],
+   [DR-2026-08-24-wartales-roster]; `_foundation/design-standard.md`.
+4. Cross-seam check: `docs/spec-f5-search.mdx` §5 — F4's r1 M1 fix put
+   `data-search-swap-root` on `<main>`; verify it satisfies F5's
+   requirement EXACTLY as F5 states it (attribute name, element, mount
+   semantics). A mismatch either direction = finding.
+5. `site/src/styles/tokens.css` + `tokens.test.ts` — confirm the M3/m2
+   fixes leave the F1 canon untouched and the aliasing-form law closes
+   the re-declaration loophole.
+
+Per finding id, rule **RESOLVED / WEAKENED / UNRESOLVED** with the
+anchor section quoted briefly. WEAKENED = formally addressed but the
+fix dilutes a binding constraint (DR clause, canon protection, AC
+falsifiability). Then sweep the diff neighborhoods for NEW defects the
+revision introduced (amended AC 9/11/14 must remain executable as
+written).
+
+Verdict at top, one of:
+- **APPROVE-FOR-BUILD** — spec is build-ready; note that actual F4
+  build remains gated on the pack's rule-8 data gate (PROGRESS Batch 3),
+  so approval is not a build order.
+- **NEEDS_REVISION** — enumerate residual findings (same severity
+  scheme).
+
+End with count summary (findings ruled, new defects, verdict).
