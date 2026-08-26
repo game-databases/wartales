@@ -1,0 +1,41 @@
+# Brief — Test Fixer: F4 suite r1 (+ code minors N1/N3)
+
+Fresh Fixer agent; never spawn subagents; never commit; Wartales pack
+only. Deliverables: fixed test files + two code minors + a resolution
+ledger appended to `docs/review-f4-tests.mdx` (`## Fix round r1`).
+
+⚠️ DISK DISCIPLINE (C: is at ~680 MB free, shared machine): FIRST step
+is `npm ci` in site/ (restores node_modules deleted for space); BEFORE
+every heavy step (`next build`, smoke live) check `df`; if C: drops
+below 200 MB free, STOP and report rather than risk the shared drive.
+Never delete anything outside wartales/.
+
+Inputs: `docs/review-f4-tests.mdx` (binding: M-1, M-2, m-1..m-9),
+`docs/review-f4-code.mdx` (N1/N3 assigned here; N2/N4/N5/N6 you only
+LEDGER), the spec §7–§8, current suites.
+
+Work items:
+1. **M-1**: rewrite the stock-palette law so prefixed utilities match
+   (token-boundary-aware pattern, e.g. `(?:^|[\s"':])(?:hover:|focus:|
+   md:)*bg-(?:gray|zinc|slate|...)-\d+`). Prove it red-first: build
+   your own plastered fixture under scratch, old law green vs new law
+   red, then green against the real shell.
+2. **M-2**: add the AC 14 build/prerender leg — extend smoke.mjs with a
+   `WARTALES_SMOKE_BUILD=1` guarded leg running `next build` +
+   asserting the nine locale home paths appear in the build manifest
+   output; disarmed by default so bare `npm test` stays green offline.
+3. m-1..m-9 per the review's anchors (includes the orphaned `next dev`
+   PID :3777 — verify ownership before killing: confirm command line
+   contains `wartales/site` AND it is not your own active dev server;
+   kill only then).
+4. Code N1: locale-combobox hrefLang uses BCP-47 client codes
+   (pt-BR), never URL segments. Code N3: `.wt-band-header` slice via
+   `var(--tex-slice-header)`.
+5. Ledger N2/N4/N5/N6 into `## Fix round r1` as accepted-with-notes
+   (N4 needs a future spec warrant decision — flag for arbiter glance;
+   N6 is deploy-edge config).
+6. Verify: `npm test` green incl. tokens suite; quote outputs.
+
+Touch nothing else; no commits.
+Final message: per-id resolution ≤8 words + final test tally + min df
+seen.
