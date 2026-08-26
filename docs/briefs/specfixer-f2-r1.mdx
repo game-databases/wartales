@@ -1,0 +1,45 @@
+# Brief — Spec Fixer: F2 published contracts r1
+
+Fresh Fixer agent; never spawn subagents; never commit; Wartales pack
+only. Revise exactly ONE file: `docs/spec-f2-contracts.mdx`. Produce no
+other deliverable except the response ledger inside it.
+
+Inputs, read IN FULL before editing:
+1. `docs/review-spec-f2-contracts.mdx` — binding finding list
+   (BLOCKER-1/-2, MAJOR-1..5, MINOR-1..6). Every finding addressed with
+   on-disk evidence; none argued away.
+2. Disk truth for BLOCKER-1: `extracted/relinks/
+   locale_availability.jsonl` AS IT NOW STANDS post-dig-14 (14,456 rows
+   / 34 kinds) + `extracted/locales/**` overlay corpus (317 files /
+   31 managed + 3 deferred kinds). Re-derive §2's table, §12's manifest
+   law, and AC4 against TODAY'S tree — but express every count as a
+   command + assertion pair (recount-at-build-time), never a magic
+   constant, because dig 14's formal verification round is still in
+   flight and counts may move by small amounts. AC4 becomes
+   "files == recount(files)" not "== 27".
+3. BLOCKER-2: sample real ids across all 40 kinds yourself; freeze the
+   TRUE id charset per kind (document hyphen-bearing families like
+   env-/recipe- explicitly); re-derive every downstream pattern the
+   reviewer flagged (cdnIconPath, marker entityPointers, route/id
+   validation regexes) from the corrected charset.
+4. MAJOR-1: rewrite AC11's embedded program so it compiles and runs on
+   CPython on Windows (no lookbehind-in-alternation constructs `re`
+   rejects; os.path-neutral path handling); RUN it read-only before
+   freezing it.
+5. Authorities you conform to, never edit: FRAMEWORK.md §2.1–§2.3,
+   §2.10; `_foundation/seo-standard.md` §9;
+   `_foundation/localization-architecture.md` §5.1;
+   `docs/spec-f4-app-shell.mdx` §3; RELATIONS.md envelope.
+
+Rules of engagement:
+- Fix at anchored sections; keep structure/numbering/AC-id scheme
+  stable; tag changed AC bodies `(r1)`; never silently renumber.
+- Where your correction contradicts a claim PT16/F5 copied from this
+  spec, add it to `## r1 conflicts` (do NOT edit those specs).
+- End with `## Revision r1` — finding-by-finding table: id · severity ·
+  resolution one-liner · sections touched.
+- Do not touch any other file; do not commit.
+
+Done = all 13 findings resolved with evidence, every frozen number now
+either measured-today or an executable recount assertion, revision
+table complete.

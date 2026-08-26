@@ -1,0 +1,326 @@
+# Review — spec-f2-contracts.mdx (F2 published contracts)
+
+Reviewer: fresh Spec Reviewer, 2026-08-26. Subject:
+[docs/spec-f2-contracts.mdx](./spec-f2-contracts.mdx) as found (827 lines,
+END sentinel present). Read in full before judging: the subject;
+FRAMEWORK §2.1–§2.10; seo-standard §9; localization-architecture §5 (whole
+file); decision-register D2 / DR-2026-08-20-locale-urls /
+DR-2026-08-22-numbers-stand-alone / DR-2026-08-22-docs-mdx /
+DR-2026-08-18-page-size / DR-2026-08-18-media-scope /
+DR-2026-08-24-wartales-roster; wave_kinds.py; matrix.json header;
+RELATIONS.md; locale_availability.jsonl (+ its .meta.json);
+contracts/maps.schema.json; output/cdn export set on disk;
+validate_all.py; the current contracts/ tree; sibling specs F4/F5/PT16
+for cross-citations only.
+
+## Verdict
+
+**NEEDS_REVISION** — 2 BLOCKER, 5 MAJOR, 6 MINOR.
+
+The load-bearing design is sound: I re-proved the §6 URL bijectivity
+independently on 78 real page URLs across 10 kinds without a single
+collision, the kind universe is set-equal to `wave_kinds.MANAGED_KINDS`,
+the §5.2 cell-type table covers every cell code that occurs anywhere in
+the corpus, and all 8 cited validate_all gates exist. But the spec froze
+a corpus snapshot at 05:51 that the locale planes overwrote at
+05:58–06:13 (dig 14 landing mid-flight, per PROGRESS.mdx "dig 14
+running"), so its ground-truth table, its wave-1 manifest law, and one
+acceptance criterion are false against the disk as found — and two of
+its embedded programs crash deterministically on the target platform
+before any data-dependent assertion runs.
+
+## What was re-proven clean (evidence, not trust)
+
+- **Kind universe (axis 1)**: spec §4's 40 names ≡ `MANAGED_KINDS`
+  (set-equal, programmatic diff empty); `extracted/data/` holds exactly
+  those 40 files, Σ 10,207 rows (item 2,125 · skill 1,373 · class 281)
+  matching §2; constants.jsonl = 1 meta line + 1,266 rows.
+- **Deferred honesty (axis 1)**: spec §4/§9 deferred list ≡
+  wave_kinds.DEFERRED ≡ RELATIONS.md "Deferred kinds" table; matrix.json
+  `deferredTargetFiles: 3` = env–place (61 null) + fiefGoal–element (2)
+  + frescos–place (9) = 72 = matrix `validNull`, and §2's "(61+9+2)"
+  split is exact.
+- **Relink totals (axis 1)**: §2 row matches matrix.json header and
+  RELATIONS.md header field-for-field (51 files · 19,130 edges ·
+  19,058/0/72 · 780 pairs · 39 modeled directions · 9 self-pairs);
+  itemType__itemType = 72 data edges many:1 as §7 claims.
+- **URL law (axis 2)**: independent implementation of the §6 derivation
+  round-tripped 78 real page URLs (first/middle/last id of item, skill,
+  class, status, trait, recipe, env, fiefEvent, bonus, counter ×
+  entity/list/tooltip × pivot and all 8 locale prefixes, plus /db, /map,
+  per-locale db/map/lists) with zero collisions and zero failures.
+  Namespace disjointness verified pairwise: kinds ∩ locales ∩
+  {data, cdn, db, map} = ∅; no real entity id equals a reserved word or
+  `tooltip`. The one non-surjective family (`/data/en/**` from
+  pivot-prefixed pages) lies outside the domain — those pages 301 per
+  DR-2026-08-20-locale-urls.
+- **Schema contract (axis 3)**: full census artifact codes across all
+  sheets = {0,1,2,3,4,5,6,8,9,10,11,13,14,16,17} ⊆ §5.2 table; codes
+  7/12/15 occur nowhere. Row-level sampling of item/skill/class/recipe/
+  fiefEvent confirms every canonical-cell shape the table claims:
+  localizable text = `{textKey:{bridge,sheet,column,row}}` or absent,
+  plain/script text = string, enums = int index (0 range violations in
+  40,921 ints scanned), icon descriptor = `{file,size,x,y}`, lists =
+  arrays of sub-row objects, refs = id strings, nulls omitted.
+- **Gates not duplicated (axis 6)**: all 8 gate names cited in §2 exist
+  verbatim in validate_all.py (verifier-gates L217, census-closure L275,
+  census-per-kind L292, relink-integrity L335,
+  availability-regenerated L351/399, catalog-parity L489,
+  deferred-present L505, hbson-independent L535). §13 flags the emitter
+  as stage-7-owned; nothing here builds UI; §14 leaves extracted/**,
+  pipeline/**, output/**, site/** untouched.
+- **Documentation integrity (AC13 preview)**: all 40 unique fragment
+  links resolve (28 cross-file anchors checked against GitHub-style
+  slugs of the real target headings, 12 self-anchors against this
+  file's own headings); no raw HTML elements; END sentinel present.
+- **Environment**: Python 3.14.7 + jsonschema 4.26.0 confirmed present
+  locally, matching the AC preamble's measured versions.
+
+## Findings
+
+### BLOCKER-1 — Ground truth frozen at 05:51 was overwritten by dig 14 at 05:58–06:13; §2, §12, the manifest law, and AC4 are false against the disk as found
+
+Anchors: subject §2 table rows "Availability rows", "Locale overlays on
+disk"; §12 entire section; §6 `localeCoverage`; AC4 code.
+
+Evidence (all read from disk during this review):
+
+- `extracted/relinks/locale_availability.jsonl` holds **14,456 rows over
+  34 kinds**, not §2's "3,779 (item 2,125 · skill 1,373 · class 281)".
+  Coverage today: 31 of 40 managed kinds **plus deferred**
+  `place` (534) / `group` (790) / `element` (5,078); managed kinds with
+  no rows: activity, amb, env, fiefGoal, frescos, loot, recipe, sound,
+  unitPattern. File mtime 06:13:36 vs spec mtime 05:51:49.
+- Overlays: **317 files** under `extracted/locales/**` spanning those 34
+  kinds × 9 locales — not §2's "wave-1 kinds only, today".
+- §2's "per-row locale sets bimodal {∅, all 9}" is now trimodal:
+  9,472 rows all-9, 4,982 rows ∅, and 2 rows carrying 8 locales
+  (fr missing).
+- AC4 asserts `len(files) == 27` for `extracted/locales/*/*.json`; the
+  same glob returns **317** today → AC4 fails as written.
+- AC8 pins `localeCoverage == {mode:"wave-1", kinds:["class","item",
+  "skill"]}` and §6/§12 derive per-locale URL existence from it. Post-dig-14
+  reality: 31 managed kinds carry overlays, so the pinned value
+  misdescribes the plane the manifest exists to describe. §12's own
+  framing ("Consequences pinned NOW so dig 14 cannot reshape the
+  contracts") is the requirement this landing violates.
+
+PROGRESS.mdx L21 declares "R9 locale wave-2 overlays (dig 14 running)",
+so the spec hardcoded pre-regen numbers into a consumed-facts table
+while knowing the regen was in flight. Dig 15 (R10 relink matrix
+upgrade) is also running and will move the relink row of §2 next. A
+contracts spec must either re-freeze these numbers post-dig or cite the
+gates instead of restating volatile values; as landed, the review chain
+would be passing a document whose acceptance criterion fails on the
+machine it targets.
+
+### BLOCKER-2 — §4's identity law states a false observed charset; 754 real entities violate it
+
+Anchor: subject §4 ("Observed charset `[A-Za-z0-9_]`"); propagates to
+§5.1 common.schema.json "id pattern", §10 cdnIconPath id segment, and
+the markers `entity.id` pattern implied by §9.
+
+Evidence: synthetic ids are `env-0000…env-0086` (87 rows) and
+`recipe-0000…recipe-0666` (667 rows) — both contain hyphens; a full
+corpus scan flags exactly these two kinds. frescos ids (A1Ruins…) do
+conform. So 754 canonical ids fail the charset the spec asserts as
+observed. Consequences if the build follows the spec: every pattern
+derived from §4 rejects those baseRecords/listEntries; `/data/recipe/
+recipe-0000.json` URLs are legal paths whose id segment fails the pinned
+pattern; marker rows linking `entity:{kind:"recipe", id:…}` fail the
+entityPointer pattern. The stable-id law (localization-architecture §5.1
+item 1: the id is verbatim, immutable, the join key) makes "adjust the
+ids" unavailable — the contract must describe the real charset.
+
+### MAJOR-1 — AC11 crashes deterministically on the target platform, twice
+
+Anchor: subject AC11 program; §10 pattern text.
+
+Proven by running the embedded program verbatim (read-only):
+
+1. `re.compile` of the §10 pattern fails: `^/cdn/v(?<buildId>[0-9]+)/…`
+   uses .NET/ECMA named-group syntax; Python `re` raises
+   `error: unknown extension ?<k at position 28`. JSON Schema patterns
+   are ECMA-262 where the syntax is legal — but AC11 compiles it with
+   Python, so schema-as-specified and AC-as-written are mutually
+   inconsistent; one of them must change.
+2. Independently of (1), `str(p).replace("\\\\", "/")` normalizes
+   double backslashes only; Windows pathlib paths carry single ones, so
+   `f.split("output/", 1)[1]` raises IndexError — confirmed on
+   `output\cdn\v20318128\class\Admiral.webp`.
+
+The AC cannot reach its first assertion on NE8K. (For the record: after
+fixing both mechanics, all 3,779 exported paths match the pattern's
+semantics — the underlying claim of §10 is true.)
+
+### MAJOR-2 — Locale-segment spelling conflicts with F4's frozen shell decision; §6 derivation breaks for pt-BR pages
+
+Anchors: subject §4 ("Locale segments … exact strings … `pt-BR`"),
+§6 table and namespace list; F4 §2 recorded decision r1 (lowercase
+`pt-br` URL segment); PT16 §3 cross-reference to "the pt-BR data-plane
+spelling tension between F2 and F4".
+
+F2 pins client-code exact strings for BOTH page and data segments.
+F4 (landed) freezes lowercase `pt-br` for page segments while asserting
+data-plane URLs keep `pt-BR` "per spec-f2-contracts.mdx §4". Under F2
+as landed, the §6 rule applied to a real page `/pt-br/item/X` does not
+strip `pt-br` (not in the manifest's prefixed list) and yields
+`/data/pt-br/item/X.json` ≠ the pinned `/data/pt-BR/item/X.json` — the
+bijectivity I re-proved above holds only for the other seven locales
+and the data-side spelling. AC7 cannot catch this: its probe locale is
+`sorted(ls)[0]` = `de`. Either F2 adopts presentation ids for the page
+leg of the derivation (two-segment-set manifest), or the conflict goes
+to the arbiter; silence in F2 while citing F4's bridge is not a state
+the URL law can ship in. Recorded in `## conflicts` below.
+
+### MAJOR-3 — AC5's banned-token list does not implement §11's ban list
+
+Anchor: subject §11 banned list vs AC5 `BANNED` array.
+
+§11 bans, but AC5 does not test for: `extracted/` (named explicitly in
+§11's harvest/pak-path clause), bare `gate` (only `coordinateGate` and
+`publicationPlane` are listed), relink edge bookkeeping `mechanism` /
+`valid`, and the registry repo fields `source` / `sourceRef` /
+`coordinateRows` that §9 itself strips. A build can pass AC5 while
+shipping several vocabularies §11 forbids. Counterweight worth stating
+in the spec: some naive additions would false-positive on legitimate
+published columns — item has a real canonical column named `tool`
+(verified), and `columns`/`enums` are common words — which is presumably
+why the list was narrowed; the narrowing just went further than §11's
+text allows. Enforcement must match the law or the law must be amended.
+
+### MAJOR-4 — Two spellings of the sole whitelisted provenance carrier
+
+Anchors: subject §11 whitelist (`buildId`, required at every document
+root); §9 allowed top-level keys ("buildid crs coordinateTransform
+layers regions battleTactical") and projection; AC5(a) requiring
+map.published to compose `provenanceEnvelope`.
+
+The registry root key is `buildid` (lowercase, integer — verified on
+disk), and §9 keeps it in the published projection, while §11/AC5(a)
+require the envelope's camelCase `buildId` at every published document
+root. As written, the published map document must carry both spellings
+to satisfy §9 and AC5(a) simultaneously, or violate one of them; §2
+documents the string-vs-integer asymmetry but not this key asymmetry,
+and neither AC detects it. This is exactly the class of seam the spec
+elsewhere insists on converting once, explicitly, at the boundary.
+
+### MAJOR-5 — Embedded payload examples contradict the spec's own pinned facts
+
+Anchors: §7 example envelope; §8 example tooltip; AC9 fixtures.
+
+- §7 shows `"count": 1807, "namedCount": 1807` for kind item; the
+  canonical corpus has 2,125 item rows, and §2/§6 say 2,125. A consumer
+  copying the example writes a fixture that contradicts the contract's
+  own coverage semantics (`count` = rows the file holds).
+- §7's example row carries `icon: "/cdn/v20318128/icon/Gold.webp"`; item
+  Gold exists and its export is `/cdn/v20318128/item/Gold.webp`. No
+  `/icon/` directory exists in the export set (verified: only class/,
+  item/, skill/, 3,779 files).
+- §8's tooltip is for skill `Charge`: no such row exists in
+  skill.jsonl (closest real ids: FenrisCharge, ChargedShot) and no such
+  webp. Its `availableLocales: ["en","de","fr"]` is impossible under
+  the spec's own bimodal availability law (∅ or all 9 — plus the two
+  fr-less rows dig 14 just added).
+- AC9 fixture `regionId: "Gosenberg"` — real region ids are
+  `Gosenberg_1`, `Gosenberg_2` etc. (verified against maps.json); its
+  icon path uses the nonexistent `/icon/` segment again.
+
+Examples inside a contracts spec become tests and fixtures (AC6 and AC9
+institutionalize exactly that); invented values here are defects, not
+illustrations.
+
+### MINOR-1 — AC6 lacks the resolver AC3 deems necessary; threshold arithmetic loose
+
+AC6 validates examples against bare `$defs` subschemas with
+`validator_for(s)` and no resolver/store, while AC3 needed a
+RefResolver+store for cross-file refs. Any example placed inside
+`baseRecord` (which AC5(a) obliges to carry an external `$ref`) makes
+AC6 raise unresolvable-ref unless authors confine examples to ref-free
+defs — fragile and unstated. Also: the ≥45 threshold sits under the 47
+`*.schema.json` files the glob will find (maps.schema.json included,
+which has none), silently tolerating two example-less schemas. AC3/AC5's
+RefResolver is deprecated in the measured jsonschema 4.26.0 (works
+today, warns).
+
+### MINOR-2 — Manifest cannot express the reserved last segment `tooltip`
+
+§6 reserves `tooltip` as a terminal path segment, but api.manifest
+carries only first-segment `reservedPrefixes`, and AC7's disjointness
+assertion covers first segments only. The machine source of truth is
+incomplete relative to the section it serializes.
+
+### MINOR-3 — The shipped CDN export dir is not publish-clean
+
+`output/cdn/v20318128/` contains `misses.jsonl`,
+`resolution-proof.jsonl`, `_tool.json` beside the webp trees (verified).
+§10 states reason codes "stay in the repo plane"; physically they sit
+inside the tree stage 7 will serve. Stage 7 owns the serving set, but
+the contracts spec should record that the existing export directory
+needs a publish filter, since §10's sentence as written is false of the
+directory as found.
+
+### MINOR-4 — AC10 proves totality but not the "dataPlaneOnly imagery absent" clause
+
+The AC strips `publicationPlane` from layers before anything checks
+imagery, so a future registry carrying populated non-served imagery
+projects cleanly onto map.published while leaking references to
+splats/heightmaps (DR-2026-08-18-media-scope). Safe today only because
+every non-served layer's imagery happens to be null (verified by dry-
+running the projection against maps.json: only world-strategic keeps
+imagery). The clause is currently enforced by corpus accident, not by
+schema or AC.
+
+### MINOR-5 — §2 consumed-facts table omits textKeyCoverage and hardcodes other volatile numbers
+
+RELATIONS.md's header envelope includes "textKey coverage: 27/27
+emitted sheets in the en bridge (35 sheets), drift-absent 0" — part of
+the §4.2-as-amended envelope this spec cites — but §2's table omits it.
+Combined with BLOCKER-1: restating moving numbers (availability counts,
+relink totals ahead of dig 15) in a contracts document guarantees
+recurrent staleness; cite the owning gate, freeze only stable shapes.
+
+### MINOR-6 — AC12's porcelain-exactness gate is brittle
+
+`git status --porcelain contracts/ docs/` showing "EXACTLY the ten §14
+paths" assumes docs/spec-f2-contracts.mdx is clean (it shows iff dirty)
+and that no sibling agent has dirty files under docs/ — the pack runs
+concurrent orchestrators on a shared worktree, so the gate flakes for
+reasons outside the build piece's control. Scope the assertion to
+contracts/ plus an explicit allowlist check instead.
+
+## Conflicts (cross-spec, axis 7 — not edited, recorded)
+
+- **F4 ↔ F2 (load-bearing)**: F4 §2 freezes lowercase `pt-br` page
+  segments via a recorded r1 decision and claims data-plane URLs keep
+  client codes per F2 §4; F2 §4/§6 pin client-code exact strings for
+  BOTH segments and never mention the divergence — despite F2 being
+  written after F4. See MAJOR-2. PT16 already routes around part of this
+  (its §3 defers to F4's table; hreflang keeps BCP-47), but the F2 side
+  of the seam is unamended.
+- **F5**: consistent with F2 as landed. It adds
+  `contracts/search-index.schema.json` under an "F2 convention"
+  label — outside F2 §14's ten-file list, but §14 scopes that list to
+  the F2 build piece, so no contradiction. Its consumption of §6's
+  derivation ("page URL + `.json`") matches.
+- **PT16**: citations of "F2 §6 frozen surfaces" (`/{kind}`,
+  `/{kind}/{id}`, `/{kind}/{id}/tooltip`, `/db`, `/map`), of the
+  manifest-gated link emission, and of the availability-driven sitemap
+  membership all match this spec as landed. PT16's llms.txt "JSON entry
+  points generated only for manifest-present routes" will inherit
+  whatever wrong `localeCoverage` BLOCKER-1 pins, so fixing F2 fixes
+  PT16 downstream too.
+
+## Count summary
+
+| Severity | Count | Findings |
+|---|---|---|
+| BLOCKER | 2 | B1 stale ground truth vs landed dig 14 (§2/§12/manifest/AC4), B2 false id charset (§4) |
+| MAJOR | 5 | M1 AC11 double crash, M2 pt-BR/pt-br segment conflict with F4, M3 AC5 token list < §11 ban list, M4 buildid/buildId key split, M5 examples contradict pinned facts |
+| MINOR | 6 | m1 AC6 resolver/threshold, m2 tooltip suffix unreserved in manifest, m3 export dir not publish-clean, m4 AC10 imagery clause unproven, m5 §2 omits textKeyCoverage + volatile numbers, m6 AC12 porcelain brittleness |
+| **Total** | **13** | |
+
+Verdict: **NEEDS_REVISION**. The URL architecture, kind universe, and
+cell-type mapping survived independent adversarial re-derivation and are
+ready for arbiter once B1/B2 and the majors are fixed; nothing in this
+review requires redesigning the contract plane.
