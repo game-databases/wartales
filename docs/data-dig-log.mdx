@@ -1508,7 +1508,7 @@ This entry records deltas; verification numbers are final-emit facts.
 3. Locale overlays for place/group/element (Dig 7 queue item 1) still
    open.
 
-## 2026-08-26 — Dig 15: ordered-pair relink matrix upgrade — DR bars 1–2 closed at evidence layer (r2 fix round folded)
+## 2026-08-26 — Dig 15: ordered-pair relink matrix upgrade — DR bars 1–2 closed for everything enumerable at buildid 20318128 (r2 fix round folded; open extraction debt enumerated in [PROOF.md R10](../extracted/PROOF.md))
 
 **Agent:** fresh data-layer dig agent (brief
 [briefs/dig-relink-matrix.mdx](briefs/dig-relink-matrix.mdx)); fix round by
@@ -1587,20 +1587,31 @@ exactly into Y's id set (unresolved values recorded as `unresolvedRefs`,
 never dropped); (3) the carrier is positive — negated conditions
 (`noHasTrait`, `noPersonalities`, `noTargetsHasTrait`; 4 paths, 41
 resolving refs on confessions→trait) carry inverted polarity and are
-excluded with reasons, same evidence bar; (4) both X and Y are managed
-scaffold kinds. Applying the rule uniformly over the full hidden-sub-sheet
+excluded with reasons, same evidence bar (scratch-label quirk:
+`p1_census.json` marks those four entries `ADMIT-modeled-fold` while
+`NEGATED_CARRIER_PATHS` then excludes them from emission — emitted count
+correctly 0; only the per-entry label disagrees with the outcome, the
+exclusion and its reasons are authoritative); (4) both X and Y are
+managed scaffold kinds. Applying the rule uniformly over the full hidden-sub-sheet
 census admitted **52 new direction families** (the 31 the auditor proved
 plus 21 more on deeper sub-sheet chains their walk did not reach),
 **36 additional typed join keys merged into 16 existing families** (+855
-edges — incl. `item.props.passiveSkill→skill` ×283,
+resolving refs → **+850 emitted rows** on disk; the remaining 5 resolving
+refs — `mission.props.replace` ×2, `skill.props.copyScript` ×3 — dedupe
+into pairs already present from sibling carriers of the same families
+(`parentMission`, `copyDesc`); no data loss —
+incl. `item.props.passiveSkill→skill` ×283,
 `skill.tooltipStatus[].st→status` 806 refs → +135 edges,
 `item.tool.tavern.bonuses[].bonus` ×132), **9 modeled-direction folds**
 (8 new fold-note files + `confessions__trait` extended; incl.
 `counter.displayIcon`, `status.attributePercent/attributeValue`,
 `item refCustomization/displayType` — the four cases M2 named), and the
-6 self-chain families above (`props.refItem` ×326 et al.). Every new
-family carries its declaring data.cdb column chain in
-`_meta.cdbDeclarations`, ≥10 sampled edges re-deriving independently
+6 self-chain families above (`props.refItem` ×326 et al.). All **83**
+fix-round-admitted families carry their declaring data.cdb column chain
+in `_meta.cdbDeclarations` (the other **24** of the 107 files are
+r1-era families predating the field; they keep the r1 probe metadata,
+and their typing was verified separately — verify-dig15-b B2),
+≥10 sampled edges re-deriving independently
 (`output/_dig15-fix/p3_family_probe.json`: 107 families, 0 failures), and
 hand-read code consumers where they exist (e.g. Paths.hx.hx:543 compares
 `troopChoice.props.pathCounter` against counter ids;
