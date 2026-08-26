@@ -1,0 +1,39 @@
+# Brief — Verifier: Dig 16 canonical wiring
+
+Fresh Verifier agent; never spawn subagents; never commit; Wartales pack
+only. Deliverable: `docs/verify-dig16.mdx`. Scratch ONLY under
+`output/_verify-dig16/`; read-only everywhere else.
+
+Subject: Dig 16's claim set (`docs/data-dig-log.mdx` entry) — additive
+catalog wiring via amended `relink_catalog.py`: matrix.json gains
+`derivedEvidence{}` (107 sha-pinned families), `ledgered{}`,
+`provenance{}`, additive counters; RELATIONS.md upgraded; pair files
+byte-identical; `_logic/` row bytes never rewritten.
+
+Mechanical axis:
+1. **Pair-file integrity** — hash all 51 top-level relink pair files;
+   confirm byte-identical to git-era state (any baseline available:
+   snapshots in output/_dig-canonical-wiring/, or reconstruct via dry
+   mode). EXPECTED_PAIR_FILES=51 gate intact.
+2. **Envelope arithmetic** — independently recompute every additive
+   counter from `_logic/` + matrix.json itself: 107 files / 7,184 /
+   {5942+1242} / 89 / 8+1 / 9 / 1,432 across the 9 named classes;
+   closure identity 39+89+1,432=1,560 holds in the JSON.
+3. **Locator truthfulness** — sample 12 `unblock` locators across
+   families: family file exists, sha matches pin, E=<n> edge index
+   actually contains the claimed edge with claimed mechanism.
+4. **validate_all** — run it; expect PASS 8/8 on final tree.
+5. **Byte-stability** — rerun the catalog emitter twice into scratch;
+   outputs byte-identical to shipped matrix.json/RELATIONS.md.
+
+Adversarial axis:
+6. **Ledger leakage** — assert no ledgered-class direction appears as
+   an edge anywhere in canonical planes (the emit-time partition check
+   claims this; verify independently over the emitted JSON).
+7. **Overclaim scan** — RELATIONS.md upgraded cells + PROOF R10 note vs
+   artifact reality; any "closed/wired" language beyond what counters
+   support = finding.
+8. **Consumer safety** — cdb_verify parity leg + one stage test file
+   of your choice still pass against the new marker.
+
+Verdict at top: PASS / FAIL with failing item ids. Quote outputs.
