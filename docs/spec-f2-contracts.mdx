@@ -350,8 +350,8 @@ STABLE URL DERIVED FROM ITS PAGE URL and get the same facts the page renders.
 
 **(r1) Derivation rule (bijective, mechanical, two-segment-set):** take the
 page path; strip the optional leading PAGE-plane presentation id; map it to
-its paired DATA-plane client code (F4 §2 table, one bridge); prepend
-`data/`; append `.json`.
+its paired DATA-plane client code (the §4/F4 §2 pairing table, or its
+manifest projection below — one bridge); prepend `data/`; append `.json`.
 
 | surface | pivot page (EN, bare) | locale page (presentation id) | data URL (client code) |
 |---|---|---|---|
@@ -401,12 +401,31 @@ divergent pair explicitly).
   ([DR-2026-08-18-page-size]) governs rendered listing pages, not data
   artifacts.
 - `contracts/api.manifest.json` — the machine-readable form of this
-  section (r1 shape): `{version:1, locales:{pivot:"en", pagePrefixes:[…8…],
-  dataCodes:[…8…]}, reservedPrefixes:[…], reservedSuffixes:["tooltip"],
-  kinds:[…40…], surfaces:{list, entity, tooltip, taxonomy, map},
-  localeCoverage:{mode:"emitted", kinds:[…recount…]}, derivationRule:"…"}`.
-  `pagePrefixes`/`dataCodes` are positionally paired, single-valued per
-  locale, pivot-excluded; `localeCoverage.kinds` is RECOUNTED from the
+  section (r2 shape): `{version:1, locales:{pivot:"en", prefixed:[…8
+  client codes…], pageSegments:{…divergent pairs…}}, reservedPrefixes:[…],
+  reservedSuffixes:["tooltip"], kinds:[…40…], surfaces:{list, entity,
+  tooltip, taxonomy, map}, localeCoverage:{mode:"emitted",
+  kinds:[…recount…]}, derivationRule:"…"}`. `prefixed` carries the
+  DATA-plane client codes, single-valued per locale, pivot-excluded — the
+  successor name of what r1 called `dataCodes`, adopted so the exposed
+  keys match [F4 §2](spec-f4-app-shell.mdx#2-locale-model--one-table-one-derivation)'s
+  frozen r1b law (`prefixed` IS that law's own key; same eight codes, same
+  semantics — see [§r1 conflicts](#r1-conflicts)). The page plane needs no
+  array of its own: its presentation ids ARE the lowercase forms of
+  `prefixed` (positional pairing preserved; AC7 asserts it).
+  `pageSegments` is F4's frozen additive carrier: an entry
+  `{segment: clientCode}` for EXACTLY the locales whose page id differs
+  from their client code — one entry today, `"pt-br": "pt-BR"` — DERIVED
+  from the two-plane pairing above (never retyped) and asserted equal to
+  that derivation in BOTH directions by an AC probe
+  ([AC8](#ac8-manifest-is-the-single-typed-source): forward, the carrier
+  equals the divergent pairs of `{code.lower(): code}`; reverse, F4's
+  three-way resolution over `prefixed` + `pageSegments` alone rebuilds the
+  complete segment→code bridge). Segment resolution is F4's rule verbatim:
+  a stripped segment that is a member of `prefixed` IS its own client
+  code; a member of the `pageSegments` keys takes the mapped value;
+  neither → not a locale segment (AC7's non-locale semantics preserved).
+  `localeCoverage.kinds` is RECOUNTED from the
   availability plane at build time ([AC8](#ac8-manifest-is-the-single-typed-source)),
   never copied. Consumers and tests derive URLs from the manifest; nobody
   retypes the table.
@@ -519,7 +538,11 @@ projection of the registry:
 - New file `contracts/map.published.schema.json` pins the SERVED projection
   of the registry: registry structure with every repo-only field stripped —
   layer-level `source sourceRef provenance gate notes coordinateRows
-  publicationPlane`, type-level `carrier coordinateGate`,
+  publicationPlane`, type-level `carrier coordinateGate`, REGION-level
+  `nameKeyRoute` (r2 — repo-plane route bookkeeping; the live registry
+  carries it on ALL 13 regions and AC10's projection pops it, so the
+  declared strip set must name it; projection-strip only, like layer-level
+  `notes` — deliberately NOT added to §11's class-1 banned-key vocabulary),
   `coordinateTransform.provenance/.validation`, and the dig-QA top-level
   blocks `expectedPayloadVocabulary`, `instanceMaps`, `storagePlanes` —
   and dataPlaneOnly imagery absent. `storagePlanes.served` ("albedo→webp
@@ -737,8 +760,9 @@ build piece; the stage-7 register in
 [§13](#13-out-of-scope-and-the-stage-7-boundary) is explicitly NOT part of
 F2 acceptance. ACs must run over a SETTLED tree: a probe that finds the
 locale plane mid-regeneration fails loudly (empty-input guards below), by
-design. Revised AC bodies carry an explicit `(r1)` marker; headings are
-unchanged so every inbound anchor keeps resolving.
+design. Revised AC bodies carry an explicit revision marker (`(r1)`;
+r2 amendments tagged `(r2)`); headings are unchanged so every inbound
+anchor keeps resolving.
 
 ### AC1: Contract inventory is complete and parses
 
@@ -804,7 +828,7 @@ PY
 
 ### AC4: Overlay and availability shapes match the emitted artifacts
 
-(r1) Recount law: the AC states NO file count. `len(files)` must equal
+(r1) (r2) Recount law: the AC states NO file count. `len(files)` must equal
 `recount(files)` — two independent enumerations of the
 `extracted/locales/<clientCode>/<kind>.json` tree over the manifest's nine
 locales (pivot included) — and the inventory must be plane-symmetric across
@@ -821,7 +845,7 @@ PYTHONIOENCODING=utf-8 python - <<'PY'
 import json, sys, pathlib, jsonschema
 sys.path.insert(0, "pipeline/tools"); import wave_kinds
 m = json.loads(pathlib.Path("contracts/api.manifest.json").read_text(encoding="utf-8"))
-locs = {m["locales"]["pivot"]} | set(m["locales"]["dataCodes"])   # directories use CLIENT codes; the pivot overlay plane is in scope too
+locs = {m["locales"]["pivot"]} | set(m["locales"]["prefixed"])    # directories use CLIENT codes (r2: key renamed per F4's law); the pivot overlay plane is in scope too
 reserved = {"place", "group", "element", "levelProps", "achievement"}
 root = pathlib.Path("extracted/locales")
 # recount(files): walk per locale dir; compare with the flat glob enumeration
@@ -990,10 +1014,13 @@ PY
 
 ### AC7: URL namespace disjointness and derivation bijection
 
-(r1) Kinds ∩ reserved prefixes ∩ reserved suffixes = ∅ (pairwise), and each
-locale segment plane is disjoint from all three; the two segment arrays are
-positionally paired, complete, lowercase-normalized, pivot-free (they
-overlap by design — per-locale pairs); and for a deterministic sample (first row
+(r1) (r2) Kinds ∩ reserved prefixes ∩ reserved suffixes = ∅ (pairwise), and each
+locale segment plane is disjoint from all three; the client-code array is
+complete, distinct, pivot-free, and the page plane is its lowercase
+projection, positionally paired with it (the planes overlap by design —
+per-locale pairs); `pageSegments` equals EXACTLY the divergent pairs of
+that pairing (F4's frozen carrier, asserted before the bijection runs);
+and for a deterministic sample (first row
 id of every kind × both segment planes × {list, entity, tooltip}, plus
 db/map), applying the manifest derivation rule to the page URL yields the
 data URL and the inverse restores the page URL — including the
@@ -1005,14 +1032,15 @@ import json, sys, pathlib
 sys.path.insert(0, "pipeline/tools"); import wave_kinds
 m = json.loads(pathlib.Path("contracts/api.manifest.json").read_text(encoding="utf-8"))
 ks, rs, xs = set(m["kinds"]), set(m["reservedPrefixes"]), set(m["reservedSuffixes"])
-pp, dc = m["locales"]["pagePrefixes"], m["locales"]["dataCodes"]
+dc = m["locales"]["prefixed"]; psg = m["locales"]["pageSegments"]    # (r2) F4-law keys
 pivot = m["locales"]["pivot"]
 assert ks == set(wave_kinds.MANAGED_KINDS)
-assert len(pp) == len(dc) == len(set(pp)) == len(set(dc)) == 8
-assert sorted(pp) == sorted(c.lower() for c in dc), "presentation ids are lowercase client codes"
+pp = sorted(c.lower() for c in dc)                   # page plane = lowercase projection of prefixed
+assert len(dc) == len(set(dc)) == len(set(pp)) == 8
 assert pivot not in pp and pivot not in dc
 seg = dict(zip(pp, dc)); inv = {v: k for k, v in seg.items()}
 assert len(inv) == 8
+assert psg == {p: c for p, c in seg.items() if p != c}, psg   # (r2) carrier == divergent pairs of the pairing
 sets = [ks, rs, xs]                                   # pairwise disjoint cores
 for i, a in enumerate(sets):
     for b in sets[i+1:]:
@@ -1059,9 +1087,12 @@ PY
 
 ### AC8: Manifest is the single typed source
 
-(r1) `api.manifest.json`: `version==1`; `kinds` equals the managed universe;
-`locales.pivot=="en"`; `dataCodes` is exactly the 8 frozen client codes;
-`pagePrefixes` their lowercase presentation ids; `reservedSuffixes ==
+(r1) (r2) `api.manifest.json`: `version==1`; `kinds` equals the managed universe;
+`locales.pivot=="en"`; `prefixed` is exactly the 8 frozen client codes;
+`pageSegments` EQUALS its derivation in BOTH directions — forward: exactly
+the divergent pairs (page id ≠ client code) of `{code.lower(): code}`;
+reverse: F4's three-way resolution over `prefixed`+`pageSegments` alone
+rebuilds the full segment→code bridge; `reservedSuffixes ==
 ["tooltip"]`; `localeCoverage == {mode:"emitted", kinds:[…]}` where `kinds`
 EQUALS the recount of kinds present in the availability plane (never a
 pinned list) and contains the wave-1 trio; surfaces cover
@@ -1075,8 +1106,15 @@ m = json.loads(pathlib.Path("contracts/api.manifest.json").read_text(encoding="u
 assert m["version"] == 1
 assert sorted(m["kinds"]) == sorted(wave_kinds.MANAGED_KINDS)
 assert m["locales"]["pivot"] == "en"
-assert sorted(m["locales"]["dataCodes"]) == sorted(["de","es","fr","ko","pl","pt-BR","ru","zh"])
-assert sorted(m["locales"]["pagePrefixes"]) == sorted(c.lower() for c in m["locales"]["dataCodes"])
+dc = m["locales"]["prefixed"]                          # (r2) successor name of r1's dataCodes, per F4 r1b
+assert sorted(dc) == sorted(["de","es","fr","ko","pl","pt-BR","ru","zh"])
+psg = m["locales"]["pageSegments"]                     # (r2) F4's frozen additive carrier
+derived = {c.lower(): c for c in dc}                   # the §4/§6 two-plane pairing, DERIVED not retyped
+assert len(derived) == len(dc) == 8                    # lowercase page ids unique -> pairing total
+assert psg == {s: c for s, c in derived.items() if s != c}, (psg, derived)   # FORWARD: carrier == derivation
+bridge = {s: psg.get(s, s if s in dc else None) for s in derived}            # F4 three-way rule, manifest only
+assert bridge == derived, bridge                       # REVERSE: full segment->code bridge rebuilt from keys alone
+assert all(c in dc for c in psg.values())              # mapped values are client codes
 assert m["reservedSuffixes"] == ["tooltip"]
 cov = m["localeCoverage"]
 assert cov["mode"] == "emitted"
@@ -1086,7 +1124,7 @@ recount = sorted({json.loads(l)["kind"]
 assert sorted(cov["kinds"]) == recount, (sorted(cov["kinds"]), recount)
 assert {"class", "item", "skill"} <= set(recount)
 assert {"list","entity","tooltip","taxonomy","map"} <= set(m["surfaces"])
-print(f"AC8 ok: manifest typed source; localeCoverage == recount ({len(recount)} kinds)")
+print(f"AC8 ok: manifest typed source; pageSegments==derivation both directions ({len(psg)} divergent pair(s)); localeCoverage == recount ({len(recount)} kinds)")
 PY
 ```
 
@@ -1293,6 +1331,30 @@ frozen authority this fix round does not edit:
   r1 fix round's start; the plane landed and resettled mid-round (transient
   14,246-row state observed). Board copy update rides the orchestrator's
   next PROGRESS edit; no spec action.
+- **(r2) F4 r1b manifest carrier — the `pagePrefixes`/`dataCodes` naming is
+  SUPERSEDED, amending this section's first bullet.** F4's r1b errata
+  (frozen BEFORE F2 r1 landed) pins the manifest `locales` shape as
+  `prefixed` (the eight DATA-plane client codes) plus ONE additive key,
+  `locales.pageSegments: {"pt-br": "pt-BR"}`, with a three-way segment
+  resolution rule; F2 r1 pinned a differently-keyed sole shape
+  (`pagePrefixes`/`dataCodes`, no carrier) while claiming "no F4 edit
+  needed". Frozen authority outranks the later reshape (arbiter-f2 4a):
+  F2 adopts the carrier VERBATIM and renames its exposed keys to F4's law —
+  `dataCodes` → `prefixed` (identical eight codes, identical semantics),
+  `pagePrefixes` retired (its content IS the lowercase projection of
+  `prefixed`, asserted by AC7) — while the §4/§6 two-plane table remains
+  the DERIVATION source: `pageSegments` is derived from the pairing and
+  asserted equal to it in both directions (AC7/AC8), never retyped.
+- **(r2) PT16 §8.2/§9.4 quote the pre-r1 one-segment rule "verbatim" —
+  STALE, NOT EDITED HERE.** PT16 twice quotes "take the page path, strip
+  the optional leading locale segment, prepend `data/`, append `.json`"
+  (§8.2 JSON-LD subjectOf; §9.4 llms.txt) — the PRE-r1 rule, with no
+  mapping leg; applied to `/pt-br/item/Gold` it composes
+  `/data/pt-br/…`, outside F2's declared set. PT16 is frozen and its link
+  generation consumes the manifest, so emitted links become correct once
+  the manifest carries the unambiguous carrier — but the quoted rule is
+  superseded by §6's two-segment-set derivation, and PT16's own text is
+  not edited in this round.
 
 ## Revision r1
 
@@ -1314,5 +1376,30 @@ Finding-by-finding ledger (binding list:
 | MINOR-4 | minor | AC10 now proves the imagery clause: publicationPlane captured pre-strip, projected imagery must land on exactly the served layers | AC10, §9 |
 | MINOR-5 | minor | §2 gained the textKey-coverage row; all volatile numbers converted to recount probes; relink totals cited via gate/sha instead of restated | §2, §2.1 |
 | MINOR-6 | minor | AC12 rescoped to `contracts/` porcelain exactness + explicit docs allowlist; sibling dirty files no longer fail the gate | AC12 |
+
+## Revision r2
+
+Fresh Spec Fixer agent, 2026-08-26 — exactly the prescriptions of
+[arbiter-f2-contracts.mdx](arbiter-f2-contracts.mdx) (N-1 MAJOR gating +
+N-2 MINOR ride-along), this file only, nothing committed, no subagents. AC
+set stays at **13** with stable ids; amended bodies are tagged `(r2)`; none
+renumbered, none argued away. The new assertion was executed READ-ONLY
+before freezing (pack root, Python 3.14.7):
+
+```text
+N-2 fact ok: registry regions carrying nameKeyRoute = 13/13
+N-1 assertion ok: pageSegments {"pt-br": "pt-BR"} - forward == divergent pairs of the derivation; reverse three-way bridge closes (8 segments); /pt-br/item/Gold -> /data/pt-BR/item/Gold.json
+```
+
+(The manifest itself does not exist until the gated F2 build lands, so the
+probe executes the new AC8 assertion logic against the live DERIVATION
+source — the corpus-derived pairing over the `extracted/locales/*`
+client-code directories, chrome `ui/` and draft planes scoped out per AC4 —
+and reads the live registry for the N-2 fact.)
+
+| id | sev | resolution | sections touched |
+|---|---|---|---|
+| N-1 | major (gating) | F4 r1b's frozen carrier adopted verbatim: manifest `locales` reshaped to `{pivot, prefixed:[…8 client codes…], pageSegments:{"pt-br":"pt-BR"}}` — `dataCodes` renamed to F4-law `prefixed`, `pagePrefixes` retired (its content is the lowercase projection AC7 asserts), the §4/§6 two-plane table kept as the DERIVATION source, `pageSegments` derived from it and asserted == derivation in BOTH directions (forward divergent-pairs equality; reverse F4 three-way bridge rebuild); r1 conflicts corrected (supersession recorded, PT16 stale verbatim quotes noted) | §6, AC4, AC7, AC8, §15 preamble, r1 conflicts |
+| N-2 | minor (ride-along) | §9's strip list declares the region-level `nameKeyRoute` strip (live registry carries it on all 13 regions), so AC10's executed projection and the declared strip set agree; decided NOT a §11 class-1 token (projection-strip only, same standing as layer-level `notes`) | §9 |
 
 <!-- END OF docs/spec-f2-contracts.mdx — read-in-full file: if you have not seen this line, you have not read this file. -->
