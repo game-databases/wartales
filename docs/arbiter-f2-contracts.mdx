@@ -1,0 +1,241 @@
+# Arbiter — F2 published contracts spec, revision r1
+
+Arbiter: fresh agent (brief
+[`docs/briefs/arbiter-f2-contracts.mdx`](./briefs/arbiter-f2-contracts.mdx)).
+Date: 2026-08-26. Judge only — nothing edited outside this deliverable,
+nothing committed, no subagents. Subject:
+[`spec-f2-contracts.mdx`](./spec-f2-contracts.mdx) as revised (r1 tags,
+`## Revision r1`, `## r1 conflicts`; 1,318 lines, END sentinel reached).
+
+## Verdict: **NEEDS_REVISION** (narrow — one mandatory cross-spec check failed)
+
+All 13 findings of
+[`review-spec-f2-contracts.mdx`](./review-spec-f2-contracts.mdx) are
+**RESOLVED** (13 · 0 WEAKENED · 0 UNRESOLVED), and every probe I re-ran
+reproduces — including the §6 derivation bijection on 255 fresh URLs
+across 15 kinds and the corrected id charset over all 10,207 rows. But
+mandatory integration check **4a FAILS**: F4's r1b errata froze additive
+`locales.pageSegments: {"pt-br": "pt-BR"}` in `api.manifest.json`
+([spec-f4-app-shell.mdx §2](./spec-f4-app-shell.mdx#2-locale-model--one-table-one-derivation),
+landed 07:05 as ca4d825) — and F2 r1 (landed 07:38 as 3c4ec35, i.e.
+*AFTER* the freeze) pins a differently-keyed manifest shape without
+carrying that key, while its own conflicts entry claims "no F4 edit
+needed". Two frozen texts now prescribe incompatible sole shapes for the
+same machine artifact that Batch 3 builds against. The remedy is ~10
+surgical lines in the spec under review; until they land, an
+APPROVE-FOR-BUILD would hand the builder two contradictory authorities
+and no AC catches the wrong choice.
+
+Checks 4b (no-`/db` page law) and 4c (PT16 inheritance) both PASS —
+rulings below.
+
+## Verification basis
+
+Read in full: the subject; the review; FRAMEWORK §2.1–§2.3 + §2.10;
+[seo-standard §9](../_foundation/seo-standard.md#9-answer-engines-aeogeo--be-the-cited-answer-not-just-the-ranked-page);
+localization-architecture §5;
+[`pipeline/tools/wave_kinds.py`](../pipeline/tools/wave_kinds.py);
+RELATIONS.md header envelope (totals/directions/textKey coverage present,
+R-5 fields verified);
+[`contracts/maps.schema.json`](../contracts/maps.schema.json) (draft-07 ✓);
+F4 §2 + r1b errata + Revision r1b ledger; PT16 §4.2–§4.3, §8.2, §9.4, §11;
+git history of both files for freeze ordering. Environment matches the AC
+preamble: Python 3.14.7, jsonschema 4.26.0. All probes read-only, run from
+the pack root.
+
+## Probe re-execution (8 legs, all reproduce)
+
+| # | Probe | Result |
+|---|---|---|
+| P1 | R-1 census shape | PASS — 10,207 canonical rows over all 40 kinds (item 2,125 · skill 1,373 · class 281 · env 87 · recipe 667 · frescos 9); constants.jsonl 1,267 lines |
+| P2 | R-2 availability recount | PASS — 14,456 rows / 34 kinds; trimodal hist {∅:4,982, 8:2, all-9:9,472}; both 8-locale rows are fiefCondition (`CompleteFiefMission`, `GovernmentAssign`) missing exactly `fr`; filler counter 0; all 9 availability-absent kinds verified STRUCTURALLY text-free against `_meta.columns` |
+| P3 | R-3 overlay inventory | PASS — 306 pairs across the 9 client-code dirs, plane-symmetric; 34 kinds covered = 31 managed + deferred `element`/`group`/`place`; `_draft-achievements` and `ui` dirs correctly out of scope |
+| P4 | BLOCKER-2 charset re-scan | PASS — every id of all 10,207 rows matched against `[A-Za-z0-9_-]+`: zero violations; hyphen bearers exactly env(87) + recipe(667), empirically `^env-[0-9]{4}$` (`env-0000`..`env-0086`) and `^recipe-[0-9]{4}$` (`recipe-0000`..`recipe-0666`); frescos ids native-conform (`A1Ruins`…) |
+| P5 | AC7 bijectivity, fresh samples | PASS — 255 unique page URLs: 15 kinds (incl. env/recipe/frescos hyphen families, 26 hyphen-bearing ids) × first/middle/last id × {list, entity, tooltip} × bare + all 8 presentation prefixes, plus `/db`, `/map` × 9 planes; zero collisions, full round-trip, divergent pair `/pt-br/item/X` → `/data/pt-BR/item/X.json` asserted |
+| P6 | AC11 mechanics on real export set | PASS — ECMA→Python named-group conversion compiles; 3,779 webp paths all match via `as_posix()`; exported == canonical id sets for class/item/skill; QA companions reported beside trees: `_tool.json`, `misses.jsonl`, `resolution-proof.jsonl` |
+| P7 | Embedded-example truth audit (M5) | PASS — every r1 example value measured true on buildid 20318128 (detail under MAJOR-5 below) |
+| P8 | Maps projection pre-checks | PASS with one defect — registry top-level keys ⊆ allow-list ∪ stripped blocks (AC10's deny-pops ≡ §9's allow-list today); imagery exists only on layer 0, the sole `served` layer; BUT all 13 regions carry `nameKeyRoute`, which AC10 strips and §9 never declares stripped → N-2 |
+
+Probe-harness disclosure: P5's first run reported a data collision on
+`/data/item/ClayTablet.json` — that was my own sampler emitting one page
+URL twice, not a derivation failure; the deduped rerun above is clean.
+
+## Finding-by-finding rulings
+
+| id | ruling | anchors + evidence |
+|---|---|---|
+| BLOCKER-1 | **RESOLVED** | §2 is now citations + owner gates; §2.1 recount protocol (R-1..R-5) makes every moving number a command+assertion pair; §12 rewritten recount-governed; AC4 states no file count (dual enumeration + symmetry + membership ⊆ managed ∪ reserved); AC8 recounts `localeCoverage.kinds` from the availability plane. My P1–P3 reproduce the r1 snapshot values exactly — the tree settled post-dig-14 and the probes guard the next move. The 14,246-row transient and absent-file window observed during fixing are disclosed at §2.1 and motivate the empty-input guards. |
+| BLOCKER-2 | **RESOLVED** | §4 states native `[A-Za-z0-9_]+` / universal `[A-Za-z0-9_-]+` with both synthetic hyphen families pattern-pinned; P4 verifies the measurement exhaustively (zero outliers beyond the two declared families). Downstream patterns re-derived coherently: `entityIdAny` in `entityPointer` (§5.1) and marker `entity.id` (§9), `[A-Za-z0-9_-]+` id segment in cdnIconPath (§10). A pattern that rejects `recipe-0000` can no longer be written from this spec. |
+| MAJOR-1 | **RESOLVED, reproduced** | AC11 converts named groups mechanically (`(?<x>` → `(?P<x>`) and uses `relative_to(...).as_posix()`; P6 ran the mechanics verbatim against the real export tree: 3,779 paths match, id sets bijective. Schema stores ECMA syntax (legal for JSON Schema `pattern`); Python consumers never hand-edit it. |
+| MAJOR-2 | **RESOLVED on the F2 side — but seeded N-1** | §4 two-plane bullet, §6 two-segment-set derivation, manifest `pagePrefixes`/`dataCodes` positionally paired, AC7 asserting the divergent pair explicitly. P5 proves `/pt-br/…` pages derive `/data/pt-BR/…` on fresh samples. The original defect (client codes pinned for BOTH legs) is gone; what remains is the carrier-key mismatch with F4's frozen r1b manifest law — N-1 below. |
+| MAJOR-3 | **RESOLVED** | §11 now enumerates three enforcement classes; AC5 `BANNED_KEYS` covers the full class-1 vocabulary (17 keys incl. `gate`, `coordinateGate`, `publicationPlane`, `provenance`, edge `mechanism`/`valid`, registry `source`/`sourceRef`/`coordinateRows`, `textKey`, `_meta` internals); class-2 value substrings scanned across all published-side files. The `tool` carve-out is corpus-derived per kind from `_meta.columns` (real column of `item` type-17 and `recipe` type-6 — confirmed in the relink join keys). Residual note: "license tags, commits, extractor identity" are only partially mechanizable (`'"license"'` tokenized; commits/extractor identity remain prose) — acceptable, not enumerable. |
+| MAJOR-4 | **RESOLVED** | §2.1 declares ONE spelling per document root; `provenanceEnvelopeRegistry` (lowercase integer `buildid`) added to common.schema `$defs`; §9 maps map.published onto it; AC5(a) asserts `buildid` integer required + `coverage` required + `buildId` absent. Whitelist otherwise unchanged (carrier + `coverage` only) — provenance law intact. Observation O-2 records the one-directional enforcement. |
+| MAJOR-5 | **RESOLVED, every example re-measured true** | §7 item en: count 2,125 = canonical rows, namedCount 1,803 = item rows with `en` in `namedLocales` (exact), de twin 1,807 = de overlay entries (exact), Gold → `Krowns` (en overlay, exact), icon path resolves on disk. §8 FenrisCharge: real skill row; de name/description byte-equal; `minDmg:10`, `range {flags:9, baseDistance:6}` verbatim from the canonical row; availableLocales/namedLocales all-9 (satisfies the trimodal law — the reviewer's impossibility complaint is dead); link neighbor `class:FenrisFleeing` is a real valid class→skill edge; webp exists. AC9 fixtures: `Gosenberg_1` real region id; `A1BorderPost` a REAL deferred-corpus id (`extracted/data/_draft/place.jsonl`); marker enum = exactly the registry's 15 types incl. `border-crossing`/`location-place`/`treasure`. |
+| MINOR-1 | **RESOLVED** | AC3/AC6 resolve through `referencing.Registry` (non-deprecated; §15 preamble bans RefResolver); AC6 validates each embedded example against the def it sits in with whole-plane resolution, so `baseRecord` examples survive external `$ref`s; floor is PER FILE ≥1 across the 47 F2-owned schemas with `maps.schema.json` explicitly out of scope by name — no aggregate threshold left to hide behind. |
+| MINOR-2 | **RESOLVED** | Manifest carries `reservedSuffixes:["tooltip"]`; AC7 asserts pairwise core disjointness incl. suffixes, `"tooltip" in xs and "data" in rs`, and that sampled first ids don't collide with the suffix. |
+| MINOR-3 | **RESOLVED** | §10 records the QA companions as physically inside `output/cdn/v20318128/` and never-ship; §13 item 6 adds the stage-7 publish filter; AC11 reports them (P6 shows the report works against the real directory). |
+| MINOR-4 | **RESOLVED** | AC10 captures `publicationPlane` BEFORE stripping and requires kept imagery ≡ served layers exactly; P8 confirms the clause holds on the live registry (imagery only on the served layer) and is now enforced rather than accidental. See N-2 for the strip-list mismatch the rewrite introduced. |
+| MINOR-5 | **RESOLVED** | §2 gained the textKey-coverage row ("consumed, never restated"); relink totals cited via gate/sha parity instead of restated (R-5 fields verified present in the RELATIONS.md header); remaining numbers carry recount probes. |
+| MINOR-6 | **RESOLVED** | AC12 asserts porcelain exactness over `contracts/` only and treats non-allowlisted dirty docs files as sibling traffic (printed, not failing) — shared-worktree-safe per pack law. |
+
+## Mandatory cross-spec integration checks
+
+### 4a — pageSegments key: **FAIL → N-1 (MAJOR)**
+
+[F4 §2 r1b](./spec-f4-app-shell.mdx#2-locale-model--one-table-one-derivation)
+(binding errata from the arbiter-pt16 adjudication, commit ca4d825,
+07:05) freezes: *"The manifest's `locales` object therefore carries one
+additive key: `"pageSegments": {"pt-br": "pt-BR"}` — key = page segment,
+value = client code"* plus the three-way rule (member of `prefixed` → own
+client code; member of `pageSegments` keys → mapped value; neither → not
+a locale segment). F2 r1 (commit 3c4ec35, 07:38 — after the freeze)
+pins §6's manifest as `{locales:{pivot, pagePrefixes[8], dataCodes[8]},
+…}` and asserts exactly those keys in AC8. `pageSegments` appears nowhere
+in F2 (grep: zero hits); neither does `prefixed`.
+
+- **Direction**: consistent — both carriers map page segment → client
+  code, and F2's positional pairing yields the identical `pt-br`→`pt-BR`
+  mapping. This is a key/carrier divergence, not a semantic reversal.
+- **Consequence**: a builder following F2 §6 literally emits a manifest
+  that violates frozen F4 (its documented consumers resolve through
+  `pageSegments`); a builder following F4 literally fails F2 AC7/AC8
+  loudly (KeyError on `dataCodes`). A superset manifest would satisfy
+  both letter-for-letter — no F2 AC forbids extra keys and F4 declares
+  its key additive — but NO text authorizes that merge, so conformance
+  would rest on the builder reading two specs and inventing the union.
+- **Whose text wins**: F4's. It is the binding errata produced by a
+  recorded arbitration, it was frozen before F2 r1 landed, F2 r1 cites
+  F4 §2 without engaging its r1b manifest law, and F2's conflicts entry
+  claims "RESOLVED ON THE F2 SIDE … no F4 edit needed" while silently
+  substituting the mechanism. Frozen authority outranks a later silent
+  reshape of the same artifact.
+- **Same-root second consequence**: PT16 quotes F2's derivation rule
+  "stated verbatim" in two places ([§8.2 subjectOf](./spec-pt16-seo.mdx#82-json-ld-graph)
+  L387-393 and [§9.4 llms.txt](./spec-pt16-seo.mdx#9-llmstxt--the-agent-entry-contract)):
+  *"take the page path, strip the optional leading locale segment,
+  prepend `data/`, append `.json`"* — the PRE-r1 one-segment-set rule,
+  with no mapping leg. Applied to `/pt-br/item/Gold` it composes
+  `/data/pt-br/item/Gold.json`, outside F2's declared set. PT16 is
+  frozen and its actual link generation consumes the manifest (so
+  emitted links will be correct once the manifest is unambiguous), but
+  the stale verbatim quote must be recorded in F2's conflicts section —
+  its PT16 entries cover localeCoverage and lastmod spellings and miss
+  this entirely.
+- **Prescribed fix (all F2-side, ~10 lines)**: add
+  `pageSegments:{"pt-br":"pt-BR"}` to §6's manifest shape, DERIVED FROM
+  and asserted-equal to the positional pairing (one AC8 assertion);
+  state in §6 that `dataCodes` is the successor of the key F4 r1b calls
+  `prefixed` (same 8 client codes, same semantics); record both the
+  rename and the PT16 quote staleness in `## r1 conflicts`. No other
+  section moves; all ACs stay executable.
+
+### 4b — no-`/db` page law: **INTACT**
+
+§6 still pins *"Page-tree shape is pinned WITHOUT a `/db` prefix on
+entity routes"* with the seo-standard §1 + FRAMEWORK §2.7
+evidence-shape disclaimer. Every `/db` occurrence in the revised file is
+either the DB landing surface itself (`/db`, localized `/{P}/db` — the
+landing page, lawful), the `/data/db.json` taxonomy artifact, the
+FRAMEWORK evidence-shape disclaimer, or AC7's landing-page samples. No
+prefixed entity variant (`/db/{kind}/{id}`) exists anywhere; nothing in
+r1 touched the page-tree-shape bullet. PT16 §4.2 independently confirms
+conformance ("no `/db/…`-prefixed entity routes anywhere"), and F5 is
+untouched by §14. E-1 stands.
+
+### 4c — PT16 inheritance: both recorded conflicts **ALREADY-CONSISTENT** (no orchestrator routing)
+
+- **"PT16 inherits the corrected localeCoverage" — already-consistent;
+  PT16 needs no edit (confirmed, though the stated mechanism is loose).**
+  PT16 never reads `localeCoverage` at all: entities sitemap membership
+  consumes `locale_availability.jsonl` directly (PT16 §4.2
+  "cartesian product of … `availableLocales` × shipped locales"), and
+  llms.txt link emission is gated on manifest route presence (§9.4 "only
+  for manifests that exist", §8.2). The correction still matters
+  downstream — with `mode:"emitted"` + recounted kinds the manifest
+  correctly marks e.g. tooltip routes for structurally text-free kinds
+  absent, where the retired wave-1 pin would have suppressed links for
+  28 covered kinds — so the record is right in effect, wrong only about
+  which input PT16 consumes. No routing needed.
+- **"PT16 lastmod readers must accept the two carrier spellings" —
+  already-consistent; advisory only.** PT16's existing clauses already
+  use each plane's native spelling: the map-section lastmod source reads
+  the registry's lowercase `buildid` (§4.2 "maps.json buildid run
+  instant"), user-facing/API freshness uses camelCase `buildId` (§4.3,
+  §9.4 citability footer), extraction-report readers use `_meta`
+  buildid. Nothing in PT16 walks the served `/data/map.json` today. The
+  note costs nothing and prevents a future reader bug; no routing.
+
+## New sweep findings (revision neighborhoods)
+
+- **N-1 (MAJOR — gating)**: the 4a divergence above. Blocks approval;
+  prescribed fix is fully specified there.
+- **N-2 (MINOR — ride-along)**: AC10's executed projection pops
+  `regions[].nameKeyRoute`; §9's strip list (layer-level, type-level,
+  coordinateTransform.provenance/.validation, three top blocks)
+  declares NO region-level stripping, and §11's banned-key list doesn't
+  know the token either. Live registry: all 13 regions carry the field,
+  so the document AC10 validates is NOT the projection §9 describes —
+  a stage-7 emitter following §9 literally either ships repo-plane route
+  bookkeeping or fails the schema, depending on how the build closes
+  `regions`. Fix: add the region strip to §9's list (or drop the pop
+  from AC10) and decide whether `nameKeyRoute` belongs in §11 class 1.
+  Today the two definitions happen to agree everywhere else (P8: no
+  extra top-level keys), so this mirrors the "corpus accident" pattern
+  MINOR-4 just eliminated for imagery — close it while the file is open.
+- **O-1 (observation, non-blocking)**: AC5's envelope-composition check
+  requires `markers.schema.json` to reference
+  `common.schema.json#/$defs/provenanceEnvelope`, though §11's whitelist
+  lists buildId roots for "lists, entities, tooltips, db.json". Passable
+  — the build hosts a document-level def (buildId + layers/marks) beside
+  the mark-row def — but the requirement should be stated in §9/§11 so
+  the builder doesn't read it as a contradiction.
+- **O-2 (observation, non-blocking)**: the "never both spellings"
+  invariant is enforced only against map.published (`buildId` absent).
+  Nothing forbids an API-side def from additionally accepting `buildid`
+  (`buildid` ∉ BANNED_KEYS). Risk is low — published defs are closed and
+  authored from this spec — but a symmetric assertion would make the
+  law structural in both directions.
+
+Stage-7 emitter boundary: not breached (§13 remains a register of
+verifications owned later; §14's untouched list intact, incl.
+`contracts/maps.schema.json`). Provenance whitelist: intact. Amended
+ACs: all remain executable as written (every AC body parses and its
+mechanics were exercised directly or via equivalent probes P1–P8).
+
+## Prescribed revision scope (fixer round 2)
+
+Exactly three edits, all in `docs/spec-f2-contracts.mdx`:
+
+1. §6 manifest shape + AC8: carry `pageSegments:{"pt-br":"pt-BR"}`
+   derived from the pairing, asserted equal to it (N-1).
+2. `## r1 conflicts`: record the `prefixed`→`dataCodes` successor
+   relation toward F4 r1b, and the PT16 stale verbatim-quote
+   consequence (N-1).
+3. §9 strip list ↔ AC10: declare the region-level `nameKeyRoute` strip
+   on whichever side wins, consistently (N-2).
+
+Nothing else moves. After those land, this spec is
+approve-on-sight for Batch 3; the build stays gated on the pack's rule-8
+gate.
+
+## Count summary
+
+| Measure | Count |
+|---|---|
+| Review findings RESOLVED / WEAKENED / UNRESOLVED | **13 / 0 / 0** |
+| New sweep findings | 1 MAJOR (N-1, gating) + 1 MINOR (N-2) |
+| Non-blocking observations | 2 (O-1, O-2) |
+| Mandatory checks pass/fail | 4a FAIL · 4b PASS · 4c PASS (both records already-consistent) |
+| Probes re-executed read-only | 8 legs, all reproduce (incl. AC7 bijection: 255 fresh URLs, 15 kinds, 8 prefixes, hyphen families, divergent pair) |
+
+**Verdict: NEEDS_REVISION** — scope limited to N-1 (+N-2 ride-along);
+everything else approved as evidenced above.
+
+Rulings on the brief's items: **4a** DIVERGENCE CONFIRMED — F2 §6/AC8 do
+NOT carry F4 r1b's `pageSegments` key (different carrier, same
+direction); F4's text wins; fix is F2-side and specified. **4b** INTACT —
+no-`/db` entity-route law unpinned nowhere, r1 reintroduced nothing.
+**4c** BOTH PT16 records ALREADY-CONSISTENT — no orchestrator routing;
+advisory notes stand.
+
+<!-- END OF docs/arbiter-f2-contracts.mdx — read-in-full file: if you have not seen this line, you have not read this file. -->

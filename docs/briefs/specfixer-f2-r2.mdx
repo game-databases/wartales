@@ -1,0 +1,33 @@
+# Brief — Spec Fixer: F2 published contracts r2 (surgical, post-arbiter)
+
+Fresh Fixer agent; never spawn subagents; never commit; Wartales pack
+only. Revise exactly ONE file: `docs/spec-f2-contracts.mdx`. Three
+surgical edits only — change nothing else.
+
+Inputs:
+1. `docs/arbiter-f2-contracts.mdx` — binding prescriptions (N-1 MAJOR
+   gating, N-2 ride-along).
+2. `docs/spec-f4-app-shell.mdx` §2 + r1b errata — frozen winner for the
+   manifest carrier law.
+
+Edits:
+
+1. **N-1 (gating):** adopt F4's frozen carrier verbatim — additive
+   `locales.pageSegments: {"pt-br": "pt-BR"}` in the api.manifest.json
+   shape, derived from your existing two-plane table and asserted by an
+   AC probe (assert manifest key == derivation from the locale table,
+   both directions). Record in `## r1 conflicts`: the
+   `pagePrefixes`/`dataCodes` naming is superseded → renamed to match
+   F4's law (keep your table as the DERIVATION source, rename the
+   exposed keys), and note PT16's two "verbatim" quotes of the pre-r1
+   one-segment rule are now stale (PT16 itself is not edited here).
+2. **N-2:** add `regions[].nameKeyRoute` to §9's strip list (live data
+   carries it on all 13 regions) so AC10's projection and the declared
+   strip set agree.
+3. Tag touched AC bodies `(r2)`; append rows to `## Revision r1`'s
+   successor section (`## Revision r2`); execute any new assertion
+   read-only before freezing it (quote output).
+
+Touch no other file; do not commit.
+Done = three edits applied, new AC probe executed green, revision ledger
+complete.
