@@ -4,7 +4,9 @@
 (planning deliverable — spec-writing is legal before the gate,
 [`PROGRESS.mdx`](../PROGRESS.mdx) Batch 1); revised r1 2026-08-26 — all
 twelve findings of [`review-spec-f4-shell.mdx`](./review-spec-f4-shell.mdx)
-resolved, see [Revision r1](#revision-r1). **Authority:**
+resolved, see [Revision r1](#revision-r1); errata r1b 2026-08-26 — the
+PT16-arbiter pt-BR collision ruling + F4-shell finding N1, see
+[Revision r1b](#revision-r1b-errata). **Authority:**
 [DR-2026-08-24-wartales-roster] (pack 52; provisional Umbrella tier;
 localhost-first) · owner shadcn directive
 ([shadcn-adoption.mdx](../design/shadcn-adoption.mdx)) ·
@@ -142,7 +144,8 @@ concern ([locale-key-convention.mdx](./locale-key-convention.mdx) §1).
 | `ru` | `ru` | `ru` | Русский |
 | `zh` | `zh` | `zh-Hans` | 简体中文 |
 
-- **Recorded decision (r1): lowercase `pt-br` URL segment.**
+- **Recorded decision (r1): lowercase `pt-br` URL segment — override
+  EXERCISED (r1b), segment unchanged.**
   [DR-2026-08-20-locale-urls] ¶2 illustrates regional forks as `/pt-BR/…`
   but fixes only membership and the bare-path law, not letter case — the
   divergence is deliberate and recorded here, not left a spec-local
@@ -152,8 +155,38 @@ concern ([locale-key-convention.mdx](./locale-key-convention.mdx) §1).
   those use client codes verbatim per
   [`spec-f2-contracts.mdx`](./spec-f2-contracts.mdx) §4 (`/data/pt-BR/…`),
   with `locales.ts` the single id↔client-code bridge between the two
-  planes. Orchestrator may override before first deploy; flipping this §2
-  row is the whole change.
+  planes. This paragraph reserved an orchestrator override before first
+  deploy ("flipping this §2 row is the whole change"); the PT16-arbiter
+  pt-BR collision adjudication
+  ([`arbiter-pt16-seo.mdx`](./arbiter-pt16-seo.mdx)) is that override,
+  exercised on F4's side WITHOUT flipping the id: the page segment stays
+  lowercase `pt-br`, and the load-bearing cell is `client code` — see the
+  composition law below.
+- **Data-plane composition law (r1b — the collision's F4 half).** The two
+  planes are joined ONLY through this table: page tree = the `id` column,
+  data tree = the `client code` column. A consumer turning a page path
+  into a data URL resolves the stripped leading segment through the table
+  (or its manifest projection below) BEFORE composing — applying F2 §6's
+  unconditioned formula verbatim to `/pt-br/item/Gold` would yield
+  `/data/pt-br/item/Gold.json`, which is outside F2's declared locale set
+  and 404s against F2's own `/data/pt-BR/…` plane. Links are therefore
+  built manifest-first — enumerate the table's locales, construct
+  `/data/{clientCode}/{kind}/{id}.json` from the record — never by string
+  surgery on page paths.
+- **What `api.manifest.json` must carry (r1b; stated here because F2 is
+  frozen and is not edited by this errata).** F4's table alone cannot
+  guarantee F2 §6 composes correctly: F2 §15 AC8 freezes
+  `locales.prefixed` to the eight CLIENT codes while F2 §6's formula
+  consumes the raw stripped segment, so a manifest holding only client
+  codes cannot resolve `pt-br` to `pt-BR`. The manifest's `locales`
+  object therefore carries one additive key:
+  `"pageSegments": {"pt-br": "pt-BR"}` — key = page segment, value =
+  client code; exactly one entry today, since every other prefixed code
+  equals its own page segment. Segment resolution for any consumer: a
+  stripped segment that is a member of `prefixed` IS its own client code;
+  a member of the `pageSegments` keys takes the mapped value; neither →
+  not a locale segment (F2 AC7's non-locale semantics preserved — AC7 and
+  AC8 probe client-code spellings and stay green unmodified).
 - `ja` (community-overlay candidate, spec `locales.community`) is **not**
   site-facing at F4 — its ship call is a build-time decision per the frozen
   spec; adding it is a table row + one messages file, nothing else.
@@ -167,6 +200,8 @@ concern ([locale-key-convention.mdx](./locale-key-convention.mdx) §1).
 
 ```ts
 defineRouting({
+  // ids are the §2 PAGE segments (id column); /data/** URLs compose from
+  // the §2 client-code column, never from these strings (§2 r1b).
   locales: ["en", "fr", "de", "es", "pl", "pt-br", "ru", "ko", "zh"],
   defaultLocale: "en",
   localePrefix: "as-needed",   // pivot bare, others prefixed
@@ -336,16 +371,28 @@ footer groups; the page `<h1>` belongs to pages, never to the shell.
    `--color-*` for every shadcn variable plus `--bg-1..4`, `--panel-well`,
    the text ramp, `--selection`, `--positive/--negative/--warning`,
    `--rarity-*`/`--light-rarity-*`, `--chart-1..5`, `--player-1..4`;
-   `--font-ui/flavor/cjk/sans/serif/mono` for the font utilities;
-   `--radius-*: 0`. **Aliasing law (r1):** every mapping whose right side
+   `--font-ui/flavor/cjk/sans/serif/mono` for the font utilities, each
+   right side a `var()` reference into the canon stacks — never a
+   re-typed `"EB Garamond", …` string (the six theme names equal the six
+   canon names, so which Tailwind-v4 spelling keeps tokens.css
+   authoritative is a verify-at-install duty beside the §1 compatibility
+   gate). **Aliasing law (r1):** every mapping whose right side
    names a canon value takes the aliasing form —
    `--color-bg-1: var(--bg-1)`, `--spacing-g1: var(--space-1)` — never a
    literal copy of that value (`--color-bg-1: #100F0E` would pass
    tokens.test.ts, which parses tokens.css alone, while creating exactly
-   the second source of truth the never-touch law bans). Literals are
-   allowed only for scalars the canon does not define (`--radius-*: 0`);
-   any hex/rgb/oklch/named-color literal inside the block fails
-   shell-hygiene (§7.5 r1).
+   the second source of truth the never-touch law bans).
+   **Literals (r1b, correcting N1):** there is no canon-undefined scalar
+   to spend a literal on. The earlier example offered `--radius-*: 0` as
+   one — FALSE: tokens.css L167–171 declares the whole family
+   (`--radius`, `--radius-sm/md/lg/xl`, all `0rem`; tokens.test.ts pins
+   each at `parseFloat == 0`), so globals.css declares NO `--radius-*` at
+   all, and no shell/app source emits a `rounded-*` corner utility
+   (square is F1 §2.4 canon — a rounded corner is a defect), which is why
+   the omission costs nothing. Nor was the ban ever color-only: any
+   literal right side — a hex/rgb/oklch/named color, a radius length, a
+   font stack, a duration — whose left side matches a canon token name
+   fails shell-hygiene (§7.5 r1/r1b), the failing command AC 9 names.
 3. **Spacing law:** Tailwind's numeric scale is NOT remapped onto the
    game's 5px rhythm (silent conflation hazard). The game steps ship as
    named utilities `--spacing-g1..g8 ← var(--space-1..8)` (`p-g4`,
@@ -366,7 +413,9 @@ footer groups; the page `<h1>` belongs to pages, never to the shell.
    any declared font/texture binary is unstaged.
 2. **`locale-routing.test.ts`:** the §2 table has exactly the 9 frozen
    client locales; `en` is the sole bare pivot; prefixes unique; BCP-47
-   values valid (`pt-br`→`pt-BR`, `zh`→`zh-Hans`); native names non-empty.
+   values valid (`pt-br`→`pt-BR`, `zh`→`zh-Hans`); native names non-empty;
+   and exactly ONE row has `id !== clientCode` — `pt-br`→`pt-BR`, the
+   §2(r1b) data-plane join (r1b).
 3. **`chrome-parity.test.ts`:** the §4 gates (key-set ×9, non-empty,
    placeholder parity, stub-ledger consistency, all-13-listed-at-F4).
 4. **`routes-manifest.test.ts`:** every `live: true` href resolves to an
@@ -379,10 +428,14 @@ footer groups; the page `<h1>` belongs to pages, never to the shell.
    token declaration could land; tokens.css/tokens.test.ts excluded) for
    stock Tailwind palette classes (`slate|gray|zinc|neutral|stone-*-N`),
    raw numeric spacing utilities, `oklch(`, any canon-token name from
-   tokens.css re-declared outside tokens.css, and — inside globals.css's
-   `@theme` block — any literal value where the §6 aliasing law demands
-   `var(--…)` (§6.2). All must be absent; this suite is AC 9's failing
-   command.
+   tokens.css re-declared outside tokens.css, any `rounded-*` corner
+   utility (r1b — square is canon), and — inside globals.css's `@theme`
+   block — any literal value where the §6 aliasing law demands
+   `var(--…)`, COLOR OR NON-COLOR (r1b): a radius length, a font stack, a
+   duration — any non-`var()` right side whose left side matches a canon
+   token name — plus any `--radius-*` declaration at all (§6 r1b
+   omission). All must be absent; this suite is AC 9's failing command
+   for both slices.
 6. **`scripts/smoke.mjs`** (executable AC runner, exit-code verdict):
    boots `next dev` on a scratch port — a compile error in the boot log is
    itself a FAIL, so AC 1's "zero build errors" is detected here rather
@@ -434,7 +487,10 @@ footer groups; the page `<h1>` belongs to pages, never to the shell.
    `tokens.test.ts`, `tokens-preview.html`, and `package.json`'s `test`
    script; no token re-declared outside tokens.css — enforced by
    shell-hygiene (§7.5), whose sweep includes `globals.css`, so any
-   violation leaves a red command.
+   violation leaves a red command; and no canon VALUE duplicated either —
+   the aliasing law covers non-color scalars (radius lengths, font
+   stacks), globals.css declares no `--radius-*`, and no shell/app source
+   uses a `rounded-*` utility (r1b).
 10. **Hygiene laws hold:** zero stock-palette classes, zero raw numeric
     spacing utilities, zero `oklch(` in shell/app sources (test-enforced).
 11. **Search slot honored, swap root placed (r1):** `data-shell-slot="search"`
@@ -490,10 +546,18 @@ stay uncommitted per the README conventions), anything under `extracted/`.
   [`spec-pt16-seo.mdx`](./spec-pt16-seo.mdx) §3 ("exact filename is F4's
   to confirm"). PT16 generators import locales/routes from that module;
   no `routes.ts` exists or will.
-- **Locale segment casing.** F4 freezes the lowercase `pt-br` segment (§2
-  recorded decision), superseding PT16 §3.2's provisional `/pt-BR/`
-  expectation ("expected values, F4-freezes"); hreflang keeps BCP-47, so
-  PT16 output is unaffected.
+- **Locale segment casing (r1b — errata resolved).** The PT16-arbiter
+  collision adjudication
+  ([`arbiter-pt16-seo.mdx`](./arbiter-pt16-seo.mdx)) settles ON THIS
+  SIDE: the lowercase `pt-br` page segment stands
+  ([DR-2026-08-20-locale-urls] fixes membership + the bare-path law, not
+  case), superseding PT16 §3.2's provisional `/pt-BR/` page expectation;
+  hreflang keeps BCP-47, so PT16 output is unaffected. The data half of
+  the same ruling binds here too: page paths never compose `/data/**`
+  URLs by string surgery — the stripped segment joins through §2's
+  `client code` column, and `api.manifest.json` carries the additive
+  `locales.pageSegments` bridge (`{"pt-br": "pt-BR"}`, §2 r1b) that F2
+  §6's formula needs; F2 itself is untouched.
 - **Search swap root.** F4 places `data-search-swap-root` on `<main>` —
   closing [`spec-f5-search.mdx`](./spec-f5-search.mdx) §13 H-3 from this
   side; attribute placement only, per §5.
@@ -546,3 +610,24 @@ wholesale), PT02 (footer deepening deferred), PT16 (hreflang/sitemap/JSON-LD
 still excluded — only the filename/casing reconciliation is recorded),
 PT17 (404 mechanism only, unbranded), F5 (outbound slot-only fence kept;
 the new inbound seam ships an attribute, never behavior).
+
+## Revision r1b (errata)
+
+Fresh Spec Fixer agent, 2026-08-26 — two prescriptions only, this file
+only, nothing committed, no subagents. AC set stays at **14** with stable
+ids; the touched body is tagged `(r1b)`; none renumbered, none argued
+away. The locale table is self-consistent end-to-end after this revision:
+every example names its plane — page examples spell the `id` column
+(`/pt-br/…`, routing array, AC 2 roots, `pt-br.json` messages), data-plane
+examples spell the `client code` column (`/data/pt-BR/…`).
+
+| # | source | prescription | resolution | sections touched |
+|---|---|---|---|---|
+| 1 | [`arbiter-pt16-seo.mdx`](./arbiter-pt16-seo.mdx) Adjudication (binding errata; primary fix = F4 side) | exercise the §2 reserved locale-table override so the PAGE segment stays lowercase `pt-br` ([DR-2026-08-20-locale-urls] unchanged) while the DATA plane composes `/data/pt-BR/…` via the client code | override recorded as EXERCISED on the existing row (`pt-br` → clientCode `pt-BR`, cells unchanged — the divergence is the point); new composition law: page→data joins resolve the stripped segment through the table, never page-path string surgery (verbatim F2 §6 composition of `/pt-br/item/Gold` would emit `/data/pt-br/…`, outside F2's declared set); stated precisely what `api.manifest.json` must carry — additive `locales.pageSegments: {"pt-br": "pt-BR"}` with a three-way resolution rule — because F4's table alone cannot guarantee F2 §6 composes (`prefixed` is frozen to client codes by F2 §15 AC8); F2 untouched; routing array annotated page-plane; §7.2 pins the single divergent join as test law | §2, §3, §7 item 2, §9 seam |
+| 2 | [`arbiter-f4-shell.mdx`](./arbiter-f4-shell.mdx) finding N1 (MINOR, non-gating) | correct the false carve-out claim; extend the hygiene grep to non-color canon values with a failing command | carve-out deleted: tokens.css L167–171 DOES define `--radius/--radius-sm/md/lg/xl` (all `0rem`; tokens.test.ts pins each at 0), so no canon-undefined scalar exists and the old "scalars the canon does not define (`--radius-*: 0`)" sentence was false; globals.css now declares NO `--radius-*` at all and `rounded-*` utilities are banned (square is F1 §2.4 canon); aliasing law extended beyond colors — radius lengths, font stacks, durations: any non-`var()` right side whose left side matches a canon token name fails shell-hygiene (§7 item 5), which remains AC 9's failing command for both slices; font mappings pinned to `var()` right sides with the name-collision spelling left as a verify-at-install duty beside the §1 gate | §6, §7 item 5, §8 AC 9 |
+
+Boundary fences intact after r1b: PT01 wholesale home replacement · PT02
+footer deepening deferred · PT16 hreflang/sitemap/JSON-LD still excluded
+(the casing seam now records the RESOLVED arbitration instead of a
+provisional freeze, plus the manifest-mediated data-plane join) · PT17
+mechanism-only · F5 outbound slot-only / inbound attribute-only.
