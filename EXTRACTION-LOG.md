@@ -72,6 +72,20 @@ across 40,201 files.)
 | `pipeline/tools/validate_all.py` | local-only¹ | stage-6 validator: invokes `cdb_verify.py` + `locale_bridge_dig.py` as children (one independent truth each), lands `validation-report.json` + `VALIDATION-REPORT.md`, reconciles to census 11,473; keeps its `generated` deliberately (spec §5.2/§10 hole 3); r2: census loops filtered to the managed universe so non-managed intruders become `hbson-independent` report records instead of a KeyError crash, that check now walks both canonical planes recursively pruning `_draft`, `deferred-present` compares an inline frozen §3.5 transcription, `catalog-parity` parse-and-compares every rendered RELATIONS.md cell against the matrix records, availability locale sets enforce the measured bimodal law {∅, exact-9}, wave-1-draft precondition anchored to PACK_ROOT (arbiter W1/R1/R6/R7/F3/F4/finding A) | sha256 `c3224362e3c8cb05accfae7cd1c501464a658b6cd5c86b30bdbc2ccfb5dcf5a3` (28,228 B) |
 | `pipeline/tools/fit_world_transform.py` | local-only¹ | D6/D11 transform battery: carrier reads (layers2D + heightmap nodes via hbson_decode), validation gates, emits the `coordinate-transform.json` the registry cites | sha256 `1dc9ebf12251439bd751fdd72809613e3551fe2dea43742a011b5bb78e492ef0` (43,638 B) |
 | `pipeline/tools/emit_tile_coords.py` | local-only¹ | tile-space join of poi_coordinates.jsonl → `poi_tile_coords.jsonl` (Dig 11 deliverable; stdlib only) | sha256 `d05d356e07a1cfc10483649f06e66a22b37b8467a4858355b135188bae8454d0` (6,490 B) |
+| `pipeline/tools/cdb_census.py` | local-only¹ | CastleDB census + kind-map evidence (dig 1): reads `data.cdb`, 386 sheets / 11,473 inline rows — the census ground truth stages 4–6 reconcile to ([cdb-census.mdx](docs/cdb-census.mdx)) | sha256 `fafee9d5e6d8824d96383f7ed6d8d5d637a755015234e2dc6e6e6d93c77afbdf` (15,545 B) |
+| `pipeline/tools/wtpak_verify.py` | local-only¹ | R2 toolchain-scout reconciler: wtpak listings vs the recon TSVs + adler32 extraction proof per pak ([toolchain-validation §1](docs/toolchain-validation.mdx)) | sha256 `a0f6aff3511ff5bb9c4fce12eb7e819339e4a191fd9b703ad4312188a520560f` (5,692 B) |
+| `pipeline/tools/hbson_decode.py` | local-only¹ | strict HBSON decoder (Dig 7; grammar in [hbson-format.mdx](docs/hbson-format.mdx)): zero-slack decode **3,536/3,536 blobs / 307,768,190 B** + byte-exact re-encode corpus-wide | sha256 `8fb29ba3fda5667eeaa752dbc273a9b8bfd4b1773c71e156d91cfd101a8351e7` (17,650 B) |
+| `pipeline/tools/hbson_emit.py` | local-only¹ | Dig 7 emitters over the decoded corpus: the four datafile-backed `_draft` datasets + `poi_coordinates.jsonl` + `worldmap_overlays.json`; r1: input repointed onto the harvest output, off the scratch copy (specA-A2) | sha256 `cabcf6156265130bc2bf6e1f64a1bfd19e7a2d88269a1c4c80e9d088b983e966` (27,895 B) |
+| `pipeline/tools/formula_emit.py` | local-only¹ | logic-layer emitter (dig 2): `logic/constants.jsonl` (1,266 rows — the census-closure second half) + `logic/formulas.jsonl` inventory | sha256 `802f72f244ecd0b50235229a796ce8eb38387032da16927c496c9a0f27111723` (34,357 B) |
+| `pipeline/tools/icon_export.py` | local-only¹ | CDB icon refs → versioned webp CDN set v20318128 (Dig 4; atlas-descriptor resolution pinned) | sha256 `d3c10bdb24ab42257bb8354ffb2dde90bbbf38672d369d3d506b9c0f74d93859` (7,565 B) |
+| `pipeline/tools/locale_bridge_dig.py` | local-only¹ | locale-bridge emitter (digs 2 + 14; r3/D-1 final at commit `e07ad3c`): overlays ×34 kinds ×9 locales (88,441 entity rows) + `locale_availability.jsonl` 14,456 rows + R5 stamp table + UI chrome layer (en 2,148 / fr 1,903); attribute regex tolerates whitespace around `=` since r3 | sha256 `53711e4d6b5d5345b3c1ed08e245fdc8b2ad1d83f5be8dd38a561c0e6b6b12e3` (73,321 B) |
+| `pipeline/tools/battle_terrain_dig.py` | local-only¹ | battle terrain `.bin` decode (Dig 12): 5,880/5,880 files under the derived h/n/i/w layout (zero slack), round-trip 240/240, emits `battle_scene.jsonl` 97+15 scenes | sha256 `4491ab5bd6c05daa56a97b89c94f583b85fe702aa5268fbff8d32a4ebf6c31a2` (37,893 B) |
+| `pipeline/tools/hl_disasm.py` | local-only¹ | operand-resolved disassembler (Dig 8): `.dis.hx` mirrors + CFG for the whole corpus — 52,114 functions / 2,508,050 ops ([decompile-dig-1](docs/decompile-dig-1.mdx)) | sha256 `046cbca8612713454e53cec2b4d663f9afab4627c24308bc057a403d62926cf8` (53,902 B) |
+| `pipeline/tools/hl_decompile.py` | local-only¹ | structured-text decompiler (Dig 13): 1,584 modules / 52,114 functions / 2,508,050 ops to [extracted/decompiled/hl-src/](extracted/decompiled/) with op-range partition proof + determinism double-emit (0 differences) | sha256 `5f26e7de7c44d19c667210aef47e15dea63f26067349ea84a7672fbfe3b9d92f` (90,205 B) |
+| `pipeline/tools/dig15_logic_edges.py` | local-only¹ | Dig 15 bar-1 evidence layer: derives [relinks/_logic/](extracted/relinks/_logic/) (107 families / 7,184 edges) under the declarative `FIX_ROUND_CARRIERS` admission rule (r2 fix round folded) | sha256 `6eb067daa0f24e9d2f72512c25dbea7b8b5139ead3840af084cb41a78fa86677` (56,018 B) |
+| `pipeline/tools/dig15_sample_verify.py` | local-only¹ | Dig 15 sampled-edge verification (seed 15 stratified over all families + full-corpus dangling sweep; 107/107 PASS) | sha256 `4f77f1730fddc740f83894b68a3bbde7cd3dd062c37a783ab75eddabcbd61533` (8,246 B) |
+| `pipeline/tools/dig15_ui_coverage.py` | local-only¹ | Dig 15 bar-2 generator: `relinks/ui_link_coverage.jsonl` (20 surfaces / 31 relations) + `_meta.completeness` enumerating all 140 ui/win sources | sha256 `a39d0e6d34458a15ded244add158fe679b1c59e46541ba88d5d113efcce74ac7` (19,911 B) |
+| `pipeline/tools/_crosscheck.py` | local-only¹ | element-wise hlboot cross-verification against crashlink (independent implementation, MIT) — exit 0 ⇔ zero slack ([WALK-PROOF](extracted/logic/hl-structure/WALK-PROOF.mdx)) | sha256 `b2f683f38383f674c455d6f61260173d3fe219e8c566024adfbdbdae08e59ed3` (8,463 B) |
 
 ¹ The repo-root `.gitignore` `tools/` rule (meant for the Windows toolchain
 dirs) also swallows pack-local `pipeline/tools/`, so these validated tools
@@ -89,15 +103,17 @@ unblock pointer.
 |---|---|---|---|---|
 | 1 | harvest | **BUILT** | `extracted/harvest/<pak>/…` payloads + `<pak>.manifest.jsonl` + `<pak>.summary.json` | idempotent + resumable (every entry adler-reverified each run; matched entries skipped); `--dry-run` prints the exact command line |
 | 2 | map | **BUILT** | `extracted/data/maps.json` + `contracts/maps.schema.json` (schema-validated) | `pipeline/map_tiles.py registry`; cites only this-run measurements, so `rawproof`+`pyramid-ratio` artifacts must exist — full imagery pass is `python pipeline/map_tiles.py run` |
-| 3 | decompile | NOT BUILT | `extracted/decompiled/…` | stub → [docs/decompile-dig-1.mdx](docs/decompile-dig-1.mdx): structure layer done (`extracted/logic/hl-structure/`), operand-level disassembler + decompiler is the next build |
+| 3 | decompile | **NOT BUILT** (stage unwired; outputs shipped) | `extracted/decompiled/…` — BOTH layers already exist and are verified: [`hl/`](extracted/decompiled/) `.dis.hx` operand mirrors + CFG (Dig 8) and [`hl-src/`](extracted/decompiled/) structured text, 1,584 modules / 52,114 functions / 2,508,050 ops = 100.00 % coverage (Dig 13) | produced OUT-OF-BAND by the pinned tools (`hlboot_probe.py --emit` → `logic/hl-structure/`, then `hl_disasm.py` / `hl_decompile.py`, both §2-pinned); determinism proven by two independent full emits diffed recursively (0 differences). The stage stub itself still exits 3 until the walk wires these tools in ([docs/decompile-dig-1.mdx](docs/decompile-dig-1.mdx); rider R2 remainder) |
 | 4 | datasets | **BUILT** | `extracted/data/<kind>.jsonl` (40 managed kinds) | waves 1+2 regenerated into `_draft` by `cdb_emit.py`, `cdb_verify.py` GATE, `promote_drafts.py --plane data`, canonical re-verify ([spec-stages-datasets §3](docs/spec-stages-datasets.mdx)) |
 | 5 | relink | **BUILT** | `extracted/relinks/<from>__<to>.jsonl` (51 pair files) + `RELATIONS.md` + `relinks/matrix.json` | promote the seed pairs, canonical verify over BOTH planes, catalog derived from canonical bytes ([spec-stages-datasets §4](docs/spec-stages-datasets.mdx)) |
 | 6 | emit | **BUILT** | `relinks/locale_availability.jsonl` + overlays (regen) + `validation-report.json` + `VALIDATION-REPORT.md` | validation only — availability regen (`locale_bridge_dig.py`) + `validate_all.py` reconciling everything to census 11,473 ([spec-stages-datasets §5](docs/spec-stages-datasets.mdx)) |
 
 A full no-arguments run currently walks harvest → PASS, map → PASS, then
-fails loudly at decompile (exit 3) — correct while the decompiler is unbuilt.
+fails loudly at decompile (exit 3) — correct while stage-3 wiring is unbuilt;
+the decompile OUTPUTS themselves are shipped and verified (row 3 above).
 Stages 4–6 execute in isolation (`run_all.ps1 datasets` / `relink` / `emit`)
-and join the walk once decompile lands (spec-stages-datasets hole 4).
+and join the walk once the decompile stage is wired (spec-stages-datasets
+hole 4).
 
 ## 4. Re-run after a game patch (one command)
 
@@ -178,6 +194,44 @@ one commit, never a hand-edit of a single constant:
 
 ## 6. Log history
 
+- 2026-08-26 — Rule-8 gate rider R2 doc-truth pass (DocFixer; brief
+  [docs/briefs/docfixer-r2-gate.mdx](docs/briefs/docfixer-r2-gate.mdx);
+  findings in
+  [docs/arbiter-rule8-gate.mdx §4](docs/arbiter-rule8-gate.mdx)). (1) §2 pin
+  sweep completed: 14 previously unpinned pipeline tools pinned by sha256 +
+  size (`cdb_census`, `wtpak_verify`, `hbson_decode`, `hbson_emit`,
+  `formula_emit`, `icon_export`, `locale_bridge_dig` at its r3/D-1 final
+  bytes `53711e4d…` commit `e07ad3c`, `battle_terrain_dig`, `hl_disasm`,
+  `hl_decompile`, `dig15_logic_edges`, `dig15_sample_verify`,
+  `dig15_ui_coverage`, `_crosscheck`) — no tool bytes changed under an
+  existing pin. (2) §3 stage-3 row corrected: the decompile OUTPUTS are
+  shipped and verified (digs 8+13); the stage stub stays NOT BUILT /
+  exit 3 until the walk wires the pinned tools in — wiring remains the
+  code-side remainder of this rider (docs-only here per brief). (3)
+  `validate_all.py` expectation re-freeze post-digs 14/15: the red leg was
+  `availability-regenerated` (FAIL 7/8 since dig 14 landed), doubly stale —
+  the frozen wave-1 numbers (3,779 rows / 3 kinds / `filler_class_cells`
+  grid) predate the 34-kind surface, AND dig 14's generator rewrite stopped
+  printing the JSON report on stdout (it now lands
+  `output/_dig-locale-wave2/report.json`), so the child contract could never
+  satisfy again. Re-frozen from measured disk truth (reproduced live at
+  re-freeze: 14,456 rows over 34 kinds, locale law {∅, exact-9} plus exactly
+  the two measured fr-gap exceptions fiefCondition/
+  CompleteFiefMission+GovernmentAssign at exact-8-minus-fr, filler census
+  exactly 3 = fr-extra 1 + pivot-present-locale-gap 2); validator now loads
+  the child's freshly-written report artifact (mtime-guarded) when stdout is
+  not JSON. Result: **validate_all PASS 8/8**,
+  `VALIDATION-REPORT.md` + `validation-report.json` regenerated current
+  (pass: true, buildid 20318128). Known residue, NOT introduced here:
+  test_stages_toolchain T10 family (8 cases) errors identically on HEAD —
+  dig 14 broke both its stdout premise and its wave-1-shape synthetic green
+  tree (verified against HEAD before any edit); fixture re-freeze belongs to
+  the next code-touching pipeline/test fixer together with the stage-3
+  wiring. (4) `maps.json` gate labels updated to post-dig-11/12 truth and
+  PROOF R4/R10 sentences corrected — see [docs/data-dig-log.mdx](docs/data-dig-log.mdx)
+  R2-docfixer entry; the `map_tiles.py` generator constants still carry the
+  pre-D7/D11 label strings, so a registry rerun would resurrect them until
+  that file's next touch updates both together (ledgered there).
 - 2026-08-26 — Post-r1 fix waves land; stages 4–6 cleared to ship (verdict
   APPROVE-FOR-SHIP-COMMIT,
   [docs/arbiter-stages-build-r2.mdx](docs/arbiter-stages-build-r2.mdx);

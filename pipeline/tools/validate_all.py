@@ -25,6 +25,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import wave_kinds        # noqa: E402
@@ -88,6 +89,36 @@ FROZEN_DEFERRED = (
       "ghost/curse views"),
      "none - joins"),
 )
+
+# Rider-R2 expectation re-freeze (2026-08-26, post digs 14+15): dig 14 grew
+# the managed locale surface 3→34 kinds / 3,779→14,456 rows (triple-verified:
+# verify-dig14-a/b/delta PASS), replaced the r1 `filler_class_cells` grid
+# with the exhaustive symmetric filler census (exactly 3 instances
+# pack-wide), and the wave-1 bimodal locale law {∅, exact-9} gained exactly
+# TWO measured exceptions — fiefCondition/CompleteFiefMission +
+# GovernmentAssign resolve in all client locales EXCEPT fr (the headerless
+# export_fr.xml vintage gap, dig-14 filler instances 1+2). All values below
+# are frozen from that verified disk state (reproduced by the generator
+# itself at re-freeze time); any NEW partial locale set, missing kind, or
+# extra filler instance fails here loudly.
+EXPECTED_AVAIL_ROWS = 14456
+EXPECTED_AVAIL_PER_KIND = {
+    "attribute": 27, "battle": 133, "bonus": 495, "class": 281,
+    "condition": 18, "confessions": 87, "counter": 622, "credits": 67,
+    "effect": 66, "element": 5078, "fiefAdministration": 15,
+    "fiefAlignment": 5, "fiefCondition": 20, "fiefEvent": 377,
+    "fiefLaw": 43, "fiefMission": 12, "fiefPlace": 19,
+    "fiefPopulation": 11, "group": 790, "groupType": 97, "icon": 801,
+    "input": 84, "item": 2125, "itemType": 96, "kingdom": 9,
+    "mission": 22, "notify": 482, "place": 534, "region": 13,
+    "skill": 1373, "startChoice": 29, "status": 330, "trait": 214,
+    "tutorial": 81,
+}
+EXPECTED_FILLER_CENSUS = {"total": 3,
+                          "by_class": {"fr-extra": 1,
+                                       "pivot-present-locale-gap": 2}}
+LOCALE_LAW_EXCEPTIONS = {("fiefCondition", "CompleteFiefMission"),
+                         ("fiefCondition", "GovernmentAssign")}
 
 
 def die(msg):
@@ -221,18 +252,36 @@ def main(argv=None):
         gates["cdb_verify"]["allChecksPassed"])
 
     # ---- child 2: deterministic availability regeneration + own report -----
+    # Rider-R2 note: since dig 14 the generator prints a human digest on
+    # stdout and lands its machine report at output/_dig-locale-wave2/
+    # report.json, so after a rc==0 run the report is loaded from that
+    # artifact — accepted only if it was (re)written during THIS child run
+    # (mtime guard), never a stale dig-era file.
     avail_argv = [os.path.join(tools, "locale_bridge_dig.py")]
+    child_t0 = time.time()
     a = subprocess.run([sys.executable] + avail_argv,
                        capture_output=True, text=True)
     report = None
+    report_source = None
     if a.returncode == 0:
         try:
             report = json.loads(a.stdout)
+            report_source = "stdout"
         except json.JSONDecodeError:
-            report = None
+            artifact = os.path.join(PACK_ROOT, "output",
+                                    "_dig-locale-wave2", "report.json")
+            try:
+                fresh = os.path.getmtime(artifact) >= child_t0 - 5
+                if fresh:
+                    with open(artifact, encoding="utf-8") as f:
+                        report = json.load(f)
+                    report_source = "artifact"
+            except (OSError, ValueError):
+                report = None
     gates["locale_bridge_dig"] = {
         "argv": ["python"] + avail_argv, "exitCode": a.returncode,
-        "reportParsed": report is not None}
+        "reportParsed": report is not None,
+        "reportSource": report_source}
 
     # ---- canonical datasets -------------------------------------------------
     # R1/F14: iterate the MANAGED universe only — a non-managed intruder never
@@ -349,7 +398,9 @@ def main(argv=None):
     # ---- availability (from the generator's OWN report, arbiter F7) --------
     if report is None:
         add("availability-regenerated",
-            "locale_bridge_dig exits 0 and prints a parseable report",
+            "locale_bridge_dig exits 0 and its machine report parses "
+            "(stdout JSON, or the fresh output/_dig-locale-wave2/"
+            "report.json artifact it writes)",
             f"exit {a.returncode}, parsed={(a.returncode == 0)}", False)
         avail_rows = avail_per_kind = 0
         overlay_entities = None
@@ -378,41 +429,50 @@ def main(argv=None):
                     f"row{row_i}: UNREADABLE {type(x).__name__}: {x}")
                 continue
             avail_per_kind[kind_name] = avail_per_kind.get(kind_name, 0) + 1
-            # F4 corrected invariant, frozen from measurement (2026-08-25):
-            # both histograms are strictly bimodal {0: 458/560, 9: 3321/3219}
-            # — a row lawfully carries ALL official locales or NONE; partial
-            # sets do not exist and under-reporting must fail.
+            # F4 invariant as re-frozen post-dig-14 (rider R2): a row
+            # lawfully carries ALL official locales or NONE, except exactly
+            # the two measured fr-gap rows (headerless export_fr.xml
+            # vintage) which carry the exact-8-minus-fr set — any OTHER
+            # partial set fails.
             if av not in (set(), EXPECTED_LOCALES) \
                     or named not in (set(), EXPECTED_LOCALES):
-                locale_law_bad.append(
-                    f"{kind_name}/{row.get('id', '?')}: "
-                    f"av={sorted(av)} named={sorted(named)}")
-        fillers = report.get("filler_class_cells", {})
-        grid_keys = [(k, loc) for k in sorted(fillers)
-                     for loc in sorted(fillers[k])]
-        grid_bad = [(k, loc, v) for k, locs in sorted(fillers.items())
-                    for loc, v in sorted(locs.items()) if v != 0]
+                exempt = (
+                    (kind_name, row.get("id")) in LOCALE_LAW_EXCEPTIONS
+                    and av == named == EXPECTED_LOCALES - {"fr"})
+                if not exempt:
+                    locale_law_bad.append(
+                        f"{kind_name}/{row.get('id', '?')}: "
+                        f"av={sorted(av)} named={sorted(named)}")
+        filler = report.get("filler_census") or {}
+        fill_ok = (filler.get("total") == EXPECTED_FILLER_CENSUS["total"]
+                   and filler.get("by_class")
+                   == EXPECTED_FILLER_CENSUS["by_class"])
         locales_ok = set(report.get("locales", [])) == EXPECTED_LOCALES
         overlay_entities = sum(
             sum(loc.values()) for loc in
             report.get("overlay_entity_counts", {}).values())
         add("availability-regenerated",
-            "rows=3779 (item=2125 skill=1373 class=281); locales=9; per-row "
-            "available/named locale sets in {empty, exact 9-official set} "
-            "(measured bimodal law); filler_class_cells grid = 3kinds x "
-            "9locales = 27 keys, all 0",
-            f"rows={len(avail_lines)} "
+            f"rows={EXPECTED_AVAIL_ROWS} over "
+            f"{len(EXPECTED_AVAIL_PER_KIND)} kinds == the post-dig-14 "
+            "frozen per-kind table; locales=9; per-row available/named "
+            "locale sets in {empty, exact 9-official set} except exactly "
+            "the 2 measured fr-gap rows (fiefCondition/"
+            "CompleteFiefMission+GovernmentAssign at exact-8-minus-fr); "
+            "filler_census total=3 (fr-extra 1 + pivot-present-locale-gap "
+            "2)",
+            f"rows={len(avail_lines)} over {len(avail_per_kind)} kinds "
             f"(item={avail_per_kind.get('item')} skill={avail_per_kind.get('skill')} "
             f"class={avail_per_kind.get('class')}); locales="
             f"{len(set(report.get('locales', [])))}; "
             f"localeLawViolations={locale_law_bad[:4] or 0}; "
-            f"grid={len(grid_keys)} keys, {len(grid_bad)} nonzero"
+            f"fillerCensus={filler.get('total')} instances "
+            f"({json.dumps(filler.get('by_class', {}), sort_keys=True)})"
             + (f"; readFaults={avail_read_faults[:4]}"
                if avail_read_faults else ""),            # R14 locator
-            len(avail_lines) == 3779
-            and avail_per_kind == {"item": 2125, "skill": 1373, "class": 281}
+            len(avail_lines) == EXPECTED_AVAIL_ROWS
+            and avail_per_kind == EXPECTED_AVAIL_PER_KIND
             and locales_ok and not locale_law_bad
-            and len(grid_keys) == 27 and not grid_bad
+            and fill_ok
             and not avail_read_faults)
 
     # ---- catalog parity -----------------------------------------------------

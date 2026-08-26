@@ -1918,5 +1918,80 @@ decomposes as **245 id-less `<t>` rows + the 6 recovered keyed rows**
 depth ≤ 1 absence of 111 is unaffected (the six sit at depth 3).
 Figures in this entry are stated post-r3.
 
+## 2026-08-26 — Rider-R2 doc-truth pass (gate arbiter §4 defects 1–4)
+
+**Agent:** fresh DocFixer (brief
+[briefs/docfixer-r2-gate.mdx](briefs/docfixer-r2-gate.mdx)); no subagents;
+no commits; docs + EXTRACTION-LOG pins only, plus the provably-stale
+validator expectation re-freeze. Ran after D-1's r3 landed (`e07ad3c`), so
+every measurement below is against the settled locale tooling. All four
+defects from
+[arbiter-rule8-gate §4](arbiter-rule8-gate.mdx) are closed:
+
+1. **PROOF R4 catalogue sentence corrected.** "MEDIA-CATALOGUE.md does not
+   exist yet either" was false — the file has existed since the map-pipeline
+   pass (2026-08-25) with the five map.pak imagery classes
+   ([MEDIA-CATALOGUE](../extracted/MEDIA-CATALOGUE.md)). R4 now states the
+   real residue: Wwise/audio, HMD-model and remaining texture rows are still
+   absent from that catalogue.
+2. **VALIDATION-REPORT refreshed; red leg closed.** `validate_all.py`
+   expectation re-freeze post-digs 14/15 (the rider's own first item; the
+   only sanctioned code touch): the leg was doubly stale — frozen wave-1
+   numbers (3,779 rows / 3 kinds / `filler_class_cells` grid) vs the
+   triple-verified 34-kind surface, AND dig 14's generator rewrite moved the
+   machine report off stdout to `output/_dig-locale-wave2/report.json`, so
+   the child contract could never parse again. Re-frozen from live
+   measurement (regen reproduced dig-14 exactly: availability **14,456 rows
+   over 34 kinds**, per-kind table embedded in the tool; locale law
+   {∅, exact-9} plus exactly TWO measured exceptions — fiefCondition/
+   CompleteFiefMission+GovernmentAssign at exact-8-minus-fr, filler census
+   instances 1+2; filler census total exactly **3** = fr-extra 1 +
+   pivot-present-locale-gap 2); the validator now loads the child's
+   freshly-written report artifact under an mtime guard instead of requiring
+   stdout JSON. Result: **validate_all PASS 8/8**, report regenerated current.
+   Data was never touched — only expectations.
+3. **EXTRACTION-LOG pin sweep + stage-3 row.** 14 unpinned tools pinned by
+   sha256 + size (`cdb_census`, `wtpak_verify`, `hbson_decode`,
+   `hbson_emit`, `formula_emit`, `icon_export`, `locale_bridge_dig` at its
+   r3/D-1 final bytes, `battle_terrain_dig`, `hl_disasm`, `hl_decompile`,
+   `dig15_logic_edges`, `dig15_sample_verify`, `dig15_ui_coverage`,
+   `_crosscheck`); no existing pin had drifted. Stage-3 row now says what is
+   true: outputs shipped and verified (digs 8+13), stage stub stays NOT
+   BUILT/exit 3 until the walk wires the pinned tools in — the wiring itself
+   remains this rider's code-side remainder.
+4. **maps.json gate labels updated to post-dig-11/12 truth** (schema-valid):
+   region-overlays + marker-layers gates read closed-D7/D11; the eleven
+   H-POI typed marker kinds read "closed-D11 (rides generic poi rows; typed
+   split queued)" with pins still 0 by design (Dig 11 queue 2 / rider R7);
+   poi-marker + location-place read resolved-D11 (spec coordinate-sources
+   vocabulary); encounter-spawn/vendor-npc read unknown-P1; hunt-regions'
+   polygon source reads resolved-D11-through-pinned-sampler with emission
+   queued; fief-districts separates decode-closed-D7 from coords unknown-P1;
+   `battleTactical.status` reads decoded-D12 with the dataset ref + ledgered
+   n.bin ch3 residual. Also folded defect 4's second half: PROOF R10's
+   `_meta.cdbDeclarations` sentence now matches disk (83 of 107 families;
+   24 r1-era files keep r1 probe metadata).
+
+**Ledgered debt for the next code-touching pipeline fixer** (this pass was
+docs-only by brief):
+
+- `pipeline/map_tiles.py` generator constants still carry the pre-D7/D11
+  label strings this pass corrected only in the emitted artifact:
+  `MARKER_LAYERS` (~lines 1235–1253, third tuple element `"D5"` /
+  `"D5 (P1 slice)"`), the layer-gate literals (~1383 `"D5 HBSON decode"`,
+  ~1389, ~1409 `"D5/D6 polygon source"`, ~1415 `"D5/D6"`), and
+  `battleTactical` `status: "P1-out-of-first-slice"` (~1441). A registry
+  rerun would resurrect them — update those constants AND regenerate
+  `extracted/data/maps.json` in the same commit (suite pins shape keys
+  only, not label values, so no test edits are required).
+- `test_stages_toolchain.py` T10 family (8 cases) errors on HEAD — verified
+  identical BEFORE this pass touched anything: dig 14 broke both the
+  validator's stdout-report premise and the fixture's wave-1-shape synthetic
+  green tree (`_availability_rows` synthesizes 3,779 rows / 3 kinds). The
+  fixture premise is self-declared ("only an exact-shape replica can pass"),
+  so it must be re-frozen to the post-dig-14 table together with any future
+  expectation change; owned by the same code-side fixer as the stage-3
+  wiring.
+
 <!-- END OF wartales/docs/data-dig-log.mdx -->
 
