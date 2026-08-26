@@ -1,0 +1,44 @@
+# Brief — Verifier: Dig 17 deferred-kind carriers
+
+Fresh Verifier agent; never spawn subagents; never commit; Wartales pack
+only. Deliverable: `docs/verify-dig17.mdx`. Scratch ONLY under
+`output/_verify-dig17/`; read-only everywhere else.
+
+Subject: Dig 17 claims (`docs/data-dig-log.mdx` entry): 49 new family
+files in `extracted/relinks/_logic/` / 17,467 edges {12,164 managed +
+5,303 sibling-deferred/constant} / 0 dangling; `_ledger_deferred.jsonl`
+6 classes; census reproduces gate figures exactly (73 paths / 13,429
+refs); code-side families via CDB-enum mechanism
+(Script.hx.hx f#12343); catalog `deferredOutbound{}`/`ledgeredDeferred{}`
+additive sections; validate_all PASS both sides.
+
+Mechanical:
+1. Census reproduction — rebuild the typed-path table yourself from
+   `_meta.hiddenSubSheets`; confirm 73/13,429 and the 24-path/2,102-ref
+   exclusion set.
+2. Count integrity — tally files/edges/class histogram from disk;
+   dangling independently recomputed (both endpoint joins).
+3. Spot rederivation — 12 sampled edges across ≥8 families incl. the
+   largest (element__element, element__item npc.unit, group__groupType)
+   re-derived from cited locators + one consumer grep each.
+4. Determinism — rerun `pipeline/tools/dig17_deferred_carriers.py` into
+   scratch twice; byte-identical to shipped.
+5. validate_all — expect PASS 8/8.
+6. Catalog arithmetic — deferredOutbound counters match your tallies;
+   scaffold envelope byte-equal claim spot-checked (107/7,184 unchanged).
+
+Adversarial:
+7. Break attempt — 10 NEW locators not in the dig's own sample sets;
+   plus 5 negative controls of your own construction (mutated values
+   must be rejected by the family schema/mechanism).
+8. Code-side mechanism attack — pick 3 script-enum pairs; confirm the
+   CDB enum value genuinely maps to the claimed target id at runtime
+   semantics (read the cited hl-src lines; check the enum table).
+9. Ledger honesty — compound-dialog-node class: sample 20 choice→block
+   refs; confirm they truly resolve into the owning row's block ids
+   (0 misses claimed) and that emitting them as entity-id edges would
+   be WRONG (justifying the ledger decision).
+10. Overclaim scan — PROOF R10(b) "LANDED" wording vs artifacts; any
+    silent drop beyond the 6 ledgered classes = finding.
+
+Verdict at top: PASS / FAIL with failing ids. Quote outputs.
