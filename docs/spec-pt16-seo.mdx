@@ -1,7 +1,9 @@
 # Wartales — SEO/AEO infra spec (PT16: sitemaps · robots · JSON-LD · OG cards · llms.txt · IndexNow)
 
-Status: DRAFT r1 (2026-08-26) — awaiting Reviewer. Authored by the
-Documentator from brief
+Status: revised r1 (2026-08-26) — Spec Fixer pass over
+[`review-spec-pt16-seo.mdx`](./review-spec-pt16-seo.mdx) (6 MAJOR, 6 MINOR,
+all addressed; finding-by-finding ledger in [Revision r1](#revision-r1)).
+Authored by the Documentator from brief
 [`docs/briefs/documentator-pt16-seo.mdx`](./briefs/documentator-pt16-seo.mdx),
 piece row [PT16](./pieces.mdx) ("SEO/AEO infra … data dep: emit stage").
 Inputs read in full: root [`AGENTS.md`](../../AGENTS.md),
@@ -13,13 +15,17 @@ Inputs read in full: root [`AGENTS.md`](../../AGENTS.md),
 [`_foundation/design-standard.md`](../../_foundation/design-standard.md),
 [`FRAMEWORK.md`](../../FRAMEWORK.md) end-to-end (§2.10 + §8 DoD govern here),
 pack [`spec.md`](../spec.md) (pack README.md / data-acquisition.md do not
-exist), [`contracts/maps.schema.json`](../contracts/maps.schema.json), the F2
-brief [`documentator-f2-contracts.mdx`](./briefs/documentator-f2-contracts.mdx),
-the F4 brief [`documentator-f4-shell.mdx`](./briefs/documentator-f4-shell.mdx),
+exist), [`contracts/maps.schema.json`](../contracts/maps.schema.json),
 [`docs/icons-export.mdx`](./icons-export.mdx) (CDN path convention),
 [`extracted/relinks/locale_availability.jsonl`](../extracted/relinks/locale_availability.jsonl)
-(row shape verified on disk), and the current `site/` tree (F1 tokens +
-public assets only — no Next.js scaffold yet).
+(row shape verified on disk), and the current `site/` tree. **r1 additions:**
+the two LANDED dependency specs, now frozen authority this revision conforms
+to — [`docs/spec-f2-contracts.mdx`](./spec-f2-contracts.mdx) (§6 URL
+derivation law, §4 locale segments) and
+[`docs/spec-f4-app-shell.mdx`](./spec-f4-app-shell.mdx) (§2 locale table,
+§3 routing, §9 import points) — replacing the briefs-as-inputs of the r0
+draft; see [r1 conflicts](#r1-conflicts) for the one place they disagree
+with each other.
 
 ## 0. Scope in one line
 
@@ -29,7 +35,8 @@ the robots/noindex policy including the deliberate AI-crawler stance,
 schema.org JSON-LD emitters per page type, the OG/Twitter card slot fed
 from extracted art, the `/llms.txt` machine-data-plane contract, and the
 IndexNow publish ping — everything specified so that CodeWriter can land it
-as soon as F4's shell routes and F2's API shape freeze.
+as soon as F4's shell build and F2's stage-7 emission land (both specs are
+frozen authority now — [§11](#11-dependencies-and-sequencing)).
 
 ## 1. Authority chain
 
@@ -67,10 +74,11 @@ as soon as F4's shell routes and F2's API shape freeze.
   no interface-explaining sentences, no read-twice labels
   ([DR-2026-08-22-copy-earns-its-place]).
 - **Sequencing law** ([pieces.mdx](./pieces.mdx)): F4/F5 + PT16 skeleton
-  precede the DB core pieces. This spec is written against F4's route
-  registry and F2's contract manifest as declared dependencies ([§11](#11-dependencies-and-sequencing));
-  where those do not exist yet, the dependency is named and the acceptance
-  criterion is marked BLOCKED-ON, never loosened.
+  precede the DB core pieces. This spec is written against F4's frozen shell
+  spec and F2's frozen contracts spec as landed dependencies ([§11](#11-dependencies-and-sequencing));
+  where a dependency's *build* has not landed yet (F4 shell routes, F2
+  stage-7 emission), the acceptance criterion is marked BLOCKED-ON, never
+  loosened.
 
 ## 2. Ground truth (frozen numbers this spec builds on)
 
@@ -83,34 +91,61 @@ All numbers re-verified on disk this session, buildid **20318128**
 | Pivot | `en` at bare paths; all others prefixed | [DR-2026-08-20-locale-urls] |
 | Community locale | `ja` = authored-translation candidate, filler-policy `omit-until-translated` — absent everywhere until translated | spec.md §locales |
 | Locale availability artifact | `extracted/relinks/locale_availability.jsonl` — row = `{"availableLocales": [...], "fields": {<locale>: {name: true}}, "id", "kind", "namedLocales": [...]}`; regenerated per extraction rerun | on disk; localization-architecture §5.4 |
-| Managed kinds | 40 kinds promoted to canonical `extracted/data/<kind>.jsonl`; census total 11,473 entities | [spec-stages-datasets.mdx](./spec-stages-datasets.mdx) |
+| Managed kinds | 40 kinds promoted to canonical `extracted/data/<kind>.jsonl`; canonical dataset rows Σ **10,207** (the 11,473 whole-file closure adds 1,266 `extracted/logic/constants.jsonl` logic-constant rows — formula rows, never entity pages) | [spec-stages-datasets.mdx](./spec-stages-datasets.mdx) census table; F2 §2 |
 | Icon CDN set | `output/cdn/v20318128/{kind}/{id}.webp` — 3,779 files (3,199 real art + 580 named placeholder); `misses.jsonl` enumerates every explicit-missing id | [icons-export.mdx](./icons-export.mdx) |
 | Icon pixel sizes | 96 px nominal, tile spans up to 96×192 preserved | icons-export.mdx |
 | Relations | 51 seed pair files / 19,130 edges; ordered-pair matrix upgrade is a later dig | spec-stages-datasets.mdx |
 | Maps | layers world-strategic, region-overlays, marker-layers, hunt-regions, battle-tactical, fief-districts; global affine transform pinned in `maps.json` `coordinateTransform` (Dig 11) | spec.md §maps; contracts/maps.schema.json |
 | Stack | `stack: next` (App Router); placement provisional umbrella `{hub}/games/wartales/`, localhost-first | spec.md; [DR-2026-08-24-wartales-roster] |
 
-Page math: full corpus × locales ≈ 11,473 × 9 ≈ **103 k** potential entity
-URLs at full availability, plus lists/guides/news/map/tool surfaces —
-sitemaps must therefore be sharded from day one (§4.3), not retrofitted.
+Page math (r1 — referent corrected per review M-C): the entity-page universe
+is the **canonical dataset rows**, 10,207 across the 40 managed kinds; the
+census closure total 11,473 includes 1,266 logic-constant rows that can
+never have entity pages and is not a URL denominator. At full nine-locale
+availability that is ≈ **92 k** potential entity URLs (10,207 × 9 = 91,863),
+plus lists/guides/news/map/tool surfaces. At the frozen wave-1 snapshot the
+dependency specs cite (F2 §2; verified on disk at the r0 review) the
+availability artifact carried **3,779** ids across the three wave-1 kinds
+(item 2,125 · skill 1,373 · class 281) ≈ **34 k** URLs at full availability
+(34,011) — and 458 of those rows already carried partial availability, so
+the omit policy bites immediately, not hypothetically. Availability row
+counts grow per extraction rerun as later waves land (dig 14 regenerates
+overlays + availability across the managed universe); because §4.2 derives
+`entities` membership from the availability file at each build, growth
+changes emitted bytes without a spec change or a new sharding decision.
+Sitemaps are sharded from day one (§4.3) — the conclusion holds at either
+magnitude.
 
 ## 3. Canonical URL and locale layer (consumed from F4)
 
 This layer is F4's deliverable; PT16 only pins the rules the SEO machinery
 depends on and declares the single import point.
 
-1. **One import point.** Every SEO generator reads locales/routes through
-   F4's route registry module (`site/src/lib/routes.ts`, created by F4;
-   exact filename is F4's to confirm). PT16 code never hardcodes a locale
-   list or a route spelling. If F4 renames a segment, sitemaps/hreflang/
-   canonicals follow automatically — that is the dependency made mechanical.
-2. **Segment spellings (expected values, F4-freezes).** URL segments are the
-   pack locale codes verbatim: `/fr/`, `/de/`, `/es/`, `/pl/`, `/pt-BR/`,
-   `/ru/`, `/ko/`, `/zh/`. The **hreflang attribute value** is the BCP-47
-   form from the spec's code mapping (`pt-BR` stays `pt-BR`, `zh` becomes
-   `zh-Hans`); URL segment and hreflang value may differ for `zh` and that
-   is intended. `ja` appears nowhere until its authored-translation lane
-   ships (omit-until-translated).
+1. **One import point (r1 — re-pointed at F4's landed modules, review M-B).**
+   Every SEO generator reads locales/routes only through F4's frozen modules
+   ([spec-f4-app-shell.mdx](./spec-f4-app-shell.mdx) §1/§9):
+   `src/i18n/locales.ts` (the single client-code ↔ segment-id ↔ BCP-47
+   table), `src/i18n/routing.ts` (the segment/prefix law), and
+   `src/lib/routes-manifest.ts` (render-only-existing route rows), with
+   locale-aware links built through `src/i18n/navigation.ts`. PT16 code
+   never hardcodes a locale list or a route spelling, and creates no mapping
+   module of its own — F4 §2 rules "No second mapping may appear anywhere in
+   `site/`". If F4 flips a segment value (its §2 reserves an Orchestrator
+   casing override), sitemaps/hreflang/canonicals follow automatically —
+   that is the dependency made mechanical.
+2. **Segment spellings (r1 — consumed from F4's frozen table, review M-B).**
+   URL segments are F4's registry ids: `/fr/`, `/de/`, `/es/`, `/pl/`,
+   `/pt-br/` (lowercase id by F4's URL-hygiene ruling), `/ru/`, `/ko/`,
+   `/zh/`. The **hreflang / `<html lang>` / `og:locale` values** are the
+   BCP-47 forms carried by the same F4 table (`pt-BR`, `zh-Hans`) — segment
+   id and BCP-47 value differ for Portuguese-Brazil and Chinese and that is
+   intended. The join that makes this work: `locale_availability.jsonl`
+   rows carry **client codes** (`pt-BR`), so every consumer of
+   `availableLocales` maps once through F4's `locales.ts` (`clientCode` →
+   id / BCP-47 columns); PT16 never re-derives the pair.
+   `ja` appears nowhere until its authored-translation lane ships
+   (omit-until-translated). See [r1 conflicts](#r1-conflicts) for the
+   pt-BR data-plane spelling tension between F2 and F4.
 3. **Pivot rules.** No `/en/` URL ever exists; any `/{pivot}/*` path 301s to
    the bare path (seo-standard §1). `x-default` hreflang points at the bare
    path. Home canonical is the form that answers 200 — `/` for pivot,
@@ -147,19 +182,24 @@ not fake dates") and localization-architecture §5.4 ("locale_availability
 The generator iterates a static registry (one table in
 `site/src/lib/seo/sitemap.ts`). Membership rule per section; a section with
 zero shipped routes emits no child sitemap at all — empty sections are
-omitted, never captioned ([DR-2026-08-22-copy-earns-its-place]):
+omitted, never captioned ([DR-2026-08-22-copy-earns-its-place]). Route
+families below name **sections**, not literal paths: the literal page-tree
+shapes are F2 §6's frozen surfaces (`/{kind}`, `/{kind}/{id}`,
+`/{kind}/{id}/tooltip`, `/db`, `/map`), emitted through F4's registry — no
+`/db/…`-prefixed entity routes anywhere (r1, review m-2; FRAMEWORK's
+`/db/…` example is evidence shape, not doctrine):
 
-| Section | Route family (F4/PT spelling pending) | Membership | lastmod source |
+| Section | Route family (F2 §6 frozen shapes; F4 registry emits) | Membership | lastmod source |
 |---|---|---|---|
 | `pages` | `/`, `/methodology`, `/changelog`, legal/static | fixed list | site build time |
-| `taxonomies` | DB landing + per-kind landing | one per shipped kind | max(member entity lastmod) |
-| `lists` | paginated kind lists, real page numbers | page 1..N as shipped | max(member entity lastmod) |
-| `entities` | entity detail pages | **cartesian product of `locale_availability.jsonl` `availableLocales` × shipped locales, per id × kind** | per-row extraction-run instant (below) |
+| `taxonomies` | DB landing (`/db`) + per-kind landing | one per shipped kind | max(member entity lastmod) |
+| `lists` | paginated kind lists (`/{kind}`), real page numbers | page 1..N as shipped | max(member entity lastmod) |
+| `entities` | entity detail pages (`/{kind}/{id}`) | **cartesian product of `locale_availability.jsonl` `availableLocales` × shipped locales, per id × kind** | extraction-run instant of the producing run ([§4.3](#43-lastmod-semantics)) |
 | `map` | `/map` + region/place landings when shipped | routes that exist | `maps.json` buildid run instant |
 | `guides` | guide articles | published guides | article frontmatter date |
 | `news` | news articles + `/news/patch/{id}` diff pages | published articles | article publish / diff-run instant |
-| `lore` | lore-document pages | published documents | per-row extraction-run instant |
-| `quests` | quest pages | published quests | per-row extraction-run instant |
+| `lore` | lore-document pages | published documents | extraction-run instant of the producing run ([§4.3](#43-lastmod-semantics)) |
+| `quests` | quest pages | published quests | extraction-run instant of the producing run ([§4.3](#43-lastmod-semantics)) |
 | `tools` | calculator/builder/gallery landings | shipped tools | tool build time |
 
 Sections `guides`, `news`, `quests`, `lore`, `tools` activate as their
@@ -177,6 +217,18 @@ anywhere — no sitemap entry, no hreflang alternate, no link-row cell
   associated `buildId` renders on the page itself as the user-facing
   freshness evidence (FRAMEWORK §8, D2). The sitemap timestamp is a machine
   plane fact; the page shows the buildid, not the clock.
+- **Granularity and normalization (r1 — pinned per review m-3).** The report
+  carries one instant **per run/buildid** (`generated`, written by
+  `datetime.now()` host wall-clock, deliberately offset-naive — declared
+  exemption, arbiter stages ruling F9/m1), so every entity row of a build
+  shares one value; "per-row" never meant finer than a run. PT16 emits that
+  value **verbatim** — no zone suffix is invented for it (the pack does not
+  fill absent facts), and no host-local→UTC conversion is attempted (that
+  would make committed bytes machine-dependent). Equality against the
+  source is therefore exact string equality with the run's recorded
+  instant, which is what makes AC-S4 decidable and AC-S6 byte-stable. If
+  the extraction plane later records an explicit offset, the value passes
+  through unchanged.
 - Never hand-edited, never future-dated, never faked forward to look fresh
   (seo-standard §2). A rerun on the same buildid rewrites the same
   timestamps — byte-stable output is tested ([§13](#13-acceptance-criteria) AC-S6).
@@ -185,8 +237,12 @@ anywhere — no sitemap entry, no hreflang alternate, no link-row cell
 
 ### 4.4 Generation and triggers
 
-- Generated **at site build time** by the Next.js app
-  (`app/sitemap.ts` + `app/sitemaps/[shard]/route.ts`) reading
+- Generated **at site build time** by the Next.js app — the sitemapindex as
+  a custom route handler `app/sitemap.xml/route.ts`, the child urlsets at
+  `app/sitemaps/[shard]/route.ts` (r1, review m-6: Next's `app/sitemap.ts`
+  Metadata convention serializes a plain `<urlset>` only and cannot express
+  a hand-shaped `<sitemapindex>` with custom children; CodeWriter verifies
+  serialization against F4's pinned Next version before landing) — reading
   `extracted/relinks/locale_availability.jsonl`, `extracted/data/_meta`
   conventions, and the validation report through one loader module
   (`site/src/lib/seo/source.ts`). Extraction cadence and deploy cadence
@@ -246,7 +302,7 @@ against the production origin (AC-R6, PROD-gated).
 |---|---|---|
 | Facet/filter combinations of list pages (`?quality=tier2&element=fire`) | meta `noindex,follow` + `rel=canonical` → base list | seo-standard §2 "noindex filter/facet combinations"; thin-combo floor §5 |
 | Parameter variants generally | canonical to the clean URL | seo-standard §2 |
-| Tooltip sub-routes (`/db/{kind}/{id}/tooltip`) | `X-Robots-Tag: noindex` (payload is a fragment, not a page) | FRAMEWORK §2.7 tooltip route; duplicate-content hygiene |
+| Tooltip sub-routes (`/{kind}/{id}/tooltip`, F2 §6 shape — r1, review m-2) | `X-Robots-Tag: noindex` (payload is a fragment, not a page) | FRAMEWORK §2.7 tooltip route; duplicate-content hygiene |
 | Map URL-state variants (`?z&x&y&focus=`) | canonical → `/map`; state params never indexed separately | map state is a URL for sharing, not a page universe |
 | UGC personal views (user profiles, tracker states, unpublished drafts) | `noindex` until they carry public content | uniqueness floor, seo-standard §5 |
 | Concept/placeholder rows, if any ever ship | `noindex,nofollow` + excluded from every sitemap | [DR-2026-08-20-guildwars-build] guardrail pattern |
@@ -278,9 +334,11 @@ comprehension, not snippet bait: `HowTo` rich results are retired and
   server component (served HTML — FRAMEWORK §2.14 curl-grep verifiable).
 - **Identity parity is structural**: names/descriptions come from the same
   loaded entity record that renders the H1 and that F2's JSON API will
-  serve — one data plane, two renders, and `llms.txt` reads the same
-  records ([§9](#9-llmstxt-content-contract)). Assistants reconciling
-  sources must find zero drift (seo-standard §9 one-identity rule).
+  serve — one data plane, two renders; `llms.txt` participates in that
+  identity by linking entry points generated from those same records
+  ([§9](#9-llmstxt-content-contract)) — it links indexes rather than
+  enumerating entities. Assistants reconciling sources must find zero drift
+  (seo-standard §9 one-identity rule).
 
 ### 6.2 Per-page-type inventory
 
@@ -295,7 +353,7 @@ comprehension, not snippet bait: `HowTo` rich results are retired and
 | News + patch-diff pages (PT11) | `NewsArticle` (headline, datePublished, dateModified, image) | publication date = the article's own fact, permitted by [DR-2026-08-22-numbers-stand-alone] |
 | Tool pages (PT07–PT09) | `SoftwareApplication` with `applicationCategory`, offers omitted (nothing is sold) | conditional when tools ship |
 | Map page (PT05) | `WebPage` + `BreadcrumbList`; `Dataset` referencing marker payload | markers are data |
-| Everywhere except home | `BreadcrumbList` mirroring the visible trail exactly | seo-standard §1: visible + structured |
+| Everywhere except home | `BreadcrumbList` mirroring the visible trail exactly | seo-standard §1: visible + structured. **Declared deviation (r1, review m-1):** the root page renders no trail — it has no ancestors — so both the visible breadcrumb and its `BreadcrumbList` are omitted there rather than emitted as a one-node stub; from the first child level up, §1's letter applies in full. Declared here so nothing is silently relaxed. |
 
 ### 6.3 Sitewide graph
 
@@ -328,10 +386,13 @@ Subclass `Thing` only where the subclass's semantics are true:
 Every entity node carries: `name` (locale record), `description`
 (quotable answer block text — FRAMEWORK §2.8 same builder feeds meta
 description), `image` (OG slot chain, §8), `identifier` (game id),
-`isPartOf` → the VideoGame node, `subjectOf` → the stable JSON URL derived
-from the page URL (seo-standard §9 stable-data-URL rule; the payload shape
-is F2's contract — link emitted only when F2's manifest marks the route
-live).
+`isPartOf` → the VideoGame node, and `subjectOf` → the stable JSON URL
+derived from the page path by **F2's frozen derivation rule** (F2 §6,
+r1 — review M-A: this spec's r0 paraphrase was not F2's rule): *take the
+page path, strip the optional leading locale segment, prepend `data/`,
+append `.json`* — e.g. `/de/item/Gold` → `/data/de/item/Gold.json`, pivot
+`/item/Gold` → `/data/item/Gold.json`. The payload shape is F2's contract;
+the link is emitted only when F2's manifest marks the route live.
 
 `BreadcrumbList` items equal the DOM breadcrumb (count, order, names,
 hrefs) — compared by test (AC-J2), because divergent breadcrumbs are the
@@ -389,9 +450,15 @@ touching page code.
 
 1. Rendered card from the manifest (empty until the later piece lands);
 2. kind fallback card (static, extracted-art-based, one per kind);
-3. sitewide default card (extracted key art crop from the UIA pool —
-   `design/sources/INDEX.mdx` imagery; committed under
-   `site/public/assets/og/default.png`).
+3. sitewide default card — an extracted key-art crop staged **at setup
+   time** into `site/public/assets/og/default.png` from the pack's local
+   design-sources pool (`design/sources/`, INDEX.mdx imagery; game-derived
+   binary). The binary is **never committed** (AGENTS.md rule 5, r1 per
+   review M-F): a committed `site/public/assets/og/README.md` documents the
+   crop source and the copy command, mirroring the fonts/textures README
+   conventions, and `.gitignore` gains the matching exclusion line. On a
+   fresh clone the resolver reports the missing default via that README's
+   stage step instead of silently 404ing (F4 §8 AC-12 pattern).
 Icons themselves are **never** used as `og:image` (96 px < the 200 px
 minimum platforms enforce); they feed JSON-LD `image` and page body
 instead. `twitter:card` = `summary_large_image`; Twitter tags mirror OG
@@ -436,12 +503,15 @@ records as pages and JSON-LD. Structure:
    - live session figures (Steam-connected sessions) live on a separate
      ephemeral plane and are not part of the static entity JSON.
 4. **`## JSON data`** — the entry-point links, generated from F2's
-   published-contracts manifest so URLs cannot drift: per-kind list
-   indexes, the entity JSON URL derivation rule ("replace nothing — the
-   JSON for a page lives at the page URL + `.json`", F2's shape decision),
-   tooltip payloads, map/markers JSON. Links are emitted **only for
-   manifests that exist** — an unbuilt F2 route is not linked (non-empty
-   gate honesty).
+   published-contracts manifest (`contracts/api.manifest.json`) so URLs
+   cannot drift: per-kind list indexes, tooltip payloads, the `/db`
+   taxonomy index, map/markers JSON — plus F2's frozen derivation rule
+   stated verbatim (r1 per review M-A; the r0 paraphrase attributed to F2
+   a rule it explicitly decided differently): *take the page path, strip
+   the optional leading locale segment, prepend `data/`, append `.json`*
+   — an entity page `/de/item/Gold` serves its JSON at
+   `/data/de/item/Gold.json`. Links are emitted **only for manifests that
+   exist** — an unbuilt F2 route is not linked (non-empty gate honesty).
 5. **`## Maps`** — `maps.json` + marker payload pointers.
 6. **`## News & changes`** — patch-diff summaries/RSS when PT11/PT18 ship.
 7. **`## Methodology`** — link to `/methodology` (route owned by a content
@@ -482,8 +552,8 @@ ecosystem indexes from it; ChatGPT search leans on the Bing index").
 
 | Dependency | What PT16 consumes | Status |
 |---|---|---|
-| **F4 shell routes** (`docs/spec-f4-app-shell.mdx` pending) | route registry module, locale segment spellings, layout mount points for JSON-LD/meta tags, breadcrumb anatomy (DOM trail that BreadcrumbList must mirror), canonical/redirect behavior | F4 brief exists, spec not landed — PT16 code imports the registry; nothing hardcodes |
-| **F2 API shape** (`contracts/` + `docs/spec-f2-contracts.mdx` pending) | JSON entry-point URL list for llms.txt §JSON data, `subjectOf` targets, the page-URL→JSON-URL derivation rule | F2 brief exists, spec not landed — llms.txt emits links only for manifest-present routes |
+| **F4 shell** ([`docs/spec-f4-app-shell.mdx`](./spec-f4-app-shell.mdx)) | locale model `src/i18n/locales.ts` (client-code → id → BCP-47), segment/prefix law `src/i18n/routing.ts`, links via `src/i18n/navigation.ts`, nav rows `src/lib/routes-manifest.ts`; locale segment spellings; layout mount points for JSON-LD/meta tags; breadcrumb anatomy (DOM trail that BreadcrumbList must mirror); canonical/redirect behavior | **LANDED** (r1 per review M-B — spec frozen 2026-08-26); shell *build* pending. PT16 imports those modules and creates no second mapping; route-dependent criteria stay BLOCKED-ON(the built shell), never on the spec |
+| **F2 contracts** ([`docs/spec-f2-contracts.mdx`](./spec-f2-contracts.mdx) + its `contracts/api.manifest.json`) | JSON entry-point URL list for llms.txt §JSON data, `subjectOf` targets, the page-path→JSON-URL derivation rule (§6) | **LANDED** (r1 per review M-B); stage-7 *emission* wiring pending. llms.txt emits links only for manifest-present routes |
 | **Emit stage** (`spec-stages-datasets.mdx` stages 4–6) | `locale_availability.jsonl`, per-run instants in `validation-report.json`, `_meta` buildid | landed/spec'd |
 | **CDN set** (`output/cdn/v{buildid}/`) | entity images for JSON-LD; OG manifest slot | landed for item/skill/class @ v20318128 |
 | **PT05/PT07–PT13** | sections `map`/`tools`/`guides`/`news`/`quests`/`lore` activate as routes ship | registry rows exist now, emit nothing |
@@ -497,8 +567,9 @@ rather than reinventing them).
 
 ## 12. Out of scope
 
-- The static JSON API payloads themselves (F2's contracts + later stage-7
-  emission wiring — F2's brief flags it the same way).
+- The static JSON API payloads themselves (F2's frozen contracts + later
+  stage-7 emission wiring — [F2 §13](./spec-f2-contracts.mdx) hands that
+  piece off the same way).
 - Per-entity rendered OG image generator (later piece; slot defined §8.1).
 - `llms-full.txt`, `@gamedb/embed`, Discord bot, `@gamedb/mcp` (post-launch
   bundle, FRAMEWORK §8).
@@ -507,6 +578,24 @@ rather than reinventing them).
   `NewsArticle` publication metadata are the §9 content-feed expectation).
 - Monetization surfaces (ads.txt et al.) — owner call, site-sections §28.
 - Search (no route exists — F5 header field).
+- **Deferred binding clauses of the standard, named so none is ownerless
+  (r1 per review m-4):**
+  - *Bot/user render parity* (seo-standard §2 "no cloaking, one render") is
+    honored structurally by this layer — every PT16 artifact (meta tags,
+    JSON-LD, sitemaps, llms.txt) is emitted by the same server components
+    that render the user DOM; no UA/bot-conditional branch exists in any
+    PT16 module, and none may be added. Cloaking-audit verification beyond
+    that structural claim belongs to the FRAMEWORK §8 launch DoD run.
+  - *CWV budgets* (seo-standard §4; FRAMEWORK §8 CWV smoke per entity-page
+    template × locale): deferred to the launch DoD execution and to a CI
+    perf-budget owner no rostered piece covers today — flagged to the
+    orchestrator via the [PROGRESS.mdx](./PROGRESS.mdx) question queue
+    rather than silently dropped.
+  - *Measurement gates* (seo-standard §7: GSC + Bing Webmaster Tools,
+    index-coverage audit, answer-engine referral tracking): post-launch ops
+    owned by the owner/orchestrator at launch — zero code in PT16;
+    recorded here because referral absence after launch "is a finding, not
+    silence".
 
 ## 13. Acceptance criteria
 
@@ -530,10 +619,13 @@ script's `--full` flag.
   `locale_availability.jsonl.availableLocales ∩ shipped-locales` joined
   with the entity route pattern — script-asserted, zero extra, zero
   missing.
-- **AC-S4** every `<url>` element carries a `<lastmod>` matching
-  `^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(Z|[+-]\d{2}:\d{2})$`, and sampled
-  entity lastmods equal the validation-report run instant for their
-  buildid (script).
+- **AC-S4** (r1 — equality pinned to the source's offset-naive form, review
+  m-3) every `<url>` element carries a `<lastmod>` matching
+  `^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(Z|[+-]\d{2}:\d{2})?$` — zone
+  optional because the source instant is deliberately offset-naive and none
+  is invented ([§4.3](#43-lastmod-semantics)) — and sampled entity lastmods
+  are **exactly string-equal** to the validation-report `generated` value
+  for their buildid (script; no normalization on either side).
 - **AC-S5** `curl -s localhost:3000/sitemaps/entities-en.xml | grep -c
   '/en/'` → 0 (and the same grep across all fetched children → 0).
 - **AC-S6** byte stability: regenerate twice from unchanged inputs;
@@ -548,8 +640,9 @@ script's `--full` flag.
   `Allow: /` (grep per token, exit 0 for all).
 - **AC-R2** robots.txt `Sitemap:` line equals the configured
   production-origin sitemap URL; `curl -sI` on it → 200.
-- **AC-R3** facet noindex: `curl -sI
-  'localhost:3000/db/item?quality=tier2'` shows `X-Robots-Tag: noindex`
+- **AC-R3** (r1 — probe re-pointed at the F2 §6 route shape, review m-2)
+  facet noindex: `curl -sI
+  'localhost:3000/item?quality=tier2'` shows `X-Robots-Tag: noindex`
   (or the served HTML meta equivalent via `curl -s | grep 'noindex'`),
   and the same URL's payload declares `rel=canonical` to the base list.
   BLOCKED-ON(F4 list routes).
@@ -567,7 +660,7 @@ script's `--full` flag.
 **JSON-LD**
 
 - **AC-J1** entity page: `curl -s <entity-url> | python
-  tools/parse_jsonld.py -` extracts all `application/ld+json` blocks,
+  pipeline/tools/parse_jsonld.py -` extracts all `application/ld+json` blocks,
   parses each as JSON, and finds exactly one `VideoGame`, one
   `BreadcrumbList`, one entity node of the mapped type. BLOCKED-ON(F4
   entity routes; component testable standalone before that).
@@ -580,10 +673,12 @@ script's `--full` flag.
 - **AC-J4** news page yields `NewsArticle` with `datePublished`; kind
   landing yields `Dataset` whose `version` equals the current buildid
   string. BLOCKED-ON(PT11 / F2 manifest).
-- **AC-J5** identity parity: for N sampled entities, `name` in JSON-LD ==
-  H1 text == F2 JSON API `name` == the name string in `llms.txt`'s kind
-  index sample (four-source diff script, zero mismatches). Partially
-  BLOCKED-ON(F2).
+- **AC-J5** (r1 — fourth leg dropped, review M-E: §9's llms.txt links
+  indexes and defines no per-entity name source) identity parity: for N
+  sampled entities, `name` in JSON-LD == the H1 text == F2 JSON API `name`
+  (three-source diff script, zero mismatches). llms.txt's identity role is
+  its linked entry points — covered by AC-L3 fetching them; those payloads'
+  names come from the same loaded records. Partially BLOCKED-ON(F2).
 - **AC-J6** `curl -s <page>` on any page lacking a rendered FAQ/Q&A block
   contains no `FAQPage` token (negative guard for markup-precedes-content).
 - **AC-J7** every emitted JSON-LD block parses as strict JSON (all probed
@@ -602,8 +697,9 @@ script's `--full` flag.
   'hreflang'` yields exactly `availableLocales` entries (BCP-47 forms) +
   one `x-default` pointing at the bare-path URL; no `/en/` alternate
   anywhere. BLOCKED-ON(F4).
-- **AC-T4** pivot redirect: `curl -sI localhost:3000/en/db/item/x` →
-  `301` with `Location:` stripping `/en`. BLOCKED-ON(F4 middleware).
+- **AC-T4** (r1 — probe re-pointed at the F2 §6 route shape, review m-2)
+  pivot redirect: `curl -sI localhost:3000/en/item/x` → `301` with
+  `Location:` stripping `/en`. BLOCKED-ON(F4 middleware).
 
 **OG / Twitter**
 
@@ -611,9 +707,13 @@ script's `--full` flag.
   `og:url`, `og:type`, `og:image`, `og:image:width`, `og:image:height`,
   `og:image:alt`, `twitter:card` — grep loop exit 0; `og:url` equals the
   canonical URL from AC-T3's probe.
-- **AC-O2** `og:image` value resolves HTTP 200 (`curl -sI`) at every
+- **AC-O2** (r1 — staged-machine clause added with the M-F staging
+  contract) `og:image` value resolves HTTP 200 (`curl -sI`) at every
   buildid version it references, and equals the §8.2 chain's expected
-  entry (default card today — asserted literally).
+  entry (default card today — asserted literally). Runs on a staged
+  machine; on a fresh clone the run reports the unstaged default card via
+  the `site/public/assets/og/README.md` stage step instead of failing the
+  suite (F4 §8 AC-12 precedent).
 - **AC-O3** `og:locale` equals the page locale; alternates equal the
   availability set (same script as AC-T3).
 
@@ -636,8 +736,10 @@ script's `--full` flag.
 
 **IndexNow**
 
-- **AC-I1** `curl -s localhost:3000/{key}.txt` returns exactly the key
-  string (36-byte body, newline tolerated).
+- **AC-I1** (r1 — byte count corrected to the §10 contract, review M-D)
+  `curl -s localhost:3000/{key}.txt` returns exactly the key string —
+  **32 ASCII bytes** (33 with a trailing newline tolerated); the key
+  itself is 32 hex chars per IndexNow key material rules.
 - **AC-I2** chunking: the ping script unit-fed 25,001 URLs produces 3
   requests with ≤10,000 urls each (vitest, no network).
 - **AC-I3** safety guard: with origin=localhost or key absent, the script
@@ -655,7 +757,7 @@ public assets only):
 site/src/lib/seo/source.ts            # single loader: availability, _meta buildid, run instants
 site/src/lib/seo/config.ts            # origin, brand slot, key refs (reads F4/env)
 site/src/lib/seo/sitemap.ts           # section registry + sharding builders
-site/src/app/sitemap.ts               # sitemapindex route
+site/src/app/sitemap.xml/route.ts     # sitemapindex — custom handler (r1, review m-6: app/sitemap.ts serializes urlset only)
 site/src/app/sitemaps/[shard]/route.ts# child urlsets
 site/src/app/robots.ts                # robots.txt incl. AI-crawler groups
 site/src/lib/seo/noindex.ts           # meta/X-Robots-Tag helpers (facets, tooltips, staging)
@@ -666,17 +768,84 @@ site/src/lib/seo/hreflang.ts          # cluster + x-default builder
 site/src/lib/seo/og.ts                # slot chain resolver + tag emitter
 site/src/app/llms.txt/route.ts        # llms.txt generator (contract §9)
 site/src/lib/seo/llms-txt.ts          # its builder + denylist self-check
-site/public/assets/og/default.png     # extracted-art default card (UIA pool crop)
+site/public/assets/og/README.md       # default-card STAGING contract (r1, review M-F): source crop + copy command; the .png itself is never committed
 site/public/{key}.txt                 # IndexNow key file (generated once at setup)
 site/scripts/ping-indexnow.mjs        # deploy-step ping (diff → chunked POST, dry-run mode)
 site/src/lib/seo/seo.test.ts          # AC unit layer: uniqueness, chunking, guards, builders
-tools/parse_jsonld.py                 # AC helper: extract+validate JSON-LD from served HTML
+pipeline/tools/parse_jsonld.py        # AC helper: extract+validate JSON-LD from served HTML (r1, review m-5: pack Python tools live under pipeline/tools/)
 ```
 
-Edits to existing files: none required by this spec; F4 owns the layout
-mount points PT16's components attach to, and `docs/pieces.mdx` PT16 row
-already describes this piece. `EXTRACTION-LOG.md` gains nothing — the
-emit-stage outputs this layer consumes are specced in
+Edits to existing files (r1, reviews M-F/m-5 — the honest minimum; the r0
+"none required" claim was not achievable as specified): `site/package.json`
+gains the PT16 npm scripts (`ping`, dry-run variant) beside F4's additions —
+F4's untouched-keys list (`test`) stays untouched; pack `.gitignore` gains
+one line excluding `site/public/assets/og/*.png` so the staged game-derived
+default card can never be committed. F4 owns the layout mount points PT16's
+components attach to, and `docs/pieces.mdx` PT16 row already describes this
+piece. `EXTRACTION-LOG.md` gains nothing — the emit-stage outputs this layer
+consumes are specced in
 [spec-stages-datasets.mdx](./spec-stages-datasets.mdx).
 
+Committed-vs-staged split for §14: every path above is a new COMMITTED file
+except `site/public/assets/og/default.png` — game-derived art staged at
+setup per its README contract ([§8.2](#82-resolution-chain-implemented-now)),
+exactly like `site/public/fonts/*.woff2` and `site/public/assets/ui/*.png`
+(`site/public/{key}.txt` stays committed — a public verification token, not
+credential material).
+
 No files are committed by the Documentator (brief: never commit).
+
+## r1 conflicts
+
+Both dependency specs are frozen authority this revision conforms to; they
+disagree with each other in exactly one place, recorded here per the fix-loop
+rule instead of being resolved by editing either spec:
+
+- **pt-BR segment spelling across the two planes.** [F4 §2](./spec-f4-app-shell.mdx)
+  freezes page-route locale segments as lowercase registry ids (`pt-br`,
+  "URL hygiene… Orchestrator may override the casing"). [F2 §4](./spec-f2-contracts.mdx)
+  freezes ITS plane's locale segments as the client codes verbatim ("the 8
+  non-pivot CLIENT codes, exact strings: … `pt-BR` …"; the BCP-47 mapping
+  "never enters URLs"), and F2 §6 derives data URLs by stripping "the
+  optional leading locale segment" from a page path. Applied literally to an
+  F4-conformant page, `/pt-br/item/Gold` would therefore derive
+  `/data/pt-br/item/Gold.json`, while F2's own file naming pins
+  `/data/pt-BR/…` — a collision that exists only for Portuguese-Brazil
+  (every other code is case-stable across both specs). PT16 stays conformant
+  to both by hardcoding neither spelling: page URLs come from F4's registry,
+  JSON URLs are derived at build time through F2's `api.manifest.json`
+  (`locales` + `derivationRule` fields), so whichever way the owner
+  arbitrates the casing — F4 explicitly reserves that override — every
+  emitted link follows mechanically. Evidence on disk: F4 §2 table row
+  `` `pt-br` | `pt-BR` | `pt-BR` `` vs F2 §4 bullet and §6 table.
+- No other inter-authority conflict was found: F2's list/entity/tooltip
+  surface shapes, derivation bijection (AC7), and manifest fields, plus F4's
+  pivot-bare, no-negotiation, and trailing-slash rules, all match what PT16
+  consumes ([§3](#3-canonical-url-and-locale-layer-consumed-from-f4),
+  [§4.2](#42-section-registry)).
+
+## Revision r1
+
+Finding-by-finding ledger for [`review-spec-pt16-seo.mdx`](./review-spec-pt16-seo.mdx)
+(0 BLOCKER · 6 MAJOR · 6 MINOR — all addressed, none argued away):
+
+| id | severity | resolution | sections touched |
+|---|---|---|---|
+| M-A | MAJOR | `subjectOf` + llms.txt rule re-derived from F2 §6's actual law (strip locale → prepend `data/` → append `.json`, `/de/item/Gold` → `/data/de/item/Gold.json`); the invented "page URL + `.json`" quote attributed to F2 removed | §6.4, §9(4) |
+| M-B | MAJOR | import point re-pointed at F4's landed `i18n/{locales,routing,navigation}.ts` + `lib/routes-manifest.ts` (no second mapping); segment casing consumed as `pt-br` ids with the client-code→BCP-47 join named; both dependency statuses flipped to LANDED with BLOCKED-ON gating moved to the builds; pt-BR cross-spec tension recorded under [r1 conflicts](#r1-conflicts) | §3.1–3.2, §11 |
+| M-C | MAJOR | URL denominator corrected: 10,207 canonical entity rows ≈92 k full-availability URLs (constants' 11,473 closure excluded); today's honest figure 3,779 wave-1 ids ≈34 k with the omit policy already biting; growth policy stated | §2 |
+| M-D | MAJOR | AC-I1 body size fixed to the §10 contract: 32 ASCII bytes (33 with `\n`), key stays 32-hex IndexNow material | §13 AC-I1 |
+| M-E | MAJOR | fourth identity leg dropped — llms.txt carries no per-entity names by contract; AC-J5 is a three-source diff, llms.txt identity rides its linked entry points (AC-L3) | §6.1, §13 AC-J5 |
+| M-F | MAJOR | `default.png` no longer a commit: staged-at-setup game-derived crop behind a committed README staging contract + `.gitignore` exclusion, fonts/textures convention; AC-O2 gains the staged-machine clause | §8.2, §14 |
+| m-1 | MINOR | home breadcrumb omission declared and justified inline as a deviation (root has no trail), no longer silent | §6.2 |
+| m-2 | MINOR | `/db/…` spellings removed; F2 §6 frozen route shapes pinned in §4.2; probe targets re-pointed | §4.2, §5.3, §13 AC-R3, AC-T4 |
+| m-3 | MINOR | `lastmod` = the report's offset-naive run instant emitted verbatim (no zone invented, one instant per run/buildid stated); AC-S4 zone made optional with exact string equality | §4.2, §4.3, §13 AC-S4 |
+| m-4 | MINOR | seo-standard §2 render-parity, §4 CWV budgets, §7 measurement gates given explicit owners/pointers in out-of-scope | §12 |
+| m-5 | MINOR | zero-edits claim replaced by the honest minimum (`site/package.json` scripts, `.gitignore` line); `parse_jsonld.py` homed under `pipeline/tools/` | §14, §13 AC-J1 |
+| m-6 | MINOR | sitemapindex mechanism re-pinned as custom handler `app/sitemap.xml/route.ts` (`app/sitemap.ts` serializes `<urlset>` only) with a CodeWriter verify-vs-pinned-Next note | §4.4, §14 |
+
+AC inventory unchanged in membership: **35 acceptance criteria** after
+revision (S1–S7 · R1–R6 · J1–J7 · T1–T4 · O1–O3 · L1–L4 · I1–I4), six of
+them carrying `(r1)` intent markers where their testable content changed
+(AC-S4, AC-R3, AC-T4, AC-J5, AC-O2, AC-I1); all remain curl/script-
+verifiable per seo-standard rules.

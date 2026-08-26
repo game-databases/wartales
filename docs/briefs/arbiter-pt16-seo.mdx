@@ -1,0 +1,40 @@
+# Brief — Arbiter: PT16 SEO/AEO spec r1
+
+Fresh Arbiter agent; never spawn subagents; never commit; Wartales pack
+only. Deliverable: `docs/arbiter-pt16-seo.mdx`. Judge only — edit
+nothing outside your deliverable.
+
+Inputs, read IN FULL:
+1. `docs/review-spec-pt16-seo.mdx` — the 12 findings (M-A..M-F,
+   m-1..m-6) that drove the revision.
+2. `docs/spec-pt16-seo.mdx` AS REVISED — `## Revision r1` ledger +
+   `(r1)`-tagged AC bodies (S4, R3, T4, J5, O2, I1) + `## r1 conflicts`.
+3. Authorities: `_foundation/seo-standard.md` §1–§9 IN FULL;
+   FRAMEWORK.md §2.10 + §8; `_foundation/localization-architecture.md`
+   §2–§3, §5.1; [DR-2026-08-20-locale-urls].
+4. Frozen authorities the fixer conformed to:
+   `docs/spec-f2-contracts.mdx` §6 (API URL law) and
+   `docs/spec-f4-app-shell.mdx` §3 (route/segment law).
+
+Per finding id, rule **RESOLVED / WEAKENED / UNRESOLVED** with anchor
+quoted briefly. WEAKENED = addressed formally but dilutes a binding
+seo-standard clause or makes an AC unfalsifiable.
+
+**Adjudication duty:** rule on the recorded `## r1 conflicts` item —
+the F2-vs-F4 pt-BR segment collision. Determine from the authorities
+whether this is (a) a genuine contradiction between frozen specs that
+must be surfaced to the orchestrator as a cross-spec errata (state
+EXACTLY which clause of which spec must change, but do not change it),
+or (b) a naming-layer distinction (URL segment vs BCP-47 identity) that
+PT16 already handles correctly once its own text disambiguates. Your
+ruling binds downstream pieces either way.
+
+Then sweep revision neighborhoods for NEW defects; amended ACs must
+stay curl-verifiable per seo-standard rules.
+
+Verdict at top:
+- **APPROVE-FOR-BUILD** (with your conflicts ruling recorded), noting
+  actual build stays gated on the pack's rule-8 data gate; or
+- **NEEDS_REVISION** with enumerated residuals.
+
+End with count summary.
