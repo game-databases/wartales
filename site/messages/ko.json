@@ -1,0 +1,29 @@
+{
+  "chrome": {
+    "nav": {
+      "database": "Database",
+      "map": "Map",
+      "guides": "Guides",
+      "news": "News",
+      "tools": "Tools"
+    },
+    "header": {
+      "homeLabel": "Home"
+    },
+    "locale": {
+      "triggerLabel": "Change language",
+      "listLabel": "Available languages"
+    },
+    "a11y": {
+      "skipToContent": "Skip to content"
+    },
+    "footer": {
+      "label": "Wartales Database",
+      "sections": "Sections"
+    },
+    "notFound": {
+      "title": "Page not found",
+      "body": "This page does not exist."
+    }
+  }
+}

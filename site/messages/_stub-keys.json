@@ -1,0 +1,15 @@
+[
+  "chrome.a11y.skipToContent",
+  "chrome.footer.label",
+  "chrome.footer.sections",
+  "chrome.header.homeLabel",
+  "chrome.locale.listLabel",
+  "chrome.locale.triggerLabel",
+  "chrome.nav.database",
+  "chrome.nav.guides",
+  "chrome.nav.map",
+  "chrome.nav.news",
+  "chrome.nav.tools",
+  "chrome.notFound.body",
+  "chrome.notFound.title"
+]

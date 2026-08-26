@@ -302,7 +302,11 @@ async function legPivot301(base) {
   for (const t of targets) {
     try {
       const res = await fetchx(base + t, { redirect: "manual" }, 30000);
-      const loc = (res.headers.get("location") ?? "").replace(/\/$/, "");
+      // Trailing-slash normalization must preserve the ROOT location "/":
+      // /en's required Location IS "/", and stripping its slash to "" would
+      // fail the comparison below against wantLoc("/en") === "/".
+      const raw = res.headers.get("location") ?? "";
+      const loc = raw.length > 1 && raw.endsWith("/") ? raw.slice(0, -1) : raw;
       if (res.status !== 301) bad.push(`${t}→${res.status} (want permanent 301)`);
       else if (loc !== wantLoc(t)) bad.push(`${t}→Location ${loc} (want ${wantLoc(t)})`);
     } catch (e) {

@@ -1,0 +1,161 @@
+/* ==========================================================================
+   F4 app-shell global stylesheet — the only new stylesheet (§6).
+   Consumes the F1 canon (tokens.css) verbatim: this file declares NO token
+   value of its own. Every mapping whose right side names a canon value takes
+   the aliasing form `--x: var(--x-source)` — never a literal copy (§6
+   aliasing law, r1/r1b): no color hexes, no radius lengths, no font stacks,
+   no durations. `--radius-*` is declared NOWHERE (canon L167–171 owns it;
+   square is F1 §2.4 canon — no rounded-* corner utility may appear in any
+   shell/app source).
+   ========================================================================== */
+
+@import "tailwindcss";
+@import "./tokens.css";
+
+@theme inline {
+  /* ---- shadcn slots ---- */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* ---- game surfaces ---- */
+  --color-bg-1: var(--bg-1);
+  --color-bg-2: var(--bg-2);
+  --color-bg-3: var(--bg-3);
+  --color-bg-4: var(--bg-4);
+  --color-panel-well: var(--panel-well);
+
+  /* ---- text ramp (colors) ---- */
+  --color-text-main: var(--text-main);
+  --color-text-emph: var(--text-emph);
+  --color-text-desc: var(--text-desc);
+  --color-text-bright: var(--text-bright);
+  --color-text-muted: var(--text-muted);
+  --color-text-disabled: var(--text-disabled);
+
+  /* ---- accents + semantics ---- */
+  --color-selection: var(--selection);
+  --color-positive: var(--positive);
+  --color-negative: var(--negative);
+  --color-warning: var(--warning);
+
+  /* ---- rarity + player identity ---- */
+  --color-rarity-0: var(--rarity-0);
+  --color-rarity-1: var(--rarity-1);
+  --color-rarity-2: var(--rarity-2);
+  --color-rarity-3: var(--rarity-3);
+  --color-light-rarity-1: var(--light-rarity-1);
+  --color-light-rarity-2: var(--light-rarity-2);
+  --color-light-rarity-3: var(--light-rarity-3);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-player-1: var(--player-1);
+  --color-player-2: var(--player-2);
+  --color-player-3: var(--player-3);
+  --color-player-4: var(--player-4);
+
+  /* ---- fonts: utilities point back into the canon stacks ---- */
+  --font-ui: var(--font-ui);
+  --font-flavor: var(--font-flavor);
+  --font-cjk: var(--font-cjk);
+  --font-sans: var(--font-sans);
+  --font-serif: var(--font-serif);
+  --font-mono: var(--font-mono);
+
+  /* ---- type ramp: the five canon steps, canon-owned values ---- */
+  --text-sm: var(--text-sm);
+  --text-base: var(--text-base);
+  --text-dialog: var(--text-dialog);
+  --text-lg: var(--text-lg);
+  --text-display: var(--text-display);
+
+  /* ---- spacing: the game's 5px rhythm as NAMED steps (§6 item 3).
+     Tailwind's numeric scale is deliberately NOT remapped onto it;
+     raw numeric spacing utilities are banned in shell/app sources. ---- */
+  --spacing-g1: var(--space-1);
+  --spacing-g2: var(--space-2);
+  --spacing-g3: var(--space-3);
+  --spacing-g4: var(--space-4);
+  --spacing-g5: var(--space-5);
+  --spacing-g6: var(--space-6);
+  --spacing-g7: var(--space-7);
+  --spacing-g8: var(--space-8);
+}
+
+@layer base {
+  :root {
+    color-scheme: dark; /* :root IS dark (F1 canon; no light theme ships) */
+  }
+
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-ui);
+  }
+}
+
+@layer components {
+  /*
+   * HeaderBg band (F1 canon texture contract): 245×35 HeaderBg.png,
+   * 9-slice margin 10 — the game's section band, height locked at 35px with
+   * the −3px title offset applied by content riding the band. Absent the
+   * staged binary (fresh clone) the border-image falls back to the bevel
+   * lines — render never blocks (AC 12 fallback half).
+   */
+  .wt-band-header {
+    border-style: solid;
+    border-width: 10px;
+    border-image: var(--tex-header-bg) 10 stretch;
+    background-color: var(--bg-2);
+    min-height: 35px;
+  }
+
+  .wt-title-offset {
+    margin-top: -3px; /* the −3px title offset over bands (F1 canon) */
+  }
+
+  /*
+   * Restrained motion (shadcn-adoption §layers): state ease at the canon
+   * duration/ease only; prefers-reduced-motion flattens it; motion never
+   * gates content.
+   */
+  .wt-pop-in {
+    animation: wt-pop-in var(--duration-fast) var(--ease-state);
+  }
+
+  @keyframes wt-pop-in {
+    from {
+      opacity: 0;
+      transform: translateY(-2px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .wt-pop-in {
+      animation: none;
+    }
+  }
+}
