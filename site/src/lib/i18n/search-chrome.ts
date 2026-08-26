@@ -22,6 +22,12 @@ export const SEARCH_CHROME_EN = {
   "search.kind.item": "Items",
   "search.kind.skill": "Skills",
   "search.kind.class": "Classes",
+  // Fix round r2 (code M-1): a failed artifact fetch reads as MISSING in
+  // plain words ([DR-2026-08-22-numbers-stand-alone] §1) — never as a
+  // fabricated `0` for whatever the reader typed. The retry word is an
+  // affordance label, not instructional copy.
+  "search.unavailable": "Search is unavailable for this language",
+  "search.retry": "Retry",
 } as const;
 
 export type SearchChromeKey = keyof typeof SEARCH_CHROME_EN;

@@ -43,8 +43,8 @@
         },
         "href": {
           "type": "string",
-          "pattern": "^/(item|skill|class)/[^\\/]+|^/(de|es|fr|ko|pl|pt-br|ru|zh)/(item|skill|class)/[^\\/]+$",
-          "description": "Composed from the routeTable for this file's locale; pivot bare, pt-BR keyed file carries /pt-br/… (never /pt-BR/…); never contains /search."
+          "pattern": "^(?:/(?:item|skill|class)/[^/]+|/(?:de|es|fr|ko|pl|pt-br|ru|zh)/(?:item|skill|class)/[^/]+)$",
+          "description": "Composed from the routeTable for this file's locale; pivot bare, pt-BR keyed file carries /pt-br/… (never /pt-BR/…); never contains /search. Anchored as ONE group — the r1 alternation parsed as (^A)|(B$), so any string containing /item/<seg>/… validated; fixed in fix round r2 (m-4)."
         }
       }
     },

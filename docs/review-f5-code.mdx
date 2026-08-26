@@ -225,3 +225,37 @@ Verdict stands: **NEEDS-FIX** — close M-1 (small component fix + one
 failure-leg test) and F5 is CLEAN; the eight minors are backlog-grade,
 and both spec-letter divergences should move into the next spec revision
 as errata per §D rather than into code.
+
+## Fix round r2
+
+Fixer ledger for this review (2026-08-26, brief
+[`docs/briefs/specfixer-f5-build-r2.mdx`](./briefs/specfixer-f5-build-r2.mdx)).
+Every id resolved on the tree; verification quoted at the bottom. The
+TestWriter suite's own minors are ledgered in
+[`review-f5-tests.mdx`](./review-f5-tests.mdx#fix-round-r2).
+
+| id | resolution |
+|---|---|
+| M-1 | CLOSED. `SiteSearchField.tsx` tracks a load state (`loading/ready/unavailable`); a rejected artifact fetch renders the plain-word absence state (`search.unavailable` = "Search is unavailable for this language") with a `Retry` affordance that re-fetches while the field stays open (the promise cache self-drops on failure), and the live region announces the absence in words instead of a number. `SearchResultsView` branches to the absence surface BEFORE the zero-match branch, so the `0`+echo state stays scoped to genuine zero matches (§5.4). Suite legs: a 404 artifact produces NO bare `0` digit leaf, live region carries words not digits, retry recovers to real hits without close+reopen. Two chrome keys added to the interim resolver (`search.unavailable`, `search.retry`) — they ride H-4's merge mechanics unchanged. |
+| m-1 | LEDGERED, not reverted. `.gitignore`'s `site/public/data/` stays (substance right: game-derived artifact local per AGENTS.md rule 5); the AC-1/§11 amendment ("artifacts local-only; envelope = code + registry + gitignore line") is queued for the next spec revision alongside [XF-A/XF-B](#d-the-two-strict-xfail-divergences) — frozen ACs untouched this round per brief. Fresh clones still get the artifact via `run_all.ps1 emit`; suite 4's red-first absent-artifact leg documents the dependency. |
+| m-2 | LEDGERED. §11's stale `site/package.json` premise (three devDeps actually arrived with F4's 6bd451d) recorded here as an errata candidate for the same next-revision pass; no spec text edited. |
+| m-3 | STAYS AS IS, note kept. `"**/*.test.tsx"` remains excluded from tsc (needed for cleanliness today); the N2-class concern — type mistakes in the five F5 suites surface never under vitest's transform-only pipeline — stays recorded in the commit message, this review's m-3 row, and the test-review M-8 bundle until vitest types join tsconfig. |
+| m-4 | CLOSED. `contracts/search-index.schema.json` href pattern is now ONE anchored alternation: `^(?:/(?:item\|skill\|class)/[^/]+\|/(?:de\|es\|fr\|ko\|pl\|pt-br\|ru\|zh)/(?:item\|skill\|class)/[^/]+)$`. A string merely CONTAINING `/item/<seg>/…` no longer validates; nothing consumes the schema at runtime (ajv never runs), so emitted bytes are unchanged (determinism spot re-proven below). |
+| m-5 | CLOSED (test side). The grows assertion now pins the geometry law structurally: the `data-search-open` host must carry all four `md:data-[search-open]:absolute/inset-y-0/left-0/right-0` classes — a regression keeping the input word-width fails. |
+| m-6 | CLOSED (test side). AC-14 Tab leg added: every rendered result link must FOLLOW the field input in document order (`compareDocumentPosition`), consecutive links preserving matcher order — the structural form of "Tab reaches results in DOM order" (fixture recomposed to real page order: slot → field → main). AC-16 resolver unit added: `createSearchChrome` exercised directly — en resolution of all seven string keys, `{count}` substitution, partial-dictionary per-key en fallback. |
+| m-7 | CLOSED. Emitter gained the seen-set guard: a duplicate `(kind,id)` availability row exits 2 naming `locale_availability.jsonl` and the pair ("duplicate availability row item/I1 …"), before any flag walk. Pytest leg added; output bytes unchanged (guard only). |
+| m-8 | CLOSED. `groupHits` surfaces out-of-vocabulary kinds as their own trailing groups (stable name order, self-labelled by the kind string, FULL counts per the capping law) instead of silently dropping them — §12 map-search reuse keeps honest output. Suite leg: a `beast` hit renders its group header with count and its real link (queried under a beast-only term so the 50-row cap isn't the thing under test). |
+| XF-A | ROUTED TO SPEC, unchanged in code. Both reviewers ruled ACCEPT-AS-XFAIL; the strict xfail was split into two named markers (test-review M-2) and the errata candidate landed doc-only in [`spec-f5-search.mdx §Errata candidates`](./spec-f5-search.mdx#errata-candidates). No behavior change this round. |
+| XF-B | ROUTED TO SPEC, unchanged in code. Same disposition as XF-A: two-marker split + errata candidate appended to the spec; the emitter keeps reading overlays through the nine-code lens. |
+
+Verification (this machine, fix round r2): `npx tsc --noEmit` exit 0;
+vitest **170/170 green** across node+jsdom — normalize 10 · searchRows 24 ×
+2 environments · route-absence 9 · artifact 18 · SiteSearchField 23 = 108 F5
+cases, all 62 pre-F5 cases green inside `node` (the only red files in the
+full run are the concurrent PT16 builders' mid-flight `src/lib/seo/__tests__/`
+suites failing COLLECTION on their own not-yet-written `./_probe` module —
+not this round's tree);
+pytest `pipeline/tests/test_search_index.py`: **21 passed, 2 xfailed**
+(both strict, still XFAIL not XPASS); emitter determinism spot: two fresh
+runs sha256-identical ×10 AND byte-identical to `site/public/data/search/`
+(`en.json 170b593e9df3…`, `manifest.json 5198626f550c…`).

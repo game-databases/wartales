@@ -256,3 +256,30 @@ Break battery: 7 mutations attempted (5 vitest-side, 2 pytest-side), 6
 caught, 1 survived (M-1); strict-xfail bite verified (XPASS → suite failure).
 Live runs at review time: vitest 159/159 (97 F5 cases), pytest 18 passed +
 1 xfailed(strict).
+
+## Fix round r2
+
+Fixer ledger for this review's eight minors (2026-08-26, brief
+[`docs/briefs/specfixer-f5-build-r2.mdx`](./briefs/specfixer-f5-build-r2.mdx)).
+The code-review minors are ledgered in
+[`review-f5-code.mdx`](./review-f5-code.mdx#fix-round-r2).
+
+| id | resolution |
+|---|---|
+| M-1 | CLOSED. Two legs: (a) offender naming asserted on BOTH single-locale gates (`item.json` + entity id + the gate's own verdict phrase — no more "output non-empty"), and (b) a NEW all-locale corpus test: flag+membership dropped in all nine locales while every overlay keeps its name → cross-locale membership stays identical so ONLY Gate 2 can refuse; exit 2 asserted WITH Gate-2's own message vocabulary, closing the attribution window (the identity gate can no longer be the uncredited refuser). |
+| M-2 | CLOSED. The dual-divergence xfail is split into two named strict markers — `test_letter_divergence_xf_a_stray_non_searchable_kind_exit_2` and `…_xf_b_stray_overlay_locale_dir_exit_2` — each carrying its own reason (probe evidence, companion-test obligation, XPASS-removal instruction, pointer to the spec errata candidate). A partial adoption now flips exactly one marker. Both still report XFAIL, not XPASS. |
+| M-3 | CLOSED within scope. AC-6 gained an executable offline leg: the registration test asserts stage emit runs bridge → validate_all → search_index_emit in order, carries `--buildid`, and that StageInfo's description names the search index (what `--dry-run`/`--list` print is BECAUSE of this registry). Executing `pwsh ./run_all.ps1 --dry-run emit`, AC-1's execution + diff envelope, and AC-2's real-artifact sha256 pair stay documented-not-tested (orchestrator-owned) — recorded as such in the test docstring. |
+| M-4 | CLOSED. Tab leg added to the §7 describe: every rendered result link must follow the field input in document order, consecutive links preserving matcher best-first order (`compareDocumentPosition`) — the structural form of §7's "Tab reaches results in DOM order"; the fixture was recomposed to real page order (header slot → field → main) so the claim is meaningful. |
+| M-5 | CLOSED. AC-11 sweep gains the React token as a SECOND banned pattern applied to comment-stripped source WITH string literals kept — full string-stripping would erase the `from "react"` specifier and let the exact defect through. One leg per module; both green against the landed matcher sources. |
+| M-6 | CLOSED. Fixture pins the EVERY-occurrence word-edge law: row `Uncounted Count` vs query `count` — first occurrence sits mid-word inside "uncounted", only the post-space occurrence is at an edge — expected tier 2 in both projects. A first-index-only `wordEdgeMatch` now fails the frozen table. |
+| M-7 | CLOSED. Config-shape tripwire added to `searchRows.test.ts`: reads `site/vitest.config.ts` and fails unless the jsdom project still includes BOTH the component suite and `searchRows.test.ts`, and the node project keeps its tsx exclusion. Deleting either include entry now turns node-project red instead of silently going dark. |
+| M-8 | PARTIALLY closed, rest ledgered. Dead `vi.mock("next/navigation")` removed from the component suite. The tsconfig `.test.tsx` exclusion stays (needed for tsc cleanliness; N2-class concern carried in code-review m-3's row until vitest types join tsconfig). The artifact-suite coupling to `extracted/relinks/locale_availability.jsonl` remains a known fact for host moves — correct in-tree, disclosed here and in the suite header. |
+
+Post-fix verification (this machine): vitest **170/170** across node+jsdom
+(F5 cases now normalize 10 · searchRows 24×2 · route-absence 9 · artifact
+18 · SiteSearchField 23 = 108; pre-F5 62 unchanged-green); tsc exit 0;
+pytest **21 passed, 2 xfailed(strict)**; emitter determinism re-spot:
+two fresh runs byte-identical ×10 and equal to the tree. The only red in
+the full vitest run is the concurrent PT16 pair's mid-flight
+`src/lib/seo/__tests__/` files failing collection on their own absent
+`./_probe` helper — outside this round's scope, untouched.

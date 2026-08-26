@@ -17,6 +17,9 @@
 // surface found instead — never vacuous green.
 
 import { describe, expect, it, beforeAll } from "vitest";
+import { readFileSync } from "node:fs";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 
 type SearchRow = { kind: string; id: string; name: string; href: string };
 type SearchHit = { row: SearchRow; tier: 1 | 2 | 3 };
@@ -81,6 +84,12 @@ const ROWS: SearchRow[] = [
     name: "<item>OilBrave</item> Concentrate",
     href: "/item/i-oil",
   },
+  // Fix round r2 (test review M-6): pins the EVERY-occurrence word-edge law.
+  // In "uncounted count" the FIRST occurrence of "count" (index 3, preceded
+  // by 'n') is NOT at a word edge; only the SECOND (preceded by the space)
+  // is. A first-index-only wordEdgeMatch answers tier 3 here — this row
+  // forces tier 2, so §4.2's stronger letter cannot silently regress.
+  { kind: "skill", id: "s-count", name: "Uncounted Count", href: "/skill/s-count" },
 ];
 
 // ---- frozen expectations: [query, [[hitId, tier], …]] -----------------------
@@ -146,6 +155,11 @@ const EXPECTATIONS: Expectation[] = [
     q: "brave",
     want: [["i-oil", 3]],
     why: "mid-word inside the fused 'oilbrave' → genuine tier3",
+  },
+  {
+    q: "count",
+    want: [["s-count", 2]],
+    why: "word-edge law checks EVERY occurrence (M-6): first 'count' sits mid-word inside 'uncounted', only the post-space occurrence is at an edge — a first-index-only check would wrongly answer tier3",
   },
 ];
 
@@ -258,5 +272,38 @@ describe("DR clause 5 — one matcher, both sides (parity battery)", () => {
     for (const exp of EXPECTATIONS) {
       expect(m(ROWS, exp.q).map((h) => [h.row.id, h.tier])).toEqual(exp.want);
     }
+  });
+
+  it("tripwire: the projects config still routes BOTH environments (AC-8, test review M-7)", () => {
+    // AC-8's "executed under BOTH projects" is enforced by CONFIG CONTENT:
+    // deleting the jsdom include entries would leave every test green (each
+    // side just stops seeing its twin). This shape assertion closes that
+    // window — it fails the node-project run the day either include vanishes.
+    const siteRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
+    const cfgPath = join(siteRoot, "vitest.config.ts");
+    let text: string;
+    try {
+      text = readFileSync(cfgPath, "utf8");
+    } catch (e) {
+      throw new Error(`vitest.config.ts unreadable at ${cfgPath}: ${(e as Error).message}`);
+    }
+    const jsdomAt = text.indexOf('name: "jsdom"');
+    expect(jsdomAt, "projects config lost its jsdom project entirely").toBeGreaterThanOrEqual(0);
+    const jsdomBlock = text.slice(jsdomAt);
+    expect(
+      jsdomBlock.includes("src/components/header/__tests__/*.test.tsx"),
+      "jsdom include dropped the component suite — AC-10/12/14/15 legs go dark"
+    ).toBe(true);
+    expect(
+      jsdomBlock.includes("src/lib/search/__tests__/searchRows.test.ts"),
+      "jsdom include dropped searchRows.test.ts — the parity battery stops running twice"
+    ).toBe(true);
+    const nodeAt = text.indexOf('name: "node"');
+    expect(nodeAt, "projects config lost its node project").toBeGreaterThanOrEqual(0);
+    const nodeBlock = text.slice(nodeAt, jsdomAt);
+    expect(
+      nodeBlock.includes("src/components/header/__tests__/*.test.tsx"),
+      "node project must keep excluding the component suite (it is jsdom-only)"
+    ).toBe(true);
   });
 });

@@ -162,8 +162,14 @@ describe("§4.3 invariants over the whole table", () => {
 describe("AC-11 — matcher environment purity", () => {
   const BANNED =
     /\bwindow\b|\bdocument\b|\bnavigator\b|\blocalStorage\b|\bfetch\b|node:/;
+  // Fix round r2 (test review M-5): §4.1 ALSO bans React in the matcher
+  // modules, so the sweep gains that token. Applied to the comment-stripped
+  // source WITH string literals kept — full string-stripping would erase the
+  // module specifier of `import … from "react"` and let the exact defect
+  // through.
+  const BANNED_REACT = /\breact\b|\bReact\b/;
 
-  function sourceOf(rel: string): string {
+  function sourceOf(rel: string): { code: string; withStrings: string } {
     const p = join(searchDir, rel);
     let raw: string;
     try {
@@ -174,22 +180,37 @@ describe("AC-11 — matcher environment purity", () => {
           `purity sweep (${(e as Error).message})`
       );
     }
-    // Strip comments and string literals first: prose MENTIONING fetch must
-    // not fail the sweep, only real usage (m-4 discipline from F4 tests).
-    return raw
+    // Strip comments first: prose MENTIONING fetch/react must not fail the
+    // sweep, only real usage (m-4 discipline from F4 tests).
+    const withStrings = raw
       .replace(/\/\*[\s\S]*?\*\//g, " ")
-      .replace(/(^|[^:])\/\/[^\n]*/g, "$1 ")
-      .replace(/"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|`(?:\\.|[^`\\])*`/g, '""');
+      .replace(/(^|[^:])\/\/[^\n]*/g, "$1 ");
+    // Then strip string literals for the environmental-token sweep.
+    const code = withStrings.replace(
+      /"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|`(?:\\.|[^`\\])*`/g,
+      '""'
+    );
+    return { code, withStrings };
   }
 
   for (const rel of ["normalize.ts", "searchRows.ts"]) {
     it(`src/lib/search/${rel} touches nothing environmental`, () => {
-      const code = sourceOf(rel);
+      const { code } = sourceOf(rel);
       const hit = BANNED.exec(code);
       expect(
         hit,
         `\`${hit?.[0]}\` found in ${rel} — matcher modules are pure TypeScript ` +
-          `(§4.1: no window/document/navigator/localStorage/fetch/node builtins/React)`
+          `(§4.1: no window/document/navigator/localStorage/fetch/node builtins)`
+      ).toBeNull();
+    });
+
+    it(`src/lib/search/${rel} imports no React (§4.1; M-5 one-token extension)`, () => {
+      const { withStrings } = sourceOf(rel);
+      const hit = BANNED_REACT.exec(withStrings);
+      expect(
+        hit,
+        `\`${hit?.[0]}\` found in ${rel} — §4.1 bans React in the matcher modules; ` +
+          `an import here would couple both consumers to the renderer`
       ).toBeNull();
     });
   }

@@ -34,10 +34,9 @@ import { describe, expect, it, beforeAll, beforeEach, afterEach, vi } from "vite
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { createElement, type ReactElement } from "react";
 
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), prefetch: vi.fn() }),
-  usePathname: () => "/",
-}));
+// (test-review M-8 hygiene: the dead `vi.mock("next/navigation")` shim is
+// deleted — the field imports none of it; a mock for an unimported module
+// only ever masked a future accidental import.)
 
 // ---- fixture corpus (the artifact shape of §3.2) -----------------------------
 
@@ -155,7 +154,7 @@ function mountFixture(props: Record<string, unknown> = {}): {
   inner: HTMLElement;
 } {
   purgeFixtures(); // never let a stale second swap root linger in body
-  const root = track(document.createElement("div"));
+  const root = document.createElement("div");
   root.setAttribute("data-search-swap-root", "");
   const inner = document.createElement("div");
   inner.setAttribute("data-page-content", "");
@@ -169,12 +168,18 @@ function mountFixture(props: Record<string, unknown> = {}): {
   root.appendChild(inner);
   const main = document.createElement("main");
   main.appendChild(root);
-  track(main);
 
+  // Composed page order, as the shell lays it out: header slot first, the
+  // field mounted inside it, THEN the page content (fix round r2 — the §7
+  // Tab/DOM-order law is only meaningful in this order).
   const slot = track(document.createElement("div"));
   slot.setAttribute("data-shell-slot", "search");
+  const fieldHost = track(document.createElement("div"));
+  track(main);
 
-  const container = render(createElement(needField(), props)).container;
+  const container = render(createElement(needField(), props), {
+    container: fieldHost,
+  }).container;
   currentContainer = container;
   return { container, root, inner };
 }
@@ -232,16 +237,28 @@ describe("§5.3 clause 2 — closed word, open focused input", () => {
     mountFixture();
     fireEvent.click(getWordButton());
     expect(document.activeElement).toBe(getInput());
-    const host = document.querySelector("[data-search-open]");
+    const host = document.querySelector("[data-search-open]") as HTMLElement | null;
     expect(
       host,
       "§5.3.2: the open state sets data-search-open on its mount element — the " +
         "attribute is the pinned hook F5's stylesheet grows the nav row from"
     ).not.toBeNull();
-    expect(
-      ((host as HTMLElement).className ?? "").length,
-      "row-growth styling rides a class on the declared host"
-    ).toBeGreaterThan(0);
+    // m-5 (fix round r2): the growth claim is STRUCTURAL, not "some className
+    // exists" — a regression keeping the input at word-width must fail. The
+    // pinned geometry law: on open the mount breaks out of flow and spans
+    // the nav band (absolute + inset-y/left/right), per the §5.3.2 hook.
+    const GROWTH_CLASSES = [
+      "md:data-[search-open]:absolute",
+      "md:data-[search-open]:inset-y-0",
+      "md:data-[search-open]:left-0",
+      "md:data-[search-open]:right-0",
+    ];
+    for (const cls of GROWTH_CLASSES) {
+      expect(
+        (host as HTMLElement).classList.contains(cls),
+        `open-state mount must carry the row-growth geometry class "${cls}"`
+      ).toBe(true);
+    }
   });
 });
 
@@ -449,6 +466,36 @@ describe("§7 accessibility basics (AC-14)", () => {
     fireEvent.keyDown(firstLink, { key: "ArrowUp" });
     expect(document.activeElement, "ArrowUp → back to the input").toBe(getInput());
   });
+
+  it("Tab reaches results in DOM order — every link follows the field (§7, m-6)", async () => {
+    mountFixture();
+    fireEvent.click(getWordButton());
+    typeInto("alpha");
+    const links = await waitFor(() => {
+      const ls = resultLinks();
+      expect(ls.length, "results rendered").toBeGreaterThan(0);
+      return ls;
+    });
+    // §7's law: "Tab reaches results in DOM order (they follow the header)."
+    // Tab focus movement is native browser behavior over DOM order, so the
+    // executable form is structural: every rendered link must sit AFTER the
+    // input in document order, and consecutive links must preserve the
+    // matcher's best-first order — then native Tab walks them in that order.
+    const FOLLOWING = Node.DOCUMENT_POSITION_FOLLOWING;
+    const input = getInput();
+    for (const a of links) {
+      expect(
+        (input.compareDocumentPosition(a) & FOLLOWING) !== 0,
+        `${a.getAttribute("href")} must follow the field input in document order`
+      ).toBe(true);
+    }
+    for (let i = 1; i < links.length; i++) {
+      expect(
+        (links[i - 1].compareDocumentPosition(links[i]) & FOLLOWING) !== 0,
+        `rendered results keep best-first order in the DOM (${links[i - 1].getAttribute("href")} → ${links[i].getAttribute("href")})`
+      ).toBe(true);
+    }
+  });
 });
 
 describe("§8 chrome seam (AC-16) — en resolves; partial dictionaries fall back", () => {
@@ -515,5 +562,184 @@ describe("§8 chrome seam (AC-16) — en resolves; partial dictionaries fall bac
     for (const want of ["Search", "Clear", "{count}", "Items", "Skills", "Classes"]) {
       expect(seen.has(want), `§8 en value "${want}" must ship in the resolver dictionary`).toBe(true);
     }
+  });
+
+  it("unit: createSearchChrome resolves en, substitutes {count}, falls back per key (AC-16, m-6)", async () => {
+    let mod: Record<string, unknown>;
+    try {
+      mod = (await import("../../../lib/i18n/search-chrome")) as Record<string, unknown>;
+    } catch (e) {
+      throw new Error(`search-chrome.ts unreadable: ${(e as Error).message}`);
+    }
+    const factory = mod.createSearchChrome as
+      | ((injected?: Record<string, string>) => {
+          (key: string): string;
+          count(key: string, vars: { count: number | string }): string;
+        })
+      | undefined;
+    if (typeof factory !== "function") {
+      throw new Error(
+        `search-chrome exports [${Object.keys(mod).join(", ")}] — wanted the ` +
+          `createSearchChrome factory (§8 pins the props/injected-dictionary resolver)`
+      );
+    }
+    const plain = factory();
+    expect(plain("search.word"), "en word").toBe("Search");
+    expect(plain("search.fieldLabel"), "en fieldLabel").toBe("Search");
+    expect(plain("search.clear"), "en clear").toBe("Clear");
+    expect(plain("search.resultHeading"), "en resultHeading").toBe("Search");
+    expect(plain("search.kind.item"), "en facet item").toBe("Items");
+    expect(plain("search.kind.skill"), "en facet skill").toBe("Skills");
+    expect(plain("search.kind.class"), "en facet class").toBe("Classes");
+    expect(plain.count("search.countTemplate", { count: 12 }), "{count} substituted").toBe("12");
+
+    const partial = factory({ "search.word": "Suchen" });
+    expect(partial("search.word"), "overridden key wins").toBe("Suchen");
+    expect(partial("search.clear"), "non-overridden keys fall back to en").toBe("Clear");
+    expect(partial("search.fieldLabel"), "fallback is PER KEY").toBe("Search");
+    expect(partial.count("search.countTemplate", { count: 3 }), "template still substitutes under injection").toBe("3");
+  });
+});
+
+// ---- fix round r2 -------------------------------------------------------------
+
+/**
+ * M-1 rig: point the field at a locale whose artifact 404s. Uses /ko/ (a
+ * clientCode no other test in this file loads) so the module-level index
+ * cache cannot answer for the failing leg; restores the pivot path after.
+ */
+function stubLocaleArtifactFailure(): void {
+  window.history.pushState({}, "", "/ko/");
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL) => {
+      const u = String(input);
+      if (/\/data\/search\/ko\.json$/.test(u)) {
+        return { ok: false, status: 404, json: async () => null };
+      }
+      return fakeResponse(u);
+    })
+  );
+}
+
+function backToPivotPath(): void {
+  window.history.pushState({}, "", "/");
+}
+
+describe("fix round r2 M-1 — failed artifact fetch: plain-word absence, never fake zeros", () => {
+  afterEach(backToPivotPath);
+
+  it("a 404 artifact does NOT produce `0` — the absence state renders instead", async () => {
+    stubLocaleArtifactFailure();
+    mountFixture();
+    fireEvent.click(getWordButton());
+    typeInto("alpha");
+    await waitFor(() =>
+      expect(
+        document.body.textContent ?? "",
+        "the plain-word absence state replaces the results"
+      ).toContain("Search is unavailable for this language")
+    );
+    // Results still replaced the page content IN PLACE (DR clause 3)…
+    expect(
+      document.querySelector("[data-search-swap-root]")?.hasAttribute("hidden"),
+      "swap still happens — the absence surface occupies the page slot"
+    ).toBe(true);
+    // …but what occupies it names the absence in words, never a count.
+    const live = document.querySelector('[aria-live="polite"]');
+    expect(live?.textContent ?? "").toContain("Search is unavailable for this language");
+    expect(
+      /\d/.test(live?.textContent ?? ""),
+      "live region announces words, not a fabricated number"
+    ).toBe(false);
+    // The exact defect M-1 forbids: ANY bare `0` digit leaf while rows are
+    // not really loaded — including for an exact tier-1 query like "alpha".
+    for (const el of digitLeaves(document.body)) {
+      expect(
+        el.textContent?.trim(),
+        "no digit leaf may render while the artifact is unavailable"
+      ).not.toBe("0");
+    }
+    // Retry affordance exists while the field stays open, and submits nothing.
+    const retry = screen.getByRole("button", { name: "Retry" });
+    expect(retry.getAttribute("type"), "retry is type=button (input gate)").toBe("button");
+  });
+
+  it("retry re-fetches while the field is open and recovers to real hits", async () => {
+    stubLocaleArtifactFailure();
+    mountFixture();
+    fireEvent.click(getWordButton());
+    typeInto("alpha");
+    await waitFor(() =>
+      expect(document.body.textContent ?? "").toContain("Search is unavailable for this language")
+    );
+    // The artifact "arrives": flip the stub to success BEFORE retrying —
+    // the failed cache entry dropped itself, so retry must genuinely refetch.
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => fakeResponse(String(input))));
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await waitFor(() =>
+      expect(
+        resultLinks().length,
+        "recovery renders the real hits without close+reopen"
+      ).toBeGreaterThan(0)
+    );
+    expect(
+      document.body.textContent ?? "",
+      "absence copy gone once rows really loaded"
+    ).not.toContain("Search is unavailable for this language");
+  });
+});
+
+describe("fix round r2 m-8 — out-of-vocabulary kinds are surfaced, not dropped", () => {
+  afterEach(backToPivotPath);
+
+  it("renders an unknown-kind group (self-labelled, full count) with its real link", async () => {
+    // /de/ is a clientCode nothing else in this file loads, so the module-level
+    // index cache cannot answer for the fixture; the stub serves the extended
+    // corpus for it.
+    window.history.pushState({}, "", "/de/");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const u = String(input);
+        if (/manifest\.json$/.test(u)) return fakeResponse(u);
+        return {
+          ok: true,
+          status: 200,
+          json: async () => [
+            ...CORPUS,
+            { kind: "beast", id: "b1", name: "Alpha Beast", href: "/beast/b1" },
+          ],
+        };
+      })
+    );
+    mountFixture();
+    fireEvent.click(getWordButton());
+    // Query a term ONLY the out-of-vocabulary row answers — under "alpha" the
+    // 50-row render cap would correctly swallow the trailing beast slice
+    // (headers keep the full counts either way).
+    typeInto("beast");
+    await waitFor(() =>
+      expect(
+        Array.from(document.querySelectorAll("h2")).some((h) =>
+          (h.textContent ?? "").trim().startsWith("beast")
+        ),
+        "the beast group renders"
+      ).toBe(true)
+    );
+
+    const headers = Array.from(document.querySelectorAll("h2"));
+    const beast = headers.find((h) => (h.textContent ?? "").trim().startsWith("beast"));
+    expect(
+      beast,
+      `unknown-kind hit must get its own trailing group (found headers: ${headers.map((h) => h.textContent?.trim()).join(" | ")})`
+    ).toBeDefined();
+    expect(
+      digitLeaves(beast as HTMLElement).map((el) => el.textContent?.trim()),
+      "the unknown-kind group carries its FULL count"
+    ).toEqual(["1"]);
+    const link = document.querySelector<HTMLAnchorElement>('a[href="/beast/b1"]');
+    expect(link, "the out-of-vocabulary hit ships as a real <a href>").not.toBeNull();
+    expect(link?.textContent?.trim()).toBe("Alpha Beast");
   });
 });

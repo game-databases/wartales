@@ -1021,3 +1021,87 @@ AC count after revision: **16** — numbering unchanged; AC-9 amended in
 place and tagged `(r2)`; every AC remains executable by its named
 suite/artifact. E-2 stays routed to the orchestrator (F4 AC-11 + §7.6
 smoke legs — F4-owned files, untouchable from this piece).
+
+## Errata candidates
+
+Doc-only appendix (fix round r2, 2026-08-26, brief
+[`docs/briefs/specfixer-f5-build-r2.mdx`](./briefs/specfixer-f5-build-r2.mdx)).
+The two spec-letter divergences found by the F5 build review were
+adjudicated **ACCEPT-AS-XFAIL** by both reviewers and are encoded as two
+named strict-xfail markers in
+[`pipeline/tests/test_search_index.py`](../pipeline/tests/test_search_index.py)
+(fix-round-r2 split of test-review M-2). They are recorded here as
+candidates for a FUTURE revision only. **Nothing in this section changes
+any frozen law or AC above**: the landed emitter behavior, the suites,
+and the xfail encoding are exactly as reviewed; adoption belongs to the
+next spec revision, which re-executes §2's recount-and-refreeze
+discipline for whatever numbers move.
+
+### XF-A — §9 item 5's "kind outside SEARCHABLE_KINDS refused (exit 2)"
+
+Measured behavior (probed independently by BOTH reviewers, 2026-08-26):
+a non-searchable availability row is silently FILTERED and emit exits 0;
+artifact purity holds positively
+(`test_non_searchable_kind_never_reaches_the_artifact`, green).
+
+- Code reviewer's ruling ([review-f5-code §D](./review-f5-code.mdx#d-the-two-strict-xfail-divergences)):
+  "The letter cannot bind. §3.1's gate list … is exhaustive and contains
+  no such gate; §2's own growth law expects avail to grow PAST the trio …,
+  so a blanket exit-2 on any non-searchable row would brick stage `emit`
+  on unrelated corpus growth." Errata candidate verbatim: "reword §9 item
+  5's refusal clause to artifact-purity form ('a kind outside
+  SEARCHABLE_KINDS never reaches the artifact'), and consider the gate
+  actually worth having: exit 2 when a NON-searchable kind carries
+  non-empty `namedLocales` — today a wave-2-ready kind ships silently
+  unsearchable, which is the true partial-wave risk §2 names."
+- Test reviewer's ruling ([review-f5-tests axis 4](./review-f5-tests.mdx#axis-4--the-strict-xfail-encoding)):
+  strict-xfail "keeps executing, keeps the spec letter as the recorded
+  expectation, tolerates today's measured reality, and FAILS THE SUITE
+  the day the letter is adopted"; granularity residual M-2 (two
+  divergences, one marker) closed in fix round r2.
+
+**Suggested narrower gate for the next revision:** replace §9 item 5's
+refusal letter with the artifact-purity form plus ONE targeted gate —
+`exit 2` when an availability row whose kind ∉ SEARCHABLE_KINDS carries
+non-empty `namedLocales`, naming the offending `(kind,id)`. That catches
+the wave-2-ready-but-unsearchable case without bricking emit on inert
+kinds (34 on disk today).
+
+### XF-B — §3.1's locale-set union read as a directory sweep
+
+Measured behavior: a stray overlay-only locale directory (`ja/`) is
+ignored when avail carries exactly the official nine — the consistency
+gate iterates the LOADED overlays dict (nine keys), not the directory
+listing; and `extracted/locales/` carries non-locale directories TODAY
+(`ui/`, `_draft-achievements/`), so a literal directory sweep would exit
+2 on the production corpus.
+
+- Code reviewer's ruling ([review-f5-code §D](./review-f5-code.mdx#d-the-two-strict-xfail-divergences)):
+  "Measured disk reality kills the naive enforcement … The emitter reads
+  overlays only through the nine-code lens …, so a stray dir contributes
+  zero bytes to any artifact; and the plane that actually drives
+  membership IS guarded — `ja` appearing in avail's fields/namedLocales
+  trips exit 2 (`test_unknown_locale_in_avail_refused_exit_2`, green)."
+  Errata candidate verbatim: "restate §3.1's locale-set gate over avail's
+  locale vocabulary plus the nine READ paths, with an explicit allowlist
+  for tool dirs; optionally warn on unknown *locale-shaped* dirs (`xx`,
+  `xx-YY`) so a future official-locale addition cannot pass silently."
+- Test reviewer's ruling: same axis-4 passage as XF-A; the probe evidence
+  ("a stray `ja/` overlay directory is invisible because the locale-set
+  gate iterates the loaded dict (nine keys), not the directory listing")
+  was reproduced by subprocess at review time.
+
+**Suggested narrower gate for the next revision:** keep the gate keyed to
+avail's locale vocabulary ∪ the nine READ overlay paths (= today's
+behavior, already exit-2-guarded); add an allowlist for known tool dirs
+(`ui`, `_draft-*`), and downgrade unknown but LOCALE-SHAPED directories
+(`/^[a-z]{2}(-[A-Z]{2})?$/`) to a printed warning so a future official
+locale cannot be added as overlays-only and pass in total silence.
+
+Also queued for the same next revision (from this round's code-review
+minors, no frozen text touched): m-1 — AC-1/§11's diff envelope amended to
+"artifacts local-only (gitignored per AGENTS.md rule 5); envelope = code +
+registry + gitignore line", since the ten emitted JSONs can never satisfy
+today's "ten emitted JSON files — nothing else" letter in a commit; and
+m-2 — §11's stale premise that `site/package.json` devDependencies arrive
+with F5 (they landed with F4's 6bd451d).

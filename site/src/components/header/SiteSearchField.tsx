@@ -152,6 +152,15 @@ export default function SiteSearchField(props: LooseProps) {
   const [query, setQuery] = useState("");
   const [clientCode, setClientCode] = useState<string>(PIVOT_LOCALE);
   const [rows, setRows] = useState<readonly SearchRow[]>([]);
+  /**
+   * Artifact load state (fix round r2, code M-1): a failed fetch is a
+   * MEASURED absence and renders as one in plain words
+   * ([DR-2026-08-22-numbers-stand-alone] §1) — never as the zero-match
+   * state, which would fabricate `0` for whatever the reader typed.
+   */
+  const [loadState, setLoadState] = useState<
+    "loading" | "ready" | "unavailable"
+  >("loading");
   const [portalEl, setPortalEl] = useState<HTMLElement | null>(null);
 
   const wordRef = useRef<HTMLButtonElement | null>(null);
@@ -165,24 +174,43 @@ export default function SiteSearchField(props: LooseProps) {
   const swapped = open && normalizedLen >= MIN_QUERY_CHARS;
 
   // Client-side identity + lazy artifact load on first open (§4.4),
-  // cached in-module afterwards.
+  // cached in-module afterwards. A rejected fetch lands in the
+  // "unavailable" state: plain-word absence + a retry affordance while
+  // the field stays open — recovery never requires close+reopen.
   useEffect(() => {
     setClientCode(segmentToClientCode(window.location.pathname));
   }, []);
+  const settleIndex = useCallback(
+    (code: string, guard: { alive: boolean }) => {
+      setLoadState("loading");
+      loadIndex(code)
+        .then((loaded) => {
+          if (!guard.alive) return;
+          setRows(loaded);
+          setLoadState("ready");
+        })
+        .catch(() => {
+          // Fail-closed (M-1): no rows AND no fabricated count — the results
+          // surface shows the absence message until a retry succeeds.
+          if (!guard.alive) return;
+          setRows([]);
+          setLoadState("unavailable");
+        });
+    },
+    []
+  );
   useEffect(() => {
     if (!open) return;
-    let alive = true;
-    loadIndex(clientCode)
-      .then((loaded) => {
-        if (alive) setRows(loaded);
-      })
-      .catch(() => {
-        /* fail-closed: no rows until a retry lands; zero-state stays honest */
-      });
+    const guard = { alive: true };
+    settleIndex(clientCode, guard);
     return () => {
-      alive = false;
+      guard.alive = false;
     };
-  }, [open, clientCode]);
+  }, [open, clientCode, settleIndex]);
+  /** Retry affordance: re-fetch now (the cache self-drops on failure). */
+  const retryLoad = useCallback(() => {
+    settleIndex(clientCode, { alive: true });
+  }, [clientCode, settleIndex]);
 
   // Deferred focus (the control mounts with the state flip).
   useEffect(() => {
@@ -353,9 +381,15 @@ export default function SiteSearchField(props: LooseProps) {
       )}
 
       {/* Live region: the hit count as a bare number after each
-          keystroke-driven change (§7). Plain words; no enum vocabulary. */}
+          keystroke-driven change (§7). Plain words; no enum vocabulary.
+          A failed artifact load announces the absence in words instead —
+          a fabricated `0` here is exactly the M-1 defect class. */}
       <span className="sr-only" aria-live="polite">
-        {swapped ? chrome.count("search.countTemplate", { count: hits.length }) : ""}
+        {swapped
+          ? loadState === "unavailable"
+            ? chrome("search.unavailable")
+            : chrome.count("search.countTemplate", { count: hits.length })
+          : ""}
       </span>
 
       {/* Results replace the page content in place, immediately before
@@ -366,6 +400,8 @@ export default function SiteSearchField(props: LooseProps) {
               hits={hits}
               query={query}
               chrome={chrome}
+              unavailable={loadState === "unavailable"}
+              onRetry={retryLoad}
               onArrowUp={() => inputRef.current?.focus()}
               onEscape={collapseAndRestore}
             />,

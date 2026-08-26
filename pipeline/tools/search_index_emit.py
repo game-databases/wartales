@@ -203,16 +203,25 @@ def check_consistency(avail_rows, overlays_root: Path,
               "(missing: %s; unexpected: %s)" % (missing or "-", extra or "-"))
 
     named: dict = {}
+    seen_pairs: set = set()
     for row in avail_rows:
         if row.get("kind") not in SEARCHABLE_KINDS:
             continue
+        pair = (row.get("kind"), row.get("id"))
+        if pair in seen_pairs:
+            # m-7: duplicates collapsed last-wins and would ship duplicate
+            # artifact rows — refuse AT the emitter, naming the file (§3.1).
+            fail2(str(availability_file),
+                  "duplicate availability row %s/%s - last-wins collapse "
+                  "would ship duplicate artifact rows" % pair)
+        seen_pairs.add(pair)
         flags = row.get("fields", {})
         have = {loc for loc, f in flags.items() if f.get("name") is True}
         if have != set(row.get("namedLocales", [])):
             fail2(str(availability_file),
                   "%s/%s fields[].name flags disagree with namedLocales"
-                  % (row.get("kind"), row.get("id")))
-        named[(row["kind"], row["id"])] = have
+                  % pair)
+        named[pair] = have
 
     # Gate 1 — flag-without-value is corruption.
     for (kind, entity_id), locales in sorted(named.items()):
