@@ -1,0 +1,261 @@
+# Spec review — F4 app shell ([spec-f4-app-shell.mdx](./spec-f4-app-shell.mdx))
+
+**Verdict: NEEDS_REVISION** — 1 BLOCKER, 4 MAJOR, 7 MINOR (enumerated below).
+
+Fresh reviewer, 2026-08-26. Subject read in full (393 lines). Requirement
+chain read per brief: FRAMEWORK §2 (in full, L67–318),
+`_foundation/localization-architecture.md` (full),
+`_foundation/decision-register.md` — [DR-2026-08-24-wartales-roster],
+[DR-2026-08-20-locale-urls], [DR-2026-08-22-search-is-not-a-page],
+[DR-2026-08-22-copy-earns-its-place], [DR-2026-08-21-drop-chip-words-and-updated-column],
+[DR-2026-08-18-page-size] (each clause),
+`_foundation/design-standard.md` (full), `_foundation/seo-standard.md`
+(§1–§2 where F4 fences PT16), `docs/pieces.mdx`, F1 canon
+(`site/src/styles/tokens.css` + `tokens.test.ts` + `design/spec-tokens.mdx`),
+`docs/locale-key-convention.mdx`, `design/shadcn-adoption.mdx`,
+`_foundation/nw-site-new-deep-dive.md` §5/§9, `site/` tree +
+`site/package.json` as-found, both staging READMEs, sibling specs
+`spec-f5-search.mdx` / `spec-pt16-seo.mdx` for the seams, `spec.md` frozen
+block, `PROGRESS.mdx`. Every line reference below is to the subject spec
+unless another file is named. Review only — no fixes proposed, nothing edited.
+
+---
+
+## BLOCKER
+
+### B1 — The locale-scoped 404 mechanism cannot fire as architected; AC 14's clause is unsatisfiable (§1 tree L63–66, §8 AC 14 L352–353, §9 L360)
+
+The spec places `not-found.tsx` inside `app/[locale]/` ("mechanism only —
+PT17 brands it", L66) and AC 14 requires "all nine locale homes (**plus
+locale-scoped not-found**) prerender as static HTML". In the Next.js App
+Router, a nested `not-found.tsx` renders only when `notFound()` is thrown
+inside that segment's subtree; **unmatched URLs are answered by the root
+404 boundary** unless a catch-all route (`app/[locale]/[...rest]/page.tsx`
+calling `notFound()`) exists. The §1 tree (L60–66) and the §9 created list
+(L357–368) contain no catch-all — the file set is closed ("everything else
+under `site/` is created by this piece", §0 L38–39), so the builder cannot
+add one silently.
+
+Consequence, traceable to disk: `/de/<unknown>` falls through `[locale]` +
+`page.tsx` (index-only) to Next's default root not-found — unlocalized,
+unbranded. AC 4's `/xx/foo` → 404 (L324–325) still passes on status code,
+but the *locale-scoped* not-found whose static prerendering AC 14 asserts
+never becomes a build artifact, and PT17's fenced surface (scope boundary
+L18–19: "F4 ships the *mechanism* only") inherits a mechanism that cannot
+trigger for the one class of URL a 404 page exists for. Per review axis 5,
+specified-but-impossible = BLOCKER.
+
+## MAJOR
+
+### M1 — Inbound F5 seam dropped: `data-search-swap-root` obligation missing (§5 L237–243, §8 AC 11 L342–344)
+
+[spec-f5-search.mdx](./spec-f5-search.mdx) §5.1 (L365–369) and §13 H-3
+(L692–696) place a contractual obligation **on F4**: "the app shell puts
+that attribute [`data-search-swap-root`] on its main content wrapper … it
+crosses the piece boundary and **must not be forgotten when F4 lands**."
+The F4 spec's search-slot paragraph (L237–243) covers only the outbound
+half — the header mount `data-shell-slot="search"` — and never mentions
+`data-search-swap-root`; AC 11 asserts header emptiness but not the swap
+root. The outbound fence is otherwise complete and one-sided (closed-state
+word-in-nav, grow-across-row, 2-char trigger, in-place swap all correctly
+handed to F5 at L240–242, matching every clause of
+[DR-2026-08-22-search-is-not-a-page] ¶1–5, register L892–908). But an F4
+build approved from this spec ships without the attribute F5's field
+degrades without — the exact cross-piece forget H-3 was written to prevent.
+Axis 3 fence incompleteness.
+
+### M2 — Manifest/home contradiction: the spec's own single manifest row fails its own test (§4 L184–191, §5 L230–234, §7.4 L303–304)
+
+Three statements cannot all hold:
+
+1. §5 L234: "At F4 the manifest is `{}`-empty-**plus-home**" — the manifest
+   contains a home row.
+2. §5 L232: "Labels = `chrome.nav.*`" and §7.4 L304: "**every manifest
+   entry has a `chrome.nav.*` key** in all nine message files."
+3. §4 L184–191: the initial key inventory is **exactly 13**, and it
+   contains `chrome.header.homeLabel`, not `chrome.nav.home`.
+
+If home is a manifest row, its label is `chrome.header.homeLabel` (there is
+no `chrome.nav.home` among the 13, and adding one violates "exactly 13" and
+AC 8's parity gate) — so §7.4's clause fails on the spec's own fixture. If
+home is not a manifest row, "`{}`-empty-plus-home" is false and AC 6's
+"≥1 nav `<a href>` per live manifest row" (L330) degenerates to zero links,
+leaving five stubbed `chrome.nav.*` keys ×9 files that render nowhere at
+F4. Two compliant builders produce different rendered navs and different
+test outcomes; the arbiter gets no deterministic boolean. Axis 2
+executability defect.
+
+### M3 — Canon re-declaration ban is unenforced exactly where the new declarations land (§6.2 L274–279, §6.3 L280–284, §6.5 L288–290, §7.5 L306–308, §8 AC 9 L337–339)
+
+§6 obliges `globals.css` to carry a full `@theme inline` map (`--color-*`
+for every shadcn variable plus `--bg-1..4`, ramp, rarity/player/chart sets;
+`--font-ui/flavor/cjk/sans/serif/mono`; `--radius-*`; and the
+`--spacing-g1..g8` g-suffix utilities) — i.e. dozens of new `--`-token
+declarations in `site/src/styles/`. Yet:
+
+- §7.5 scopes the token-declaration grep to `src/components/**` +
+  `src/app/**` only — `globals.css` is invisible to it;
+- §6.5 L290 nonetheless claims "no second definition of any token or
+  recipe **anywhere in `site/src`** outside tokens.css
+  (**hygiene-tested**)" — a false claim as scoped;
+- AC 9's clause "no token re-declared outside tokens.css" (L339) has no
+  stated command or test that can fail.
+
+Nothing pins the `@theme` entries to the aliasing form
+(`--color-bg-1: var(--bg-1)`) over literal re-declaration
+(`--color-bg-1: #100F0E`). A literal-copy `@theme` would pass
+`tokens.test.ts` (which parses `tokens.css` alone — see its L13 reader),
+pass `shell-hygiene`, pass AC 9 as enforced, and create precisely the
+second source of truth the never-touch law exists to prevent. Axis 6 leaves
+open the loophole it was told to close.
+
+### M4 — Smoke claims the whole §8 matrix but two ACs have no verifier anywhere (§7.6 L309–313, §8 AC 12 L345–348, §8 AC 13 L349–351)
+
+§7.6 states smoke.mjs "curls the §8 matrix" then enumerates: status codes,
+redirect Location + permanence, `lang` attributes, prefixed href
+correctness, wordmark/nav/footer presence, absence of `/en/` hrefs and of
+any search control. Not covered by that enumeration, by any of the four
+vitest suites (§7.2–7.5), or by any other stated command:
+
+- **AC 13** — the Noto split-subset stylesheet link on `/zh` + `/ko` and
+  its absence on the other seven (pattern sourced correctly from
+  `site/public/fonts/README.md` L56–62, but nothing runs the check);
+- **AC 12** — the curl-200 asset legs on a staged machine and the
+  fresh-clone dev-render + `npm run stage` reporting behavior (the
+  tokens.test.ts served-refs guard covers on-disk presence only, and is
+  designed to go red on a fresh clone, not to assert serving).
+
+Axis 7 requires covering all 14 ACs *or stating honest gaps*; §7 declares
+neither gap. (AC 1's "zero build errors" is likewise asserted, not
+detected — folded here.)
+
+## MINOR
+
+### m1 — Home-canonical law cited to the wrong register entry (§3 rule 6, L161–164)
+
+The parenthetical attributes "declare the URL that answers 200" to
+[DR-2026-08-21-drop-chip-words-and-updated-column]. That entry (register
+L833–846) governs chip words and the Updated column only; the home-canonical
+law ("The home canonical is `/{locale}`, not `/{locale}/` … declares … the
+URL that answers 200, not the form that 308s") is
+[DR-2026-08-18-page-size], register L747–750. The substantive rule is real,
+binding, and correctly applied (308 trailing-slash normalization is indeed
+Next's default) — but the authority chain points at the wrong rung, and
+[DR-2026-08-21-drop-chip-words-and-updated-column] is double-listed in §9
+relinks as a result.
+
+### m2 — `globals.css` import path is wrong for its own declared location (§1 L80, §6.1 L271–273, §9 L365)
+
+Both the §1 tree and §9 place `globals.css` at `site/src/styles/globals.css`
+— beside `tokens.css`. §6.1 then instructs `@import "./styles/tokens.css"`,
+which resolves to `src/styles/styles/tokens.css`. Followed verbatim, the
+first build fails resolution. Should read `./tokens.css`.
+
+### m3 — `site/.gitignore` already exists; §9 lists it as Created, §0's scaffold claim is false (§0 L37–39, §9 L368)
+
+As-found, `site/.gitignore` exists with `node_modules/`,
+`package-lock.json`, `public/fonts/*.woff2` — none of which match the
+declared contents "(`.next/`, `next-env.d.ts`)". §9's Created list
+misclassifies it (an overwrite would drop three live ignore rules), and
+§0's "everything else under `site/` is created by this piece" is also
+contradicted by the existing `package-lock.json`. Axis 8 exactness.
+
+### m4 — PT16 seam filename drift, and no PT16 relink (§9 L376–392)
+
+[spec-pt16-seo.mdx](./spec-pt16-seo.mdx) §3 (L103–104) consumes "F4's route
+registry module (`site/src/lib/routes.ts`, created by F4; exact filename is
+F4's to confirm)". F4 delivers `site/src/lib/routes-manifest.ts` (L76, L362)
+and never records the reconciliation the PT16 spec asked for; F4's §9
+relinks omit `spec-pt16-seo.mdx` entirely even though the scope boundary
+(L18) fences against PT16. Deferred authority or not, the seam is left
+unreconciled on both sides.
+
+### m5 — Unknown-locale guard unstated; AC 4's 404 leans on an undocumented mechanism (§1 L73, §3 rule 7 L165–167, §8 AC 4 L324–325)
+
+With `app/[locale]/page.tsx` as the only route, a request like `/xx/foo`
+fills the `[locale]` segment with an id outside the nine; static message
+imports keyed by `id` (§4 L211–213) then throw rather than 404 unless
+`request.ts` rejects unknown ids with `notFound()` before resolving files.
+The spec describes `request.ts` only as "getRequestConfig (static message
+imports)". The AC is still curl-falsifiable, but the load-bearing guard is
+absent from an otherwise exact §3.
+
+### m6 — next-intl × Next 16 has no in-network proof; compat deferred wholly to install (§1 L44–48)
+
+The "reference repo already proves it" claim checks out for **Next 16**
+(`nw-site-new/package.json`: `next 16.2.10`; MiSide, kenshi, idleon,
+graveyardKeeper sites: `16.3.2` + `react 19.2.8`) and React 19. But no
+sibling pack uses next-intl (MiSide hand-rolls `src/i18n/`), FRAMEWORK §2.20
+sanctions it only generically ("framework-native i18n (next-intl/
+next-translate)"), and the spec pins versions only "at install". The
+middleware/routing strategy is standard next-intl API surface
+(`defineRouting`, `createMiddleware`, `localePrefix: "as-needed"`,
+`localeDetection: false`, `setRequestLocale`, `createNavigation`) and the
+301 pre-shim at L145–148 correctly guarantees the DR's permanence clause
+regardless of library default — feasible — yet the one dependency pair with
+zero precedent in the network carries no stated compatibility check or
+fallback.
+
+### m7 — `pt-br` lowercase segment diverges from the register's own illustration without a recorded call (§2 L117, L121–124)
+
+[DR-2026-08-20-locale-urls] ¶2 (register L217–219) illustrates prefixed
+locales as "`/ko/…`, `/de/…`, regional forks like `/pt-BR/…`"; no clause
+fixes letter case, and localization-architecture §5.2's casing examples are
+BCP-47-side. The spec's reasoning (URL hygiene; hreflang/`<html lang>`
+carry the true `pt-BR`; orchestrator may override; nothing else depends on
+it) is internally sound and membership/bare-path law is honored — but a
+visible divergence from the deciding entry's illustration should be a
+recorded decision, not a spec-local default.
+
+---
+
+## Verified clean (traced, no finding)
+
+- **Counts.** Exactly 13 initial keys (§4 L187–190, counted); exactly 14
+  ACs (§8); exactly 9 locales matching frozen `spec.md` `locales.official`
+  `[en, fr, de, es, pl, pt-BR, ru, ko, zh]` (spec.md L43–45, frozen per
+  status block L399–405) with client-code column identical, `pt-br`→`pt-BR`
+  and `zh`→`zh-Hans` matching `code-mapping` (spec.md L60) and
+  locale-key-convention §1; `ja` correctly quarantined as community lane
+  (spec.md L50–52) and not site-facing.
+- **Stack law.** FRAMEWORK §2.20 default profile quoted accurately
+  (L285–314); Pages Router/pure-SPA exclusions honored; TanStack/Leaflet
+  correctly deferred to consuming pieces.
+- **Authority chain.** Status line matches PROGRESS.mdx Batch 1/3 ("spec
+  drafting legal before the rule-8 gate"); pieces.mdx F4/F5 rows match the
+  split; NWG citations accurate (deep-dive §5 L112–114 3-level dbMenu
+  driving footer; §9 L166–168 `localeDetection: false`).
+- **Canon references.** `.wt-panel`, `--tex-header-bg` slice 10/h35,
+  `ListHeader` bands, `--effect-hover-outline`, `--effect-selected-glow`,
+  gold-to-`--ring` discipline, serif-first faces, ≥12px floor, −3px title
+  offset (spec-tokens.mdx L129), component-canon §4 combobox pattern — all
+  present verbatim in `site/src/styles/tokens.css` /
+  `design/spec-tokens.mdx`.
+- **Evidence base.** Both staging READMEs exist and say what §0/§12 claim;
+  fonts + textures are staged on this machine (5 woff2, 7 png); all 20+
+  cited file paths exist.
+- **Boundary fences holding.** PT01 (wholesale replacement), PT02 (footer
+  deepening), PT16 (hreflang/sitemap/JSON-LD excluded; BCP-47 column named
+  as future consumer only), PT17 (mechanism/art split), F5 outbound
+  (slot-only, anatomy clauses enumerated but unimplemented, no `/search`
+  anywhere, DR clauses 1–5 each mapped to F5's side).
+- **Test plan structure.** Four new node-env suites + untouched
+  `vitest run` zero-config discovery is coherent; existing suites
+  untouched; no vitest.config at F4; `package.json` extension preserves
+  `"test": "vitest run"` byte-identically (as-found L6–8).
+
+---
+
+## Count summary
+
+| Severity | Count | IDs |
+|---|---|---|
+| BLOCKER | 1 | B1 |
+| MAJOR | 4 | M1, M2, M3, M4 |
+| MINOR | 7 | m1–m7 |
+| **Total** | **12** | |
+
+**Verdict: NEEDS_REVISION** — resolve B1 (catch-all route or equivalent
+mechanism + file-set amendment) and M1–M4 (F5 swap-root seam, manifest/home
+contradiction, canon enforcement scope, AC 12/13 verification ownership);
+m1–m7 are editing-pass items.

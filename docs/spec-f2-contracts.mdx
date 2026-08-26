@@ -1,0 +1,827 @@
+# Wartales — F2 published-contracts spec (per-kind schemas + static JSON API shape)
+
+Piece **F2** of [pieces.mdx](pieces.mdx#foundations): *"Published contracts:
+per-kind JSON schemas + JSON API shape pinning"* (data dep: P1 datasets).
+Status: DRAFT for the review chain (Reviewer → Arbiter → fix loop) per the
+pack pipeline law. This spec pins CONTRACTS only; it writes no tools and no
+site code. Fresh Documentator agent, 2026-08-26.
+
+## 0. Scope in one line
+
+Define, under `contracts/`, every schema and URL rule the frontend needs to
+consume the canonical corpus as published static JSON — per-kind records
+split base + locale overlay ([FRAMEWORK §2.2](../../FRAMEWORK.md#22-entity--base--locale-overlay)),
+stable ids ([localization-architecture §5](../../_foundation/localization-architecture.md#5-data-layer-obligations--what-every-pack-must-ship)),
+list indexes, tooltip sub-routes, map marks, icon CDN paths — with the
+user-facing provenance field law applied verbatim, and the actual emitting
+of those files explicitly LEFT to a later stage-7 piece.
+
+Not in scope, and not designed here: the emitter/wiring that produces the
+published tree (stage 7 — see [§13](#13-out-of-scope-and-the-stage-7-boundary)),
+search index (F5), sitemaps/llms.txt rendering (PT16), UGC plane (PT15).
+
+## 1. Authority chain
+
+Read in full before reviewing this spec:
+
+- [AGENTS.md](../../AGENTS.md) (rules 3, 5, 8, 11 bind here) ·
+  [decision-register](../../_foundation/decision-register.md) — esp.
+  [DR-2026-08-15] D2 (two-class provenance),
+  [DR-2026-08-20-locale-urls] (pivot bare paths),
+  [DR-2026-08-22-numbers-stand-alone] (no refresh stamps),
+  [DR-2026-08-22-docs-mdx] (this file is MDX).
+- [seo-standard §9](../../_foundation/seo-standard.md#9-answer-engines-aeogeo--be-the-cited-answer-not-just-the-ranked-page)
+  (machine data plane; stable-data-URL rule; citability = D2 user-facing
+  class only) · [FRAMEWORK §2](../../FRAMEWORK.md#2-the-stable-core--invariants)
+  (planes, base+overlay, relations, icons, URLs, SEO/AEO) ·
+  [localization-architecture](../../_foundation/localization-architecture.md).
+- Pack ground truth: [spec.md](../spec.md) (frozen) ·
+  [spec-stages-datasets.mdx](spec-stages-datasets.mdx#0-scope-in-one-line)
+  (stages 4–6 own the canonical planes; [its §8 ACs](spec-stages-datasets.mdx#8-acceptance-criteria)
+  are gates F2 must NOT duplicate) ·
+  [locale-key-convention.mdx](locale-key-convention.mdx#2-addressing-grammar)
+  · [icons-export.mdx](icons-export.mdx#icons-export--coverage-report-buildid-20318128)
+  · [RELATIONS.md](../extracted/RELATIONS.md) ·
+  [PROGRESS.mdx](../PROGRESS.mdx#phase-board) (batch plan: F2 spec lands in
+  batch 1; builds stay gated on the rule-8 arbiter).
+
+## 2. Ground truth this contract sits on (citations, not new gates)
+
+Every number below is already gated by stages 4–6
+([validate_all.py](../pipeline/tools/validate_all.py) checks
+`verifier-gates`, `census-closure`, `census-per-kind`, `relink-integrity`,
+`availability-regenerated`, `catalog-parity`, `deferred-present`,
+`hbson-independent`). F2 restates them ONCE as consumed facts and forbids
+re-asserting them as F2 acceptance criteria.
+
+| Fact | Value | Owner gate / source |
+|---|---|---|
+| Managed kinds | 40 (`wave_kinds.MANAGED_KINDS`) | datasets stage; `census-per-kind` |
+| Canonical dataset rows | Σ 10,207 (+1,266 constants in `extracted/logic/constants.jsonl` = 11,473 closure) | `census-closure` |
+| Relink catalog | 51 pair files · 19,130 edges · 19,058 true / 0 false / 72 null (61+9+2) · 780 unordered pairs · 39 modeled directions · 9 self-pairs | `relink-integrity`, `catalog-parity`; [RELATIONS.md](../extracted/RELATIONS.md) header |
+| Availability rows | 3,779 (item 2,125 · skill 1,373 · class 281) × 9 locales; per-row locale sets bimodal {∅, all 9}; filler grid 27 keys, all 0 | `availability-regenerated`; [locale-key-convention §7](locale-key-convention.mdx#7-coverage-summary-cells--9-locales) |
+| Official locales | `en` (pivot) + `fr de es pl pt-BR ru ko zh`; file names use client codes (`zh`, not `zh-Hans`) | [spec.md](../spec.md) `locales` · [locale-key-convention §1](locale-key-convention.mdx#1-the-bridge-files) |
+| Locale overlays on disk | `extracted/locales/<locale>/{item,skill,class}.json` — wave-1 kinds only, today | [locale-key-convention §3](locale-key-convention.mdx#3-emitted-artifacts) |
+| Icon export set | `output/cdn/v20318128/{kind}/{id}.webp` — 3,779 files (3,199 real art + 580 explicit-missing placeholders) | [icons-export.mdx](icons-export.mdx#coverage--export-counts) |
+| Maps registry | `extracted/data/maps.json`: buildid 20318128; crs `wartales-world` north-up, d=-1; global affine `px=wx·4, py=wy·4` (cellUnits 128); 13 regions; 6 layers; 15-type marker vocabulary; storagePlanes served vs dataPlaneOnly | [contracts/maps.schema.json](../contracts/maps.schema.json); spec.md `maps` (RESOLVED-D11) |
+| buildId | 20318128 (TargetBuildID 21238928 queued → reruns produce the first patch diff) | [spec.md](../spec.md) `automation` |
+
+Known asymmetry, preserved deliberately: canonical `_meta.buildId` is a
+STRING (`"20318128"`), the registry/published plane uses INTEGER
+(`20318128`, per [maps.schema.json](../contracts/maps.schema.json)). Do not
+"fix" either side; the emitter converts once at the boundary.
+
+## 3. Planes and ownership boundaries
+
+Three artifact families meet at F2; the contract names each plane's owner
+so no later piece edits across the line:
+
+1. **Canonical repo plane** (stages 4–6 own bytes; F2 reads only):
+   `extracted/data/<kind>.jsonl` (+ `_meta` line 1 —
+   [spec-stages-datasets §3.2](spec-stages-datasets.mdx#32-canonical-layout--_meta-line-schema-unchanged-from-drafts)),
+   `extracted/relinks/*`, `extracted/locales/*`,
+   `extracted/relinks/locale_availability.jsonl`,
+   `extracted/data/maps.json`.
+2. **Contract plane** (F2 owns): JSON Schema draft-07 documents +
+   one machine manifest under `contracts/` ([§14](#14-files-touched)).
+   Schemas assert STRUCTURE (shape, types, enums, required, patterns) —
+   never row counts, cell fidelity, or edge validity, which remain
+   cdb_verify/validate_all territory.
+3. **Published data plane** (stage 7 will own bytes; F2 pins shapes):
+   the static, unauthenticated, CORS-open `/data/**` + `/cdn/**` trees
+   served beside the site — the machine half of
+   [seo-standard §9](../../_foundation/seo-standard.md#9-answer-engines-aeogeo--be-the-cited-answer-not-just-the-ranked-page)
+   and the satellite obligation of
+   [FRAMEWORK §2.17](../../FRAMEWORK.md#217-overlay-satellite-per-project-option-overwolf-default).
+   One data plane, two renders: the API never disagrees with the page.
+
+Two contract-plane documents model REPO-plane artifacts on purpose so F2
+acceptance is provable before any emitter exists: `overlay.schema.json`
+(today's `extracted/locales/**`) and `availability.schema.json` (today's
+`locale_availability.jsonl` rows). Repo-plane documents may carry repo
+vocabulary; published-side documents may not ([§11](#11-provenance-field-law-two-classes-one-whitelist)).
+
+## 4. Stable identity and the kind universe
+
+- **Entity id** = the canonical dataset `id`, VERBATIM (case-preserving,
+  never slugified) — the immutable join key of
+  [localization-architecture §5](../../_foundation/localization-architecture.md#5-data-layer-obligations--what-every-pack-must-ship)
+  item 1. Observed charset `[A-Za-z0-9_]` (dev pivot ids are accent-stripped
+  French, recon §4). A prettier display slug MAY be added later as an extra
+  field/redirect source; it never replaces the id, and any rename ships a
+  301 map ([seo-standard §1](../../_foundation/seo-standard.md#1-url--information-architecture)).
+- **Synthetic-id caveat**: `frescos`, `env`, `recipe` (sheet `craft`) have
+  no native id column — their ids are the zero-padded row ordinals pinned by
+  `_meta.keyRule`
+  ([spec-stages-datasets §3.2](spec-stages-datasets.mdx#32-canonical-layout--_meta-line-schema-unchanged-from-drafts)).
+  These are stable WITHIN a buildid; cross-build diffing keys them on
+  content, not ordinal (E3 versioned-truth work, R5/R10 digs). Published
+  payloads carry them unchanged; consumers must not treat them as
+  game-native.
+- **Kind universe of record** = the 40 managed kinds (importable, never
+  retyped): `activity amb attribute battle bonus class condition confessions
+  counter credits effect env fiefAdministration fiefAlignment fiefCondition
+  fiefEvent fiefGoal fiefLaw fiefMission fiefPlace fiefPopulation frescos
+  groupType icon input item itemType kingdom loot mission notify recipe
+  region skill sound startChoice status trait tutorial unitPattern`.
+- **Deferred kinds get no published endpoints in wave 1**: the
+  HBSON-decoded corpora (`place`, `group`, `element`, `levelProps` →
+  location-place / enemy group / npc-dialogue / poi-battle-scene), Steam
+  `achievement`, `constant`, and subset views
+  ([RELATIONS.md §Deferred kinds](../extracted/RELATIONS.md#deferred-kinds-not-promoted-by-stages-46)).
+  Their schemas land with their promotion (wave 3), extending — never
+  reshaping — the contracts here. Marker rows MAY already point at deferred
+  kind names ([§9](#9-map-marker-payload-shape-for-mapsjson-marks)); such
+  links resolve when promotion lands and stay honestly dangling before.
+- **Locale segments** = the 8 non-pivot CLIENT codes, exact strings:
+  `de es fr ko pl pt-BR ru zh`; pivot `en` is bare
+  ([DR-2026-08-20-locale-urls]). BCP-47 presentation mapping (`zh`→`zh-Hans`)
+  is a PT16 rendering concern and never enters URLs, file names, or
+  payloads.
+
+## 5. Per-kind JSON schema contract (base + locale overlay)
+
+Split per [FRAMEWORK §2.2](../../FRAMEWORK.md#22-entity--base--locale-overlay):
+the base record is locale-FREE structure; prose lives only in per-locale
+text fields; a locale file never mixes languages
+([localization-architecture §1](../../_foundation/localization-architecture.md#1-architecture-one-dedicated-page-per-entity-per-language)).
+
+### 5.1 Files
+
+- `contracts/common.schema.json` — shared `$defs`: `provenanceEnvelope`
+  (`buildId` integer + `coverage` object — the ONLY provenance carriers,
+  [§11](#11-provenance-field-law-two-classes-one-whitelist)), `coverage`
+  variants (entity/index/map), `cdnIconPath`, `entityPointer`, `worldCoord`,
+  locale-code enum, id pattern.
+- `contracts/kinds/<kind>.schema.json` ×40 — one per managed kind, each
+  carrying three `$defs`:
+  - `canonicalRow` — the canonical dataset row AS IT EXISTS TODAY
+    (structure only; typed through the [§5.2](#52-cell-type-mapping-canonical--published)
+    table). Exists so acceptance is provable against the live corpus before
+    any emitter exists.
+  - `baseRecord` — the published record: `allOf` →
+    `common.schema.json#/$defs/provenanceEnvelope`, plus `id` and every
+    non-localizable column verbatim, enums RESOLVED to case-name strings,
+    icon descriptor replaced by the CDN path. Optional localized text fields
+    (`name`, `description`, other localizable columns as strings) are legal
+    HERE and present only in locale files — one def serves the pivot base
+    file and the per-locale resolved view. No `textKey` objects, no `_meta`
+    internals, closed `additionalProperties`.
+  - `listEntry` — the row projection consumed by kind list indexes ([§7](#7-list-index-shapes)).
+- `contracts/overlay.schema.json` — pins TODAY'S repo-plane overlay
+  artifacts: an object keyed by entity id, values
+  `{name?, description?, <otherLocalizableColumn>?}`, all-string values.
+  Pins the `desc`→`description` alias and the omit-until-translated omission
+  rule ([locale-key-convention §2, §6](locale-key-convention.mdx#6-filler-policy-application)).
+  Kind-generic; wave-1 files are its first instances; dig 14 extends
+  instances, never this shape.
+- `contracts/availability.schema.json` — pins TODAY'S availability row:
+  `{kind, id, availableLocales[], namedLocales[], fields:{<locale>:{...}}}`
+  ([locale-key-convention §3](locale-key-convention.mdx#3-emitted-artifacts)).
+  Shape only; the row-count/locale-set law stays in
+  `availability-regenerated`.
+
+### 5.2 Cell-type mapping (canonical → published)
+
+From the verified CastleDB type table ([cdb_census.py](../pipeline/tools/cdb_census.py)
+header; codes verified against real payloads 2026-08-24):
+
+| code | CDB meaning | canonical cell | published `baseRecord` |
+|---|---|---|---|
+| `0` | id | string | `id` (required) |
+| `1` text, `kind:"localizable"` | game prose | `{"textKey":{bridge,sheet,column,row}}` or absent | omitted from the pivot base; resolved STRING in locale files only |
+| `1` text (plain / `kind:"script"`) | literal text, hscript source | string | string, verbatim |
+| `2` | bool | bool | bool |
+| `3` | int | integer | integer |
+| `4` | float | number | number |
+| `5` enum-inline / `9` enum-custom | case index into `_meta.enums` | integer index (+ args for `9`) | case-NAME string (args verbatim) — enum resolution is an EMIT-stage transform, so the frontend never derives data (AGENTS rule 8) |
+| `10` flags | bitmask over case list | integer | array of case-name strings |
+| `6:<sheet>` | hard foreign key | referenced row id string | string, verbatim, original column name |
+| `8` | list of sub-rows (`<parent>@<col>` hidden sheet) | array of objects | array, recursed through this same table |
+| `11` | hex color | string | string |
+| `13` / `16` | file / directory path into pak content | string | string, verbatim (game-internal join key — client paths are GAME data, not our acquisition path) |
+| `14` | icon atlas descriptor `{file,size,x,y[,width,height]}` | object | REPLACED by `icon`: `cdnIconPath` or `null` ([§10](#10-icon-cdn-references)); raw descriptor never publishes |
+| `17` | opaque props/datafile blob | object | object, verbatim; localizable leaves buried inside props stay unresolved until the dig-14 locale wave (R9) — recorded honestly, not silently dropped |
+
+Null cells are omitted at both planes (absent = null), per the canonical row
+contract. Keys outside the declared schema (`__ignoreLoc__`, polymorphic
+leftovers) pass through verbatim — doctrine Principle one.
+
+## 6. Static JSON API URL architecture
+
+The load-bearing rule of
+[seo-standard §9](../../_foundation/seo-standard.md#9-answer-engines-aeogeo--be-the-cited-answer-not-just-the-ranked-page):
+an agent can act on this database iff it can fetch an entity's JSON at a
+STABLE URL DERIVED FROM ITS PAGE URL and get the same facts the page renders.
+
+**Derivation rule (bijective, mechanical):** take the page path, strip the
+optional leading locale segment, prepend `data/`, append `.json`.
+
+| surface | pivot page (EN, bare) | locale page | data URL |
+|---|---|---|---|
+| kind list | `/{kind}` | `/{L}/{kind}` | `/data/{kind}.json` · `/data/{L}/{kind}.json` |
+| entity | `/{kind}/{id}` | `/{L}/{kind}/{id}` | `/data/{kind}/{id}.json` (base) · `/data/{L}/{kind}/{id}.json` (base + that locale's resolved text; filler policy applied by omission) |
+| tooltip sub-route | `/{kind}/{id}/tooltip` | `/{L}/{kind}/{id}/tooltip` | `/data/{kind}/{id}/tooltip.json` · `/data/{L}/{kind}/{id}/tooltip.json` |
+| DB landing + taxonomy | `/db` (PT02) | `/{L}/db` | `/data/db.json` (locale-free tree; labels resolve from overlays/chrome) |
+| map registry | `/map` (PT05) | `/{L}/map` | `/data/map.json` (published PROJECTION of the registry — [§9](#9-map-marker-payload-shape-for-mapsjson-marks)) |
+
+- Page-tree shape is pinned WITHOUT a `/db` prefix on entity routes (shorter
+  canonical, kind-first hierarchy per
+  [seo-standard §1](../../_foundation/seo-standard.md#1-url--information-architecture);
+  FRAMEWORK's `/db/…` tooltip example is evidence shape, not doctrine —
+  nw-site-new is reference, with listed deviations). One entity, one URL,
+  forever ([FRAMEWORK §2.7](../../FRAMEWORK.md#27-url-architecture-is-the-product));
+  adopting a prefix later is a rename with a 301 map, paid once.
+- An entity unavailable in locale L (absent from `availableLocales`, per the
+  bimodal availability law) has no L page AND no L data file — a true 404,
+  never pivot prose ([filler policy](locale-key-convention.mdx#6-filler-policy-application)).
+- **Site root composition**: paths here are root-relative. Today
+  (localhost / standalone) the root is `/`; under the provisional umbrella
+  placement it is `{hub}/games/wartales` — segments unchanged either way;
+  domain placement stays owner-gated (Q1, [DR-2026-08-24-wartales-roster]).
+- **Namespace disjointness (gated)**: the kind set, the locale set
+  `{de,es,fr,ko,pl,pt-BR,ru,zh}`, and the reserved first segments
+  `{data, cdn, db, map}` are pairwise disjoint — asserted mechanically in
+  [AC7](#ac7-url-namespace-disjointness-and-derivation-bijection).
+- No querystring locales; no pagination parameters on list indexes (each
+  kind's index is one static file; largest is item at 2,125 rows — a
+  tens-of-kilobytes artifact). The page-size-50 ruling
+  ([DR-2026-08-18-page-size]) governs rendered listing pages, not data
+  artifacts.
+- `contracts/api.manifest.json` — the machine-readable form of this
+  section: `{version:1, locales:{pivot:"en", prefixed:[…8…]},
+  reservedPrefixes:[…], kinds:[…40…], surfaces:{list, entity, tooltip,
+  taxonomy, map}, localeCoverage:{mode:"wave-1", kinds:["class","item",
+  "skill"]}, derivationRule:"…"}`. Consumers and tests derive URLs from it;
+  nobody retypes the table.
+
+## 7. List-index shapes
+
+`/data/{kind}.json` (and per-locale twins) — one envelope + flat rows:
+
+```json
+{ "buildId": 20318128,
+  "coverage": { "kind": "item", "locale": "en",
+                "count": 1807, "namedCount": 1807 },
+  "rows": [ { "id": "Gold", "name": "Gold",
+              "icon": "/cdn/v20318128/icon/Gold.webp" } ] }
+```
+
+- Required per row: `id`; `icon` (`cdnIconPath` or null — null is the named
+  explicit-missing state, rendered as an empty well, never captioned);
+  `name` (resolved for the file's locale; omitted when that locale lacks the
+  name — the UI then shows the id verbatim, which is data, not prose).
+- Optional per row: the kind's declared facet fields (rarity as case-name
+  string, typeId, tier, …) — exactly the fields each kind schema's
+  `listEntry` enumerates; lists never carry full base records.
+- `coverage.count` states how many rows the file holds; `namedCount` how many
+  carry a name in this locale. Both are coverage-scope facts (publishable
+  class); no freshness stamps, no health words
+  ([DR-2026-08-22-numbers-stand-alone]).
+- Row order: canonical id order (deterministic, diff-stable); consumers sort.
+- Wave-1 honesty: list indexes exist for ALL 40 kinds from day one
+  (every managed kind has canonical rows), but per-locale list twins exist
+  only where overlays do — see [§12](#12-wave-1-locale-scope-note-availability-regen-lands-with-dig-14).
+
+Taxonomy index `/data/db.json` feeds the PT02 kind→type→subtype menu:
+`{buildId, kinds:[{kind,count}], itemTypeTree:{roots:[…], children:{id:[…]}}}`
+— derived from the `itemType__itemType` parentType edges (72, many:1,
+[RELATIONS.md](../extracted/RELATIONS.md#modeled-pair-index)) and per-kind
+availability counts. Structure pinned by the schema's example.
+
+## 8. Tooltip sub-route payload
+
+`/data/{L}/{kind}/{id}/tooltip.json` — the wowhead-model card feed
+([site-sections §21](../../_foundation/site-sections.md#c-distribution--integration)),
+consumed by hover jobs (PT04b), the embed lane, and third parties:
+
+```json
+{ "buildId": 20318128,
+  "coverage": { "locale": "de", "availableLocales": ["en","de","fr"],
+                "namedLocales": ["en","de","fr"] },
+  "kind": "skill", "id": "Charge",
+  "name": "Ansturm", "description": "…",
+  "icon": "/cdn/v20318128/skill/Charge.webp",
+  "stats": { "apCost": 3, "cooldown": 1 },
+  "links": [ { "kind": "status", "id": "BleedingTarget", "name": "Blutung" } ],
+  "url": "/de/skill/Charge" }
+```
+
+- `name`/`description` resolved in the file's locale; either may be omitted
+  (bimodal availability + per-column drift populations are real,
+  [locale-key-convention §5](locale-key-convention.mdx#5-drift-ledger--cdb-rows-with-no-bridge-leaf-anywhere)).
+- `stats` = the kind's quotable subset — the SAME builder that fills the
+  page's quotable answer block fills this object; divergence between tooltip
+  and page is a defect (one data plane, two renders). Per-kind stat selection
+  stays a permissive `object` in wave 1 and tightens per kind when PT04a
+  lands — flagged, not designed, here.
+- `links[]` = top inverted-relation neighbors with resolved names; sourced
+  from the relink plane, capped (≤12) for payload size.
+- `url` = the canonical PAGE url for this locale (round-trips the
+  [§6](#6-static-json-api-url-architecture) derivation).
+- The HTML twin `/{L}/{kind}/{id}/tooltip` renders the identical facts for
+  humans/embedders; both come from one payload.
+
+## 9. Map marker payload shape for maps.json marks[]
+
+The registry layer `marker-layers` declares 15 marker types with `pins: 0`
+and no rows yet. When the D11-validated coordinate families emit, they land
+as `marks[]` inside that layer, and the PUBLISHED map artifact is a
+projection of the registry:
+
+- New file `contracts/markers.schema.json` pins the MARK ROW:
+  ```json
+  { "id": "A1BorderPost", "type": "border-crossing",
+    "x": -1536.0, "y": 2048.0 }
+  ```
+  Required: `id`, `type` (enum frozen to the registry's 15-type vocabulary),
+  `x`, `y` — WORLD units (128-unit cells), never pre-projected pixels; pixel
+  projection is the viewer's job through the pinned `crs`/
+  `coordinateTransform` blocks (`px=wx·4, py=wy·4`), so one transform stays
+  authoritative. Optional: `regionId`, `entity {kind,id}` (the two-way
+  entity link; `kind` draws from the 40 managed kinds PLUS the five reserved
+  promoted-later names `place group element levelProps achievement`),
+  `icon` (`cdnIconPath` or null), `label` (per-locale map whose values MUST
+  come from the game's own localization; else null — marker prose otherwise
+  lives in the linked entity's text and chrome i18n, never inline).
+- New file `contracts/map.published.schema.json` pins the SERVED projection
+  of the registry: registry structure with every repo-only field stripped —
+  layer-level `source sourceRef provenance gate notes coordinateRows
+  publicationPlane`, type-level `carrier coordinateGate`,
+  `coordinateTransform.provenance/.validation`, and the dig-QA top-level
+  blocks `expectedPayloadVocabulary`, `instanceMaps`, `storagePlanes` —
+  and dataPlaneOnly imagery absent. `storagePlanes.served` ("albedo→webp
+  tiles only") is exactly the publish set; splat/normal/height stay
+  data-plane-only, catalogue-first per [DR-2026-08-18-media-scope]. Layers
+  gain optional `marks[]` rows validated against `markers.schema.json`;
+  allowed top-level keys: `buildid crs coordinateTransform layers regions
+  battleTactical`.
+- `contracts/maps.schema.json` (registry schema, committed) is NOT edited by
+  F2; the additive `marks[]` revision to it rides whichever stage first
+  emits marks, together with the map stage owner.
+- Coverage honesty per family: the three unresolved coordinate slices
+  (`encounter-spawn`, `vendor-npc`, `fief-district` — `unknown-P1` in
+  [spec.md](../spec.md) `maps.coordinate-sources`) emit ZERO marks until
+  their carriers land; `types[].pins` counts stay the published coverage
+  statement. Battle-tactical remains a separate CRS family, out of the first
+  slice (`battleTactical.crsType: "separate-family"`).
+
+## 10. Icon CDN references
+
+- Pattern (`common.schema.json $defs.cdnIconPath`):
+  `^/cdn/v(?<buildId>[0-9]+)/(?<kind>[a-z][A-Za-z]*)/(?<id>[A-Za-z0-9_]+)\.webp$`
+  — the FRAMEWORK §2.5 versioned-CDN shape
+  ([FRAMEWORK §2.5](../../FRAMEWORK.md#25-icons-are-the-games-own-art)),
+  matching the existing export set `output/cdn/v20318128/{kind}/{id}.webp`
+  ([icons-export.mdx](icons-export.mdx#icons-export--coverage-report-buildid-20318128)).
+- Every entity id of the exported kinds has exactly one file — the 580
+  explicit-missing entities ship the named placeholder art, so a published
+  `icon` path always resolves; `icon: null` means "no art reference at all"
+  and renders as the designed empty well. Reason codes (`no-icon-ref`,
+  `resolved-empty-cell`) stay in the repo plane (`misses.jsonl`) —
+  extraction QA vocabulary, not consumer facts.
+- Variants the game distinguishes stay distinct crops (tile spans preserved);
+  raw atlas descriptors never publish ([§5.2](#52-cell-type-mapping-canonical--published)).
+
+## 11. Provenance field law (two classes, one whitelist)
+
+Per [DR-2026-08-15] D2, [AGENTS.md](../../AGENTS.md) rule 3, and
+[seo-standard §9](../../_foundation/seo-standard.md#9-answer-engines-aeogeo--be-the-cited-answer-not-just-the-ranked-page)
+citability clause — the API inherits the page's ban, not the repo's habits:
+
+- **Whitelist — the ONLY provenance fields in any published document:**
+  - `buildId` (integer, required at every document root);
+  - `coverage` (object, required wherever the document scopes data:
+    `availableLocales`/`namedLocales` on entity-bearing documents — the
+    cross-locale link row + hreflang drivers
+    ([localization-architecture §2](../../_foundation/localization-architecture.md#2-cross-locale-link-contract));
+    `kind`/`locale`/`count`/`namedCount` on indexes; `pins` on marker types).
+- **Banned from every published document** (repo-only class + pipeline
+  vocabulary): `_meta` and everything it carries (`sourceSheet`,
+  `container`, `tool`, `emitted`, `columns`, `enums`, `keyRule`,
+  `localeTextRoute`); `textKey` bridge objects (locale files publish
+  RESOLVED strings); icon atlas descriptors; harvest/pak paths (`res.pak`,
+  `assets.pak`, `content.pak`, `map.pak`, `extracted/`, `.cdb`); dig/gate
+  vocabulary (`gate`, `coordinateGate`, `publicationPlane`, `provenance`,
+  edge `mechanism`/`valid` bookkeeping); source identity, license tags,
+  acquisition paths, commits, extractor identity, sha/adler hashes.
+- Observation instants: deliberately NOT published in wave 1 — nothing
+  renders them, and [DR-2026-08-22-numbers-stand-alone] keeps stamps off
+  user surfaces; the machine plane may add them later without breaking this
+  contract (additive).
+- Enforcement is structural: published-side schemas close their objects and
+  compose `provenanceEnvelope`; [AC5](#ac5-provenance-whitelist-is-structural)
+  greps the contract plane for banned tokens.
+
+## 12. Wave-1 locale scope note (availability regen lands with dig 14)
+
+Today the locale planes cover the wave-1 kinds only — overlays
+`extracted/locales/<locale>/{item,skill,class}.json` and 3,779 availability
+rows — because that is what stages 4–6 promote; the remaining 37 managed
+kinds carry `localeTextRoute` in their `_meta` but no emitted overlays yet.
+Dig 14 (batch 1, R9 locale wave-2 + R5 fr stamping rule,
+[PROGRESS batch plan](../PROGRESS.mdx#execution-plan--subagent-launch-batches-owner-directive-2026-08-26))
+regenerates overlays + `locale_availability.jsonl` across the managed
+universe. Consequences pinned NOW so dig 14 cannot reshape the contracts:
+
+- The overlay/availability schemas ([§5.1](#51-files)) are KIND-GENERIC —
+  dig 14 extends INSTANCES, never shapes. No contract file changes when it
+  lands.
+- Until then, per-locale entity/list/tooltip data URLs exist only for the
+  wave-1 kinds; requesting `/data/de/recipe/<id>.json` is a 404 BY CONTRACT
+  (honest absence), not a bug. The manifest records this as
+  `localeCoverage: {mode:"wave-1", kinds:["class","item","skill"]}`.
+- The fr vintage anomaly (bare `<cdb>` root, no stamps —
+  [locale-key-convention §1](locale-key-convention.mdx#1-the-bridge-files))
+  is an extraction-plane fact; published payloads never expose per-locale
+  revision stamps, so it costs the published plane nothing.
+
+## 13. Out of scope and the stage-7 boundary
+
+FLAGGED, NOT DESIGNED (the brief's explicit instruction): the EMITTER that
+produces `/data/**` does not exist yet — today's run_all stage 6 `emit` is
+the validation-only pass
+([spec-stages-datasets §5](spec-stages-datasets.mdx#5-stage-contract--stage-6-emit)).
+A later stage-7 piece (post-rule-8 gate; PT16/F2 build per
+[PROGRESS batches](../PROGRESS.mdx#execution-plan--subagent-launch-batches-owner-directive-2026-08-26))
+owns: the publish stage wiring into `run_all` (name, order, EXTRACTION-LOG
+entry), the tree layout under `output/`/site public dir, enum-resolution and
+projection code, CORS + content-type headers, llms.txt linkage of the
+`/data/**` entry points, and sitemap `lastmod` driven by buildId. This spec
+hands that piece: schemas + manifest + derivation rule + this register of
+VERIFICATIONS IT OWNS (curl/file assertions against the SERVED tree):
+
+1. G26 machine-plane gate: `/data/**` reachable and non-empty on the
+   production origin; `Access-Control-Allow-Origin: *`;
+   `application/json; charset=utf-8`.
+2. Parity sweep: sampled tooltip/page pairs agree field-for-field (one data
+   plane, two renders).
+3. 404 semantics: drift entities and locale-unavailable views are 404, never
+   pivot-filled; `/{pivot}/*` locale-prefixed pivot URLs 301 to bare paths.
+4. Registry→projection byte-check: published `map.json` equals the
+   allow-list projection of the current `extracted/data/maps.json`.
+5. Icon parity: every published `icon` path resolves 200 in `/cdn/**`.
+
+Also out of F2 scope: search index artifact (F5), relations/inverted-index
+ENDPOINTS (shape rides PT04b's spec — the canonical relink plane already
+exists; publishing adjacency is one more projection), RSS/feeds (PT18),
+UGC plane (PT15), any rendered page.
+
+## 14. Files touched
+
+By the F2 BUILD piece (this spec creates none of them; the review chain
+judges the list for completeness):
+
+| file | action | content |
+|---|---|---|
+| `contracts/common.schema.json` | new | shared `$defs` (provenanceEnvelope, coverage variants, cdnIconPath, entityPointer, worldCoord, locale enum, id pattern) |
+| `contracts/kinds/<kind>.schema.json` ×40 | new | `$defs: canonicalRow, baseRecord, listEntry` per managed kind |
+| `contracts/overlay.schema.json` | new | repo-plane overlay artifact shape (kind-generic) |
+| `contracts/availability.schema.json` | new | repo-plane availability row shape |
+| `contracts/list.schema.json` | new | index envelopes + rows + `/data/db.json` taxonomy index |
+| `contracts/tooltip.schema.json` | new | tooltip payload (envelope + per-kind extension point) |
+| `contracts/markers.schema.json` | new | mark rows (15-type frozen enum, reserved entity kinds) |
+| `contracts/map.published.schema.json` | new | served projection of the maps registry (repo-only fields banned) |
+| `contracts/api.manifest.json` | new | machine URL/namespace/coverage-scope manifest |
+| `docs/spec-f2-contracts.mdx` | this file | the contract itself |
+
+Explicitly NOT touched: anything under `extracted/**` (read-only),
+`contracts/maps.schema.json` (registry schema — additive `marks[]` revision
+rides the first marks-emitting stage), `pipeline/**`, `output/**`, `site/**`.
+
+## 15. Acceptance criteria
+
+Each verifiable by command exit code or file assertion on NE8K, run from the
+pack root with Python 3.14 (`jsonschema` present, measured 4.26.0). AC1–AC11
+are executable TODAY against the contract plane + canonical corpus once the
+F2 build lands its files; AC12–AC13 bind the build piece; the stage-7
+register in [§13](#13-out-of-scope-and-the-stage-7-boundary) is explicitly
+NOT part of F2 acceptance.
+
+### AC1: Contract inventory is complete and parses
+
+`contracts/kinds/` holds exactly the 40 managed kinds, 1:1 by name; every
+`contracts/**/*.json` parses.
+
+```sh
+PYTHONIOENCODING=utf-8 python - <<'PY'
+import json, sys, pathlib
+sys.path.insert(0, "pipeline/tools"); import wave_kinds
+kinds = sorted(wave_kinds.MANAGED_KINDS)
+have = sorted(p.name[:-len(".schema.json")] for p in pathlib.Path("contracts/kinds").glob("*.schema.json"))
+assert have == kinds, sorted(set(kinds) ^ set(have))
+for p in pathlib.Path("contracts").rglob("*.json"):
+    json.loads(p.read_text(encoding="utf-8"))
+print("AC1 ok:", len(have), "kind schemas")
+PY
+```
+
+### AC2: Every contract is a valid draft-07 schema
+
+```sh
+PYTHONIOENCODING=utf-8 python - <<'PY'
+import json, pathlib, jsonschema
+for p in sorted(pathlib.Path("contracts").rglob("*.schema.json")):
+    s = json.loads(p.read_text(encoding="utf-8"))
+    assert s.get("$schema", "").endswith("draft-07/schema#"), p
+    jsonschema.validators.validator_for(s).check_schema(s)
+print("AC2 ok")
+PY
+```
+
+### AC3: Kind schemas accept the live canonical corpus (structure only)
+
+Every data line of all 40 `extracted/data/<kind>.jsonl` validates against
+its schema's `$defs.canonicalRow`. Boundary: SHAPE only — counts/fidelity
+stay with `census-per-kind`/cdb_verify; a row failing HERE is a schema
+defect, not a data defect.
+
+```sh
+PYTHONIOENCODING=utf-8 python - <<'PY'
+import json, sys, pathlib, jsonschema
+sys.path.insert(0, "pipeline/tools"); import wave_kinds
+store = {p.name: json.loads(p.read_text(encoding="utf-8"))
+         for p in pathlib.Path("contracts").rglob("*.schema.json")}
+resolver = jsonschema.RefResolver(base_uri="", referrer=None, store=store)
+total = 0
+for k in sorted(wave_kinds.MANAGED_KINDS):
+    sch = store[k + ".schema.json"]
+    v = jsonschema.Draft7Validator(sch["$defs"]["canonicalRow"], resolver=resolver)
+    lines = pathlib.Path(f"extracted/data/{k}.jsonl").read_text(encoding="utf-8").splitlines()[1:]
+    errs = []
+    for i, ln in enumerate(lines, 2):
+        e = next(v.iter_errors(json.loads(ln)), None)
+        if e: errs.append((i, e.message))
+    assert not errs, (k, errs[:3])
+    total += len(lines)
+print("AC3 ok:", total, "rows structurally valid")
+PY
+```
+
+### AC4: Overlay and availability shapes match the emitted artifacts
+
+All 27 `extracted/locales/<locale>/{item,skill,class}.json` validate against
+`overlay.schema.json`; every row of
+`extracted/relinks/locale_availability.jsonl` validates against
+`availability.schema.json` (shape only — the row law stays in
+`availability-regenerated`).
+
+```sh
+PYTHONIOENCODING=utf-8 python - <<'PY'
+import json, pathlib, jsonschema
+ov = json.loads(pathlib.Path("contracts/overlay.schema.json").read_text(encoding="utf-8"))
+av = json.loads(pathlib.Path("contracts/availability.schema.json").read_text(encoding="utf-8"))
+ov_v, av_v = jsonschema.Draft7Validator(ov), jsonschema.Draft7Validator(av)
+files = sorted(pathlib.Path("extracted/locales").glob("*/*.json"))
+assert len(files) == 27, len(files)
+for p in files:
+    d = json.loads(p.read_text(encoding="utf-8"))
+    e = next(ov_v.iter_errors(d), None)
+    assert e is None, (str(p), e.message)
+rows = pathlib.Path("extracted/relinks/locale_availability.jsonl").read_text(encoding="utf-8").splitlines()
+for i, ln in enumerate(rows, 1):
+    e = next(av_v.iter_errors(json.loads(ln)), None)
+    assert e is None, (i, e.message)
+print("AC4 ok:", len(files), "overlay files,", len(rows), "availability rows")
+PY
+```
+
+### AC5: Provenance whitelist is structural
+
+(a) Every published-side schema composes the shared envelope: each of the 40
+kind `baseRecord` defs plus `list`, `tooltip`, `markers`, `map.published`
+carries an `allOf` ref to `common.schema.json#/$defs/provenanceEnvelope`.
+(b) No contract file contains any banned token — `_meta`, `sourceSheet`,
+`container`, `textKey`, `keyRule`, `localeTextRoute`, `res.pak`,
+`assets.pak`, `content.pak`, `map.pak`, `.cdb`, `harvest/`, `sha256`,
+`adler`, `"license"`, `coordinateGate`, `publicationPlane` (the last two may
+appear ONLY in `map.published.schema.json`, which names them in order to ban
+them).
+
+```sh
+PYTHONIOENCODING=utf-8 python - <<'PY'
+import json, sys, pathlib
+sys.path.insert(0, "pipeline/tools"); import wave_kinds
+BANNED = ["_meta", "sourceSheet", "container", "textKey", "keyRule",
+          "localeTextRoute", "res.pak", "assets.pak", "content.pak",
+          "map.pak", ".cdb", "harvest/", "sha256", "adler", '"license"',
+          "coordinateGate", "publicationPlane"]
+ALLOW = {"map.published.schema.json"}
+bad = []
+for p in pathlib.Path("contracts").rglob("*.json"):
+    t = p.read_text(encoding="utf-8")
+    for tok in BANNED:
+        if tok in t and p.name not in ALLOW:
+            bad.append((p.name, tok))
+assert not bad, bad
+REF = "common.schema.json#/$defs/provenanceEnvelope"
+def has_ref(s):
+    return REF in json.dumps(s)
+for k in wave_kinds.MANAGED_KINDS:
+    s = json.loads(pathlib.Path(f"contracts/kinds/{k}.schema.json").read_text(encoding="utf-8"))
+    assert has_ref(s["$defs"]["baseRecord"]), k
+for n in ("list.schema.json", "tooltip.schema.json", "markers.schema.json",
+          "map.published.schema.json"):
+    s = json.loads(pathlib.Path("contracts", n).read_text(encoding="utf-8"))
+    assert has_ref(s), n
+print("AC5 ok: whitelist structural, banned tokens absent")
+PY
+```
+
+### AC6: Schemas carry validated examples
+
+Every schema embeds ≥1 `examples` value somewhere in its `$defs`, and every
+embedded example validates against the def it sits in (self-proof; no
+separate fixtures directory). Threshold: ≥45 validated examples across the
+contract plane (40 kinds + the five shared schemas).
+
+```sh
+PYTHONIOENCODING=utf-8 python - <<'PY'
+import json, pathlib, jsonschema
+def count(s):
+    v = jsonschema.validators.validator_for(s)
+    n = 0
+    for ex in (s.get("examples") or []):
+        v.validate(ex, s); n += 1
+    for d in (s.get("$defs") or {}).values():
+        n += count(d)
+    return n
+tot = 0
+for p in pathlib.Path("contracts").rglob("*.schema.json"):
+    s = json.loads(p.read_text(encoding="utf-8"))
+    tot += count(s)
+assert tot >= 45, tot
+print("AC6 ok:", tot, "validated examples")
+PY
+```
+
+### AC7: URL namespace disjointness and derivation bijection
+
+Kinds ∩ locales ∩ reserved prefixes = ∅; and for a deterministic sample
+(first row id of every kind × {pivot, first locale} × {list, entity,
+tooltip}), applying the manifest derivation rule to the page URL yields the
+data URL, and the inverse mapping restores the page URL.
+
+```sh
+PYTHONIOENCODING=utf-8 python - <<'PY'
+import json, sys, pathlib
+sys.path.insert(0, "pipeline/tools"); import wave_kinds
+m = json.loads(pathlib.Path("contracts/api.manifest.json").read_text(encoding="utf-8"))
+ks, ls, rs = set(m["kinds"]), set(m["locales"]["prefixed"]), set(m["reservedPrefixes"])
+assert ks == set(wave_kinds.MANAGED_KINDS)
+assert not (ks & ls) and not (ks & rs) and not (ls & rs), "namespace clash"
+def data_url(page):
+    seg = page.strip("/").split("/")
+    loc = seg.pop(0) if seg[0] in ls else None
+    inner = ([loc] if loc else []) + seg
+    return "/data/" + "/".join(inner) + ".json"
+def page_of(data):
+    seg = data.strip("/").split("/")
+    assert seg[0] == "data"
+    seg = seg[1:]
+    loc = seg.pop(0) if seg[0] in ls else None
+    return ("/" + loc if loc else "") + "/" + "/".join(seg)[:-len(".json")]
+first_ids = {}
+for k in sorted(ks):
+    ln = pathlib.Path(f"extracted/data/{k}.jsonl").read_text(encoding="utf-8").splitlines()[1]
+    first_ids[k] = json.loads(ln)["id"]
+probe = sorted(ls)[0]
+pages = []
+for k in sorted(ks):
+    pages += [f"/{k}", f"/{k}/{first_ids[k]}",
+              f"/{k}/{first_ids[k]}/tooltip"]
+pages += [f"/db", f"/map", f"/{probe}/db", f"/{probe}/map"]
+for pg in pages:
+    d = data_url(pg)
+    assert d.endswith(".json") and "/data/" in d, (pg, d)
+    assert page_of(d) == pg, (pg, d)
+print(f"AC7 ok: namespaces disjoint, {len(pages)} page URLs bijective")
+PY
+```
+
+### AC8: Manifest is the single typed source
+
+`api.manifest.json`: `version==1`; `kinds` equals the managed universe;
+`locales.pivot=="en"` and `prefixed` is exactly the 8 client codes;
+`localeCoverage == {mode:"wave-1", kinds:["class","item","skill"]}`;
+surfaces cover list/entity/tooltip/taxonomy/map.
+
+```sh
+PYTHONIOENCODING=utf-8 python - <<'PY'
+import json, sys, pathlib
+sys.path.insert(0, "pipeline/tools"); import wave_kinds
+m = json.loads(pathlib.Path("contracts/api.manifest.json").read_text(encoding="utf-8"))
+assert m["version"] == 1
+assert sorted(m["kinds"]) == sorted(wave_kinds.MANAGED_KINDS)
+assert m["locales"]["pivot"] == "en"
+assert sorted(m["locales"]["prefixed"]) == sorted(["de","es","fr","ko","pl","pt-BR","ru","zh"])
+assert m["localeCoverage"] == {"mode": "wave-1", "kinds": ["class","item","skill"]}
+assert {"list","entity","tooltip","taxonomy","map"} <= set(m["surfaces"])
+print("AC8 ok")
+PY
+```
+
+### AC9: Marker contract accepts the frozen vocabulary and honest fixtures
+
+`markers.schema.json` checks (AC2); its `type` enum equals the 15 types
+declared by today's registry `marker-layers` layer; three fixtures validate
+(required-only, fully-populated with a reserved deferred entity kind,
+null-bearing optionals); an unknown marker type is rejected.
+
+```sh
+PYTHONIOENCODING=utf-8 python - <<'PY'
+import json, copy, pathlib, jsonschema
+reg = json.loads(pathlib.Path("extracted/data/maps.json").read_text(encoding="utf-8"))
+vocab = sorted(t["kind"] for l in reg["layers"] if l["kind"] == "markers" for t in l["types"])
+sch = json.loads(pathlib.Path("contracts/markers.schema.json").read_text(encoding="utf-8"))
+assert sorted(sch["$defs"]["mark"]["properties"]["type"]["enum"]) == vocab
+v = jsonschema.Draft7Validator(sch["$defs"]["mark"])
+fx = [
+    {"id": "A1BorderPost", "type": "border-crossing", "x": -1536.0, "y": 2048.0},
+    {"id": "GosenbergMarket", "type": "location-place", "x": 1024.0, "y": -512.0,
+     "regionId": "Gosenberg",
+     "entity": {"kind": "place", "id": "GosenbergMarket"},
+     "icon": "/cdn/v20318128/icon/GosenbergMarket.webp", "label": None},
+    {"id": "SecretChest12", "type": "treasure", "x": 0.0, "y": 0.0,
+     "regionId": None, "entity": None, "icon": None, "label": None},
+]
+for f in fx:
+    e = next(v.iter_errors(f), None)
+    assert e is None, (f["id"], e.message)
+bad = copy.deepcopy(fx[0]); bad["type"] = "mushroom"
+assert next(v.iter_errors(bad), None) is not None, "unknown type accepted"
+print("AC9 ok:", len(vocab), "-type enum pinned, fixtures pass, unknown rejected")
+PY
+```
+
+### AC10: Published map projection is total over today's registry
+
+Applying the allow-list projection of [§9](#9-map-marker-payload-shape-for-mapsjson-marks)
+to the CURRENT `extracted/data/maps.json` yields a document that validates
+against `map.published.schema.json` — proving the schema demands nothing the
+corpus cannot become.
+
+```sh
+PYTHONIOENCODING=utf-8 python - <<'PY'
+import json, copy, pathlib, jsonschema
+reg = json.loads(pathlib.Path("extracted/data/maps.json").read_text(encoding="utf-8"))
+pub = copy.deepcopy(reg)
+for k in ("expectedPayloadVocabulary", "instanceMaps", "storagePlanes"):
+    pub.pop(k, None)
+ct = pub.get("coordinateTransform") or {}
+for k in ("provenance", "validation"):
+    ct.pop(k, None)
+STRIP_LAYER = {"source", "sourceRef", "provenance", "gate", "notes",
+               "coordinateRows", "publicationPlane"}
+STRIP_TYPE = {"carrier", "coordinateGate"}
+for l in pub.get("layers", []):
+    for f in STRIP_LAYER: l.pop(f, None)
+    for t in l.get("types", []):
+        for f in STRIP_TYPE: t.pop(f, None)
+for r in pub.get("regions", []):
+    r.pop("nameKeyRoute", None)
+sch = json.loads(pathlib.Path("contracts/map.published.schema.json").read_text(encoding="utf-8"))
+errs = list(jsonschema.Draft7Validator(sch).iter_errors(pub))
+assert not errs, [e.message for e in errs[:3]]
+print("AC10 ok: registry projects cleanly onto the published schema")
+PY
+```
+
+### AC11: Icon path pattern matches the shipped export set
+
+Sample up to 30 files deterministically from `output/cdn/**/*.webp` and
+require each repo-relative published path to match
+`common.schema.json#$defs/cdnIconPath`.
+
+```sh
+PYTHONIOENCODING=utf-8 python - <<'PY'
+import json, pathlib, re
+c = json.loads(pathlib.Path("contracts/common.schema.json").read_text(encoding="utf-8"))
+pat = re.compile(c["$defs"]["cdnIconPath"]["pattern"])
+files = sorted(str(p).replace("\\\\", "/") for p in pathlib.Path("output/cdn").rglob("*.webp"))
+assert files, "export set missing"
+step = max(1, len(files) // 30)
+sample = files[::step][:30]
+for f in sample:
+    assert pat.match("/" + f.split("output/", 1)[1]), f
+print("AC11 ok:", len(sample), "paths match cdnIconPath")
+PY
+```
+
+### AC12: Build-piece output satisfies the contract
+
+Runs after the F2 build lands, before arbiter: re-run AC1–AC11 (all green),
+then `git status --porcelain contracts/ docs/` shows EXACTLY the ten §14
+paths — no extra schema files, no edits outside the list.
+
+### AC13: Documentation integrity
+
+Every fragment link in this spec resolves to a real heading in its target
+file (script over `[text](file#anchor)` occurrences vs GitHub-style slugs of
+target headings); no HTML in this file; ends with its END sentinel.
+
+Stage-7 owned verifications (NOT F2 acceptance): served-tree G26/CORS/
+content-type, tooltip↔page parity sweep, 404 semantics, registry→projection
+byte-check, icon 200s — see [§13](#13-out-of-scope-and-the-stage-7-boundary).
+
+<!-- END OF docs/spec-f2-contracts.mdx — read-in-full file: if you have not seen this line, you have not read this file. -->

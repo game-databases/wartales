@@ -1,0 +1,41 @@
+# Brief — Spec Fixer: F4 app shell r1
+
+Fresh Fixer agent; never spawn subagents; never commit; Wartales pack
+only. Revise exactly ONE file: `docs/spec-f4-app-shell.mdx`. Produce no
+other deliverable except the response ledger inside it.
+
+Inputs, read IN FULL before editing:
+1. `docs/review-spec-f4-shell.mdx` — binding finding list (1 BLOCKER,
+   4 MAJOR, 7 MINOR). Every finding addressed with evidence; none argued
+   away.
+2. `docs/spec-f5-search.mdx` — LANDED authority for the inbound
+   `data-search-swap-root` seam (M1): the slot contract must reference
+   F5's swap-root placement requirement exactly, still implementing
+   nothing of F5's behavior.
+3. `docs/spec-f2-contracts.mdx` — LANDED authority if any route/URL
+   claim needs re-derivation; conform to it, never contradict.
+4. FRAMEWORK.md §2.20/§2.7/§2.15/§2.11,
+   `_foundation/localization-architecture.md`,
+   `_foundation/decision-register.md` [DR-2026-08-20-locale-urls],
+   [DR-2026-08-22-search-is-not-a-page] — unchanged authorities.
+5. Next.js App Router reality: the B1 fix (locale-scoped not-found) must
+   use a mechanism that actually fires — a `[...rest]` catch-all inside
+   `app/[locale]/` rendering `notFound()`, per current Next.js docs as
+   you know them; update §9 files-touched accordingly (additive only).
+
+Rules of engagement:
+- Fix each finding at the reviewer's anchored section; keep structure,
+  numbering, and AC ids stable — amend or add ACs, never silently
+  renumber; tag changed AC bodies `(r1)`.
+- M2 resolution must make §5's manifest row pass §7.4's rule using ONLY
+  keys from §4's exactly-13 inventory — extend that inventory only if a
+  key is genuinely missing, and then keep parity gates intact.
+- M3 resolution: hygiene grep scope must cover every file where token
+  declarations could land (globals.css included) so AC 9 has a failing
+  command for any violation.
+- End the file with `## Revision r1` — finding-by-finding table:
+  id · severity · resolution one-liner · sections touched.
+- Do not touch any other file; do not commit.
+
+Done = all 12 findings resolved, revision table complete, AC set still
+executable, boundary fences (F5/PT01/PT02/PT16/PT17) intact.

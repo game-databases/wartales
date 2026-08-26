@@ -1,0 +1,55 @@
+# Brief — Spec Reviewer: F2 published contracts
+
+Fresh Reviewer agent; never spawn subagents; never commit; Wartales pack
+only. Produce ONE review: `docs/review-spec-f2-contracts.mdx`. Review
+only — propose no fixes, edit nothing.
+
+Read IN FULL before judging: `docs/spec-f2-contracts.mdx` (the subject);
+FRAMEWORK.md §2.1–§2.3 + §2.10 (planes model, locale overlay split);
+`_foundation/seo-standard.md` §9 (machine data plane, stable-data-URL
+rule); `_foundation/localization-architecture.md` §5.1 (stable ids);
+`pipeline/tools/wave_kinds.py` (MANAGED_KINDS = the 40-kind ground
+truth); `extracted/relinks/matrix.json` header + `RELATIONS.md`
+(§4.2-as-amended envelope: totals/pairs/selfPairs/deferredTargetPairs/
+textKeyCoverage); `extracted/relinks/locale_availability.jsonl`;
+`contracts/maps.schema.json` (marks[] type enum); `output/cdn/` icon
+export set layout on disk; `pipeline/tools/validate_all.py` (gates F2
+must not duplicate); current `contracts/` tree as found.
+
+Review axes (findings classified BLOCKER / MAJOR / MINOR, anchored to
+spec section + source):
+
+1. **Kind universe** — §4's 40 kinds vs wave_kinds.py exactly; synthetic-id
+   caveat and deferred-kind list honest vs matrix.json
+   deferredTargetPairs; locale segments consistent with the frozen ×9 +
+   EN-bare pivot law.
+2. **URL law soundness** — §6 bijective page↔data derivation: re-prove
+   bijectivity yourself on ≥20 sampled real page URLs across ≥5 kinds;
+   namespace disjointness (data/ vs pages vs cdn) airtight; api.manifest
+   shape complete. A collision or non-surjective case = BLOCKER.
+3. **Schema contract** — §5 base + overlay split vs FRAMEWORK §2.2 and
+   actual extracted JSONL shapes (sample 5 kinds against their
+   `extracted/data/_draft|canonical` files: does the canonical→published
+   cell-type mapping table cover every cell type that actually occurs?);
+   stable-id law per localization-architecture §5.1.
+4. **Payload shapes** — §8 tooltip sub-route + §9 marker payload: fields
+   all exist in upstream artifacts; 15-type mark enum matches
+   contracts/maps.schema.json exactly; served projection really removes
+   every repo-only field (run the §11 banned-token scan over the schema
+   text).
+5. **Provenance law** — whitelist {buildId, coverage} only; no repo-only
+   class names anywhere in published shapes.
+6. **Boundary integrity** — stage-7 emitter flagged not designed;
+   validate_all.py gates referenced not duplicated; nothing here builds
+   UI. Scope bleed = MAJOR.
+7. **Cross-spec coherence** — F5 (`site/public/data/search/*`) and PT16
+   (subjectOf targets, sitemap URL math) both consume §6's law: confirm
+   their citations match this spec as landed; flag mismatches either way
+   (but do not edit the other specs — record in `## conflicts`).
+8. **AC executability** — all 13 ACs falsifiable as written; the 2
+   not-executable-now ones correctly gated; embedded programs actually
+   compile (spot-run ≥3 read-only).
+
+Verdict at top: **NEEDS_REVISION** (blockers/majors enumerated) or
+**READY_FOR_ARBITER**. Be harsh; cite evidence per finding. End with a
+count summary table.
