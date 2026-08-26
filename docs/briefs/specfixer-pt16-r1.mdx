@@ -1,0 +1,40 @@
+# Brief — Spec Fixer: PT16 SEO/AEO r1
+
+Fresh Fixer agent; never spawn subagents; never commit; Wartales pack
+only. Revise exactly ONE file: `docs/spec-pt16-seo.mdx`. Produce no
+other deliverable except the response ledger inside it.
+
+Inputs, read IN FULL before editing:
+1. `docs/review-spec-pt16-seo.mdx` — the binding finding list (6 MAJOR,
+   6 MINOR). Every finding must be addressed; none may be argued away
+   without on-disk evidence.
+2. `docs/spec-f2-contracts.mdx` — LANDED authority for the API URL law
+   (§6: strip-locale → prepend `data/` → append `.json`). PT16 §9(4)
+   `subjectOf` targets must be re-derived from this law.
+3. `docs/spec-f4-app-shell.mdx` — LANDED authority for routes:
+   import point is F4's `routes-manifest.ts` / `i18n/locales.ts`;
+   second route mappings are banned; locale segment casing is lowercase
+   `pt-br` (URL) distinct from BCP-47 `pt-BR`.
+4. `_foundation/seo-standard.md` §1–§9 (unchanged authority).
+5. `extracted/data/` census headers — canonical entity rows are 10,207;
+   11,473 includes 1,266 logic constants and MUST NOT be used as a URL
+   denominator. Re-derive the URL math honestly from availability data
+   (3,779 ids across current kinds ≈ 34k today; state growth policy for
+   kinds that land later).
+
+Rules of engagement:
+- Fix each finding at the section the reviewer anchored; keep the
+  spec's structure, numbering, and AC id scheme (S/R/J/T/O/L/I) stable —
+  ACs may be added or amended but never silently renumbered.
+- Where a fix changes an AC's testable content, mark the AC body with a
+  `(r1)` tag so the Arbiter can diff intent.
+- Cross-spec contradictions resolve toward the LANDED spec (F2/F4 are
+  frozen authority); if you believe F2/F4 themselves are wrong, do NOT
+  edit them — record the conflict in a short `## r1 conflicts` section
+  with evidence and leave PT16 conformant to them.
+- End the file with `## Revision r1` — a finding-by-finding table:
+  id · severity · resolution one-liner · sections touched.
+- Do not touch any other file; do not commit.
+
+Done = all 12 findings resolved with evidence, revision table complete,
+AC set still fully curl-verifiable per seo-standard rules.

@@ -1,0 +1,272 @@
+# Spec Review — PT16 SEO/AEO infra (`docs/spec-pt16-seo.mdx`)
+
+Reviewer: fresh Spec Review agent (brief
+[`docs/briefs/reviewer-spec-pt16-seo.mdx`](./briefs/reviewer-spec-pt16-seo.mdx)).
+Date: 2026-08-26. Review only — no fixes proposed, nothing else touched,
+nothing committed.
+
+## Verdict: **NEEDS_REVISION**
+
+0 BLOCKER · **6 MAJOR** · 6 MINOR. The spec is unusually well-grounded —
+every frozen number I checked traces to disk exactly (buildid, icon set,
+relations, census, DR citations) — but its declared-dependency layer is
+stale against the tree as found: both F2 and F4 specs have landed on disk
+since it was authored, and PT16 now contradicts them on load-bearing
+shapes (the JSON URL derivation rule, the route-registry module, the
+`pt-br` URL segment casing), misquotes its own URL-math referent, and
+carries two self-contradictory acceptance criteria. All six majors are
+pre-code catches; none require redesign, all require re-sync or
+re-statement before arbiter.
+
+## Verification basis
+
+Read in full: subject `docs/spec-pt16-seo.mdx` (682 lines);
+`_foundation/seo-standard.md` §1–§9 (END sentinel reached);
+`_foundation/localization-architecture.md` (sentinel reached); root
+`AGENTS.md` (sentinel reached); FRAMEWORK.md §2 (incl. §2.5, §2.7, §2.8,
+§2.10, §2.14) and §8 DoD; decision-register entries
+[DR-2026-08-20-locale-urls], [DR-2026-08-17-discoverability],
+[DR-2026-08-18] (+ -page-size), [DR-2026-08-20-user-language-realtime],
+[DR-2026-08-22-numbers-stand-alone], [DR-2026-08-22-search-is-not-a-page],
+[DR-2026-08-22-copy-earns-its-place], [DR-2026-08-20-guildwars-build],
+[DR-2026-08-24-wartales-roster]. Verified on disk:
+`contracts/maps.schema.json` (`coordinateTransform` present, required),
+`extracted/relinks/locale_availability.jsonl` (3,779 rows; row shape
+matches spec §2 verbatim; union of `availableLocales` = the nine codes;
+458 rows with partial availability),
+`extracted/validation-report.json` (`buildId:"20318128"`,
+`generated:"2026-08-25T19:45:51"` — offset-naive),
+`extracted/data/item.jsonl` line-1 `_meta` envelope (buildid, emitted,
+rowCount, container), `output/cdn/v20318128/` (3,782 files = 3,779 webp +
+3 metadata incl. `misses.jsonl`), `docs/icons-export.mdx` (Σ row
+3,779/3,199/580; 96 px nominal; 96×192 spans preserved),
+`docs/spec-stages-datasets.mdx` (census closure 10,207 + 1,266 =
+11,473; 51 pairs / 19,130 edges), `docs/spec-f4-app-shell.mdx` (392
+lines, LANDED), `docs/spec-f2-contracts.mdx` (760 lines, LANDED),
+`docs/pieces.mdx` PT16 row, `docs/spec.md` (locales block, game-modes,
+store release 2023-04-12, appid 1527950), current `site/` tree
+(`src/styles/tokens.{css,test.ts}` + `public/{fonts,assets/ui}` only —
+spec's "F1 tokens + public assets only" claim TRUE), pack `.gitignore`
+(lines 9–12 binary exclusions), `site/public/*/README.md` conventions.
+
+---
+
+## MAJOR findings
+
+### M-A — §9(4) misattributes a JSON derivation rule to F2 that F2 explicitly decided differently
+
+Spec anchor: §9 llms.txt content contract, bullet 4 ("**`## JSON data`**
+… the entity JSON URL derivation rule ('replace nothing — the JSON for a
+page lives at the page URL + `.json`', F2's shape decision)") and §6.4
+("`subjectOf` → the stable JSON URL derived from the page URL").
+Evidence: [`docs/spec-f2-contracts.mdx`](./spec-f2-contracts.mdx) §6
+freezes a *different* bijective rule: "take the page path, **strip the
+optional leading locale segment, prepend `data/`, append `.json`**" —
+entity JSON lives at `/data/{kind}/{id}.json`, not `/{kind}/{id}.json`.
+The two formulas produce different literal URLs for every surface except
+none — they disagree on the `data/` prefix and on the locale-strip step.
+Impact: llms.txt entry-point links are protected by the manifest-sourced
+generation (good), but the §6.4 `subjectOf` targets are derived *from the
+page URL* per PT16's formula and would 404 against an F2-conformant API;
+seo-standard §9 makes stable derivable data URLs the agent-actionability
+gate, so this is the worst place to carry a wrong formula. Only caught
+late, by AC-L3 after G26 rehearsal. The quotation marks present it as
+F2's frozen decision; no such sentence exists in F2. Re-sync to the
+landed rule (or arbitrate the discrepancy) before CodeWriter.
+
+### M-B — §11 dependency statuses and §3 pinned shapes are stale against the tree as found; three sibling-spec contradictions
+
+Spec anchors: §11 table ("F4 shell routes … pending — F4 brief exists,
+spec not landed"; "F2 API shape … F2 brief exists, spec not landed");
+§3.1 ("F4's route registry module (`site/src/lib/routes.ts`, created by
+F4…)"); §3.2 ("URL segments are the pack locale codes verbatim: …
+`/pt-BR/`"). Evidence on disk: both specs have LANDED —
+[`docs/spec-f4-app-shell.mdx`](./spec-f4-app-shell.mdx) (status header:
+piece spec, ready to build) and
+[`docs/spec-f2-contracts.mdx`](./spec-f2-contracts.mdx). Three concrete
+conflicts follow:
+
+1. Import point: F4 §9 freezes `site/src/i18n/{locales,routing,request,navigation}.ts`
+   plus `site/src/lib/routes-manifest.ts`. No `site/src/lib/routes.ts`
+   exists in F4's file list, and F4 §2 rules "No second mapping may
+   appear anywhere in `site/`" — a CodeWriter following PT16 literally
+   creates a banned duplicate mapping module.
+2. Segment casing: F4 §2/§3 freeze lowercase `pt-br` as the URL segment
+   (explicit reasoning: hreflang/lang carry `pt-BR`; "Orchestrator may
+   override the casing"), while PT16 §3.2 asserts `/pt-BR/` as the
+   expected value. Both cannot be right; any AC authored from PT16 §3.2
+   fails a conformant F4 build (or triggers an unarbitrated flip).
+3. Status column: "spec not landed" is false for both dependencies as of
+   this review, which changes what §11 instructs ("where those do not
+   exist yet…").
+
+PT16's mechanical-delegation design (registry-driven, nothing hardcoded)
+contains the blast radius, but a spec whose pinned expected values
+contradict the landed law it consumes will misdirect test authors. The
+client-code→segment join (`availableLocales` carries client codes like
+`pt-BR`; segments are registry ids like `pt-br`) that AC-S3/AC-T3 depend
+on is exactly the mapping PT16 never mentions because it predates F4's
+freeze.
+
+### M-C — §2 page math: "11,473 × 9 ≈ 103 k potential entity URLs" uses the census closure total as an entity-page universe
+
+Spec anchor: §2 Ground truth, "Managed kinds | 40 kinds … census total
+11,473" and the Page math paragraph. Evidence:
+[`docs/spec-stages-datasets.mdx`](./spec-stages-datasets.mdx) census
+table (line 102–105): canonical dataset rows Σ **10,207**; closure adds
+**1,266** rows of *logic constants* (`extracted/logic/constants.jsonl`)
+to reach 11,473. Constants are formula rows, not entities — no entity
+detail page can ever exist for them. Meanwhile the spec's own membership
+source for the `entities` section (§4.2: cartesian product of
+`locale_availability.jsonl.availableLocales`) contains **3,779** ids
+across **3** kinds today (≈34 k URLs; 458 rows already partially
+available, so the omit policy bites immediately). So the honest figures
+are ≈92 k at canonical-corpus full availability and ≈34 k today — not
+103 k. The number is real and disk-traceable (hence not a BLOCKER
+invention), but the referent is wrong in a spec whose whole posture is
+"coverage-honest wording is what an assistant can safely repeat"
+(seo-standard §9). The sharding-from-day-one conclusion survives either
+number; the stated math does not.
+
+### M-D — AC-I1's pass condition contradicts §10's key contract
+
+Spec anchors: §10 ("one 32-hex-char key generated once, committed as
+`site/public/{key}.txt` containing the key") vs AC-I1 ("returns exactly
+the key string (**36-byte body**, newline tolerated)"). Arithmetic: 32
+hex chars = 32 bytes ASCII; +newline = 33 bytes. A 36-character body
+implies a dashed UUID — whose dashes are non-hex characters, i.e.
+invalid IndexNow key material (IndexNow keys are 8–128 hexadecimal
+characters). As written, the test and the contract cannot both pass;
+whichever way the implementer resolves it, one clause of this spec is
+violated. One-line fix at arbiter (state 32-hex + optional `\n`, 32/33
+bytes).
+
+### M-E — AC-J5 asserts a fourth parity source that §9's llms.txt contract never produces
+
+Spec anchor: AC-J5 ("name in JSON-LD == H1 text == F2 JSON API `name` ==
+the name string in `llms.txt`'s kind index sample") vs §9's own llms.txt
+structure (H1, blockquote, "What the numbers mean", "## JSON data"
+entry-point *links*, "## Maps", "## News & changes", "## Methodology",
+citability footer). Nowhere does §9 define per-entity names inside
+llms.txt — the contract links indexes, it does not enumerate entities.
+The fourth leg of the four-source identity diff therefore has no defined
+producer in the same document, and unlike the F2 legs it is not rescued
+by the "Partially BLOCKED-ON(F2)" mark: no later piece supplies it
+either. seo-standard §9's one-identity rule is satisfied by three real
+sources; either add a name-bearing sample to the §9 structure or drop
+the leg — as written the AC is untestable.
+
+### M-F — §14 commits a game-derived binary, against AGENTS.md rule 5 and the pack's own public-asset contracts
+
+Spec anchor: §14 Files touched, new file `site/public/assets/og/default.png`
+("extracted-art default card (UIA pool crop)") listed among committed
+files, with "Edits to existing files: none required". Evidence: root
+[`AGENTS.md`](../AGENTS.md) rule 5 — never commit "game data (…
+client files, binaries) — those stay local forever"; operationalized in
+this pack by `site/public/fonts/README.md` ("No font binaries are
+committed … fetched into this directory at setup time"),
+`site/public/assets/ui/README.md` ("binaries are not committed (game-derived
+data stays local per AGENTS.md rule 5)"), and `.gitignore` lines 9–12
+excluding exactly those patterns. An extracted UIA-pool crop is precisely
+the class these contracts stage-at-setup. Without a fetch/stage contract
+the file is either silently un-committed by a future ignore rule or
+force-added against rule 5. (`site/public/{key}.txt` is fine — a public
+verification token, not credential material.) The IndexNow key handling
+itself is sane and correctly argued.
+
+---
+
+## MINOR findings
+
+### m-1 — §6.2 deviates from seo-standard §1's breadcrumb letter without justification
+
+"BreadcrumbList everywhere **except home**" vs seo-standard §1
+"Breadcrumbs on every page (visible + `BreadcrumbList` structured
+data)". Defensible in practice (home has no trail) but the deviation is
+neither justified nor deferred-with-pointer, in a spec whose authority
+chain promises every implemented rule is cited and nothing silently
+relaxed.
+
+### m-2 — §5.3/AC-R3 hardcode `/db/…` spellings that F2 demoted to "evidence shape, not doctrine"
+
+§5.3 tooltip row pins `/db/{kind}/{id}/tooltip`; AC-R3 probes
+`localhost:3000/db/item?quality=tier2`. Landed F2 §6 freezes tooltips at
+`/{kind}/{id}/tooltip`, lists at `/{kind}`, and states explicitly that
+FRAMEWORK's `/db/…` example "is evidence shape, not doctrine". This also
+contradicts PT16's own posture elsewhere (§3.1 registry-only spellings;
+§4.2 "route family spelling pending"). Probe targets need re-pointing at
+the registry-derived forms or an explicit "spellings illustrative" note.
+
+### m-3 — AC-S4 lastmod equality is underspecified against the real report format
+
+`extracted/validation-report.json` `generated` is offset-naive —
+`"2026-08-25T19:45:51"` — while AC-S4 demands `<lastmod>` matching
+`(Z|[+-]\d{2}:\d{2})$` and asserts sampled values *equal the
+validation-report run instant*. String equality between the two forms is
+impossible; the normalization (append `Z`? convert host-local→UTC?) is
+unstated, and since §4.4 promises byte-stable output, the unstated
+choice changes committed bytes. Relatedly, §4.2's "per-row extraction-run
+instant" wording overstates granularity: the source carries one instant
+per run/buildid, so every row shares one value.
+
+### m-4 — Three binding standard clauses neither implemented nor deferred-with-pointer
+
+seo-standard §2 bot/user render parity ("no cloaking, one render"),
+§4 CWV budgets (CI-enforced lab traces), and §7 measurement gates (GSC +
+Bing WMT, answer-engine referral tracking, index-coverage audit) appear
+nowhere in PT16 — not implemented (correctly, they belong to rendering/
+analytics pieces) and not deferred with the owner/piece pointer the
+spec's own §1 authority-chain posture uses for every other out-of-scope
+item (cf. §12's clean deferrals). Inconsistent deferral hygiene leaves
+the clauses ownerless in this pack.
+
+### m-5 — "Edits to existing files: none" is not strictly achievable as specified
+
+`site/scripts/ping-indexnow.mjs` is described as "a deploy-pipeline
+step" but no listed artifact invokes it — wiring it requires touching an
+existing file (`site/package.json` scripts or CI config), which the same
+section declares unnecessary. Honoring M-F adds a staging step with the
+same consequence. Also `tools/parse_jsonld.py` opens a brand-new
+root-level `tools/` directory while every other Python tool in this pack
+lives under `pipeline/tools/` — pick one home.
+
+### m-6 — Pinned Next.js mechanism may not produce the declared XML shapes
+
+§4.4 pins `app/sitemap.ts` for the top-level document. Next.js App
+Router's `sitemap.ts` Metadata convention serializes `<urlset>`; a
+hand-shaped `<sitemapindex>` at `/sitemap.xml` with custom children at
+`/sitemaps/{section}-{locale}(-{n}).xml` most naturally requires
+`app/sitemap.xml/route.ts` (custom route) — the child `route.ts` handler
+as listed is sound, the index mechanism as listed probably is not.
+CodeWriter must verify against the pinned Next version before landing;
+flagged so nobody discovers it mid-build. (`app/llms.txt/route.ts`,
+`app/robots.ts` are valid conventions.)
+
+---
+
+## Review-axis results
+
+| Axis | Result |
+|---|---|
+| 1. Standard compliance §1–§9 | Pass with gaps: pivot/hreflang/canonical law, robots split (noindex-on-page vs Disallow-for-traps — technically correct), facet/staging noindex, uniqueness floor, E-E-A-T buildid visibility, IndexNow, AI-crawler superset of §2's named set (13 groups verified count-consistent), §9 machine plane + citability + retail-transfer ban, §8 sameAs-from-registry all satisfied. Gaps: m-1, m-4. No silent violation found. |
+| 2. Traceability | buildid 20318128 + TargetBuildID 21238928 exact (EXTRACTION-LOG lines 18/41); locales ×9 + `zh→zh-Hans` + ja omit-until-translated exact (spec.md lines 43–60); icon set 3,779=3,199+580, 96 px, 96×192, misses.jsonl exact (icons-export.mdx); relations 51/19,130 exact; coordinateTransform present in frozen schema; datePublished 2023-04-12 + steam:1527950 + playMode trace (spec.md); every cited DR exists and is characterized accurately ([DR-2026-08-18]'s llms.txt boundary quoted near-verbatim). Failures: M-C (math referent), M-A (false attribution), M-B (stale statuses). |
+| 3. AC executability | 35 ACs enumerated; nearly all falsifiable by their stated curl/script assertion, BLOCKED-ON marks audited and correct (R3/R4 genuinely F4-gated; J3/J4 genuinely PT10/PT11-gated; R6 correctly PROD-gated; L3's vacuous-green honesty noted). Failures: M-D (self-contradictory), M-E (undefined source), m-3 (underspecified equality). |
+| 4. Boundary integrity | Clean. Payload shapes → F2 (§12), OG rendering → later piece with slot+chain defined now (§8), RSS → PT18 (§12), Google News sitemap pre-noted (§12), page bodies untouched, sections activate as routes ship emitting nothing (anti-slop-compliant omission). |
+| 5. URL/canonical coherence | Internally coherent (pivot bare, x-default bare-path, one canonical per entity/locale, home-canonical-answers-200 generalization of [DR-2026-08-18-page-size] accurate, past-end 404). Cross-spec coherence broken: M-B, m-2. |
+| 6. JSON-LD correctness | Mapping table sound per schema.org: VideoGame sitewide, ItemList follows rendered rows, Thing+additionalProperty for commerce-adjacent kinds (Product ban respected), conditional HowTo/FAQPage (markup-follows-content enforced mechanically via throw-in-dev/null-in-prod + AC-J6 negative guard), NewsArticle with the DR-sanctioned publication-date carve-out, BreadcrumbList DOM parity tested. Deviation: m-1. |
+| 7. llms.txt + IndexNow | Citability wording confined to D2 user-facing class; denylist self-check present and well-chosen (`.pak` tokens are real leak vectors — verified `_meta.container` embeds `res.pak:/data.cdb`); methodology link conditional on 200; localhost-never-pings guarded + tested; key file correctly argued as public token. Failures: M-A (derivation rule), M-E (names leg), M-D (key length). |
+| 8. Files-touched exactness | 19 paths listed, all verified nonexistent today; `site/`-holds-tokens-only claim true. Failures: M-F (binary commit), m-5 (zero-edits claim). |
+
+## Count summary
+
+| Severity | Count |
+|---|---|
+| BLOCKER | 0 |
+| MAJOR | 6 |
+| MINOR | 6 |
+| **Total** | **12** |
+
+Verdict: **NEEDS_REVISION** — resolve M-A/M-B/M-C (dependency re-sync and
+math referent) and M-D/M-E (AC repairs), and give M-F either a
+stage-at-setup contract or an explicit convention exception, then
+re-review can be a delta pass.
