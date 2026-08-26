@@ -240,3 +240,53 @@ dead-link law; r2b-staged slot semantics implemented as specified;
 Ruling embedded above: pivot-301 dispute — old `.replace(/\/$/,"")`
 unpassable for conformant `/en` responses: **CONFIRMED**; fix minimal +
 faithful: **YES**.
+
+## Fix round r1
+
+Fresh Test Fixer agent, 2026-08-26 — all eleven findings of this review
+applied, plus code minors N1/N3 from
+[`review-f4-code.mdx`](./review-f4-code.mdx). No commits; working tree only.
+
+| id | resolution |
+|---|---|
+| M-1 | FIXED — `STOCK_PALETTE` is token-boundary-aware: `/(?:^\|-)(?:slate\|gray\|zinc\|neutral\|stone)-(\d{2,3})$/` over the variant/opacity/important-stripped base class, so every real spelling (`bg-gray-900`, `dark:bg-gray-800`, `from-stone-200/50`, `ring-zinc-500!`) hits while `bg-bg-1` / a hypothetical `--my-gray-900` stay legal; the shade-ladder gate (50–950 step 50) is kept. Red-first PROVEN on my own plastered fixture under a throwaway rig at `site/node_modules/.f4probe/` (under node_modules → invisible to zero-config discovery; config lived inside the rig; deleted after): verbatim OLD-law copy vs NEW-law copy over the same fixture `bg-gray-900 text-zinc-100 border-neutral-700 hover:bg-slate-800 dark:bg-gray-800 from-stone-200/50 ring-zinc-500!` — old law `✓ … has zero stock-palette classes` (vacuous), new law `× … 7 violation(s)` naming `.f4probe/components/plaster.tsx`. |
+| M-2 | FIXED — `scripts/smoke.mjs` gains the guarded `build-prerender` leg (`WARTALES_SMOKE_BUILD=1` or `--build`; SKIP line when disarmed; runs AFTER dev-server teardown because a live `next dev` owns `.next`): runs `next build`, then asserts all nine homes prerendered static in `.next/prerender-manifest.json`. Evidence law measured on Next 16.3.3, not assumed: the manifest's `routes` object has NO `"/"` key BY DESIGN — the bare pivot path is composed from the `/en` static artifact by the §3 pivot hop (curl-proven live by `pivot-301`) — so the nine locale-scoped artifacts are the proof, with emitted `<id>.html` dist documents as fallback if a future Next moves the shape. First armed attempt honestly FAILED (`FAIL build-prerender — homes not proven static…: /`) on a stale Next≤15 `staticRoutes` assumption; fixed and re-armed green. The leg fails loud, never silent-passes. |
+| m-1 | FIXED — `switch-links` now scopes membership to the combobox's server-rendered cross-locale row (`<nav aria-label=…>` carrying `chrome.locale.listLabel` read from that page's own message file): EXACTLY the other eight locale homes must be offered — missing AND unexpected links both flagged — so losing an entry there can no longer be masked by wordmark/nav/footer duplicates. Resolve half unchanged. Verified live ×9. |
+| m-2 | FIXED — all seven absence legs (`no-en-hrefs`, `no-chrome-leak`, `curl-greetable`, `search-slot-staged`, `swap-root`, `search-ownership`, `noto-cjk`) open with a pages-map guard that records FAIL ("refusing a vacuous absence PASS") instead of iterating an empty map when every root fetch died mid-run. |
+| m-3 | FIXED — `curl-greetable` binds the wire to the contract: the union of section-nav anchors (combobox's own nav excluded) must EQUAL the live `routes-manifest.ts` rows resolved per locale, missing and extra both reported; an unreadable manifest is a loud FAIL. Verified live ×9 against the served shell. |
+| m-4 | FIXED — the static half greps `notFound(` in a comments-AND-strings-stripped copy of request.ts, so prose mentioning notFound no longer satisfies it; "before message resolution" ordering stays dynamically owned per the finding's own scope note. |
+| m-5 | FIXED — `VAR_FORM` tightened to a BARE `var(--name)`: a fallback argument (`var(--canon, #100F0E)` literal smuggling through the aliasing gate) now fails the canon-literal/theme-aliasing laws everywhere VAR_FORM is applied. |
+| m-6 | FIXED — `chrome-parity.test.ts` moved `site/messages/` → `site/src/i18n/chrome-parity.test.ts` (§7 places suites "beside or under `site/src`"); subject paths re-pointed at `../../messages`; still discovered by the untouched zero-config run (verified: suite listed at the new path in `npm test`). |
+| m-7 | FIXED (code half) — teardown is blocking and VERIFIED: `killTree` uses spawnSync taskkill and main awaits actual process exit, printing a WARN naming the one-dev-per-dir poisoning risk if exit isn't confirmed; `freePort` re-binds its draw as a tripwire and redraws on bind-race loss; boot-timeout error now names the Next 16 one-dev-server-per-dir lock and how to find the holder. Environment half: the orphaned :3777 dev server (review-era PID 60820) was already GONE this round — netstat shows no :3777 listener and no wartales-owned node process exists, so the ownership check had nothing left to kill. |
+| m-8 | FIXED — `flatten()` maps JSON `null` to `""` so the non-empty-value gate fires loudly naming key + file, instead of the value passing as the string `"null"`. |
+| m-9 | FIXED — the invented post-mount affordance guess (requiring `<input>`/`<button>` inside whatever F5 mounts) is DELETED; the staged leg keeps r2b's structural exactness only: slot present ×9, empty at F4-only time, else exactly ONE element host and no stray text — green both sides of the F5 mount without inventing F5 internals. |
+
+Code minors ([`review-f4-code.mdx`](./review-f4-code.mdx)): **N1 FIXED** —
+combobox `hrefLang` rides the §2 BCP-47 column (`locale.bcp47`), never the
+URL segment id. **N3 FIXED** — `.wt-band-header` border-image slice rides
+`var(--tex-slice-header)`; the duplicated canon VALUE literal is gone.
+
+Accepted-with-notes (ledgered here, deliberately unchanged):
+
+| id | status | note |
+|---|---|---|
+| N2 | ACCEPTED | tsconfig keeps excluding `**/*.test.ts` — status quo ante for tokens.test.ts preserved; dropping the exclusion when vitest types land is a recorded future choice for the spec owner. |
+| N4 | ACCEPTED — ARBITER GLANCE REQUESTED | LIVE_PATHS extends render-only-existing from NAV RENDERING to REQUEST SERVING; §3 never prescribed it, and a future page file with a dormant manifest row will 404 at the middleware. Coherent with "each landing piece flips its own row" but it needs a future spec warrant decision across PT01/F5/PT16 — flagged here rather than silently accepted. |
+| N5 | ACCEPTED | Two 404 anatomies coexist (localized composed doc for dotless paths vs framework error shell for dotted matcher-bypassing paths); unify later via matcher inclusion only if it ever matters user-side. |
+| N6 | ACCEPTED | Inbound `x-next-intl-locale` trust is library-inherited (next-intl's own channel); strip/overwrite it at the edge as deploy-edge CONFIG when a domain deploy lands — nothing to change localhost-first. |
+
+Verification, quoted from this machine:
+
+- `npm test` → `Test Files 5 passed (5)` / **`Tests 62 passed (62)`** —
+  tokens canon 24 unmodified + locale-routing 11 + chrome-parity 10 (at its
+  new src/i18n home) + shell-hygiene 11 + routes-manifest 6.
+- `npx tsc --noEmit` → clean (the stray generated `tsconfig.tsbuildinfo`
+  deleted afterwards).
+- Disarmed smoke: `smoke verdict: PASS — 1 passed, 0 failed, 19 skipped`,
+  exit 0 — the 19th skip being the new disarmed `build-prerender` line.
+- Armed smoke (`WARTALES_SMOKE_LIVE=1`): `smoke verdict: PASS — 19 passed,
+  0 failed, 0 skipped` — including the rewritten `switch-links`,
+  `curl-greetable` legs and 12 asset refs curl-200.
+- Armed build leg (`WARTALES_SMOKE_BUILD=1`): `smoke verdict: PASS —
+  2 passed, 0 failed, 18 skipped`, exit 0, with `PASS build-prerender —
+  next build ok — all nine homes prerendered static (.next/prerender-manifest.json routes…)`.

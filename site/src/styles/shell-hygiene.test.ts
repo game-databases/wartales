@@ -83,7 +83,16 @@ function baseClass(tok: string): string {
   return t.replace(/^[,(]+/, "").replace(/[;,)\]]+$/, "");
 }
 
-const STOCK_PALETTE = /^(?:slate|gray|zinc|neutral|stone)-(\d{2,3})$/;
+// M-1 fix (review-f4-tests r1): the law is token-boundary-aware — a stock
+// palette name never appears bare; it rides ANY utility prefix (bg-/text-/-
+// border-/from-/ring-, behind hover:/dark:/md:/… variants, with /opacity and
+// !important). baseClass() has already stripped variants/opacity/important,
+// so matching `(?:^|-)<palette>-<shade>$` catches every real spelling
+// (`bg-gray-900`, `dark:bg-gray-800`, `from-stone-200/50`, `ring-zinc-500!`)
+// while `bg-bg-1`, `--my-gray-900` or `parchment-100` stay legal. The old
+// whole-token anchor matched ONLY an invalid bare `gray-500` — vacuous
+// (proven red-first against a plastered fixture, review §Axis2 M-A/M-B).
+const STOCK_PALETTE = /(?:^|-)(?:slate|gray|zinc|neutral|stone)-(\d{2,3})$/;
 function paletteHit(tok: string): boolean {
   const m = STOCK_PALETTE.exec(baseClass(tok));
   if (!m) return false;
@@ -133,7 +142,10 @@ function extractStringLiterals(src: string): string[] {
   return out;
 }
 
-const VAR_FORM = /^var\(--[a-zA-Z0-9-]+(?:\s*,[\s\S]*?)?\)$/;
+// m-5 fix (review-f4-tests r1): a fallback argument would smuggle a literal
+// through the aliasing gate (`var(--canon, #100F0E)`), so a canon-named
+// declaration must be a BARE var() reference — no fallback, no second arg.
+const VAR_FORM = /^var\(--[a-zA-Z0-9-]+\)$/;
 const CANON_DECL = /--([a-zA-Z0-9-]+)\s*:\s*([^;{}]+)[;{}]/g;
 
 function themeBlocks(css: string): string[] {

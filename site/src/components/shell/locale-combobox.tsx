@@ -47,7 +47,10 @@ function SwitchLink({
   const shared = {
     "aria-current": active || undefined,
     className,
-    hrefLang: locale.id,
+    // N1 fix (review-f4-code r1): hreflang takes the §2 BCP-47 column
+    // (`pt-BR`), never the URL segment id (`pt-br`) — same source the
+    // <html lang> law reads.
+    hrefLang: locale.bcp47,
   } as const;
 
   if (locale.id === PIVOT_LOCALE) {

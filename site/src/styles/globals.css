@@ -124,7 +124,9 @@
   .wt-band-header {
     border-style: solid;
     border-width: 10px;
-    border-image: var(--tex-header-bg) 10 stretch;
+    /* N3 fix (review-f4-code r1): the 9-slice margin rides the canon token
+       (--tex-slice-header) instead of duplicating its value as a literal. */
+    border-image: var(--tex-header-bg) var(--tex-slice-header) stretch;
     background-color: var(--bg-2);
     min-height: 35px;
   }

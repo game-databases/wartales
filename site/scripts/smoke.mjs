@@ -20,12 +20,25 @@
 // dev-server-free legs (the stage-assets --check pair, AC 12 fresh-clone)
 // still execute either way. Exit code is nonzero iff any check FAILED.
 //
+//     WARTALES_SMOKE_BUILD=1   or the --build flag
+//
+// arms the AC 14 production-build leg (M-2 fix, review-f4-tests r1): runs
+// `next build`, then asserts all nine locale homes prerendered STATIC in
+// `.next/prerender-manifest.json` (dist-document fallback). It executes
+// AFTER the dev server is torn down — a live `next dev` owns `.next` — and
+// is disarmed by default so bare offline runs never pay build cost.
+//
+// r1 fix round (review-f4-tests): m-1 switch links scoped to the combobox
+// row · m-2 empty-map guards on all absence legs · m-3 nav bound to live
+// manifest rows · m-7 blocking verified teardown + port redraw · m-9
+// invented F5 affordance guess removed.
+//
 // Prints one PASS/FAIL/SKIP line per check. Written against the spec alone
 // (BLIND parallel with the CodeWriter): passes against a CONFORMANT F4,
 // fails against a missing/nonconformant one.
 
 import { spawn, spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createServer } from "node:net";
@@ -48,6 +61,7 @@ const LOCALES = [
 ];
 const HOMES = LOCALES.map((l) => (l.bare ? "/" : `/${l.id}`));
 const BCP47 = Object.fromEntries(LOCALES.map((l) => [l.bare ? "/" : `/${l.id}`, l.bcp47]));
+const HOME_ID = Object.fromEntries(LOCALES.map((l) => [l.bare ? "/" : `/${l.id}`, l.id]));
 const PREFIXED_IDS = LOCALES.filter((l) => !l.bare).map((l) => l.id);
 const CHROME_KEY_LEAK = /chrome\.(nav|header|locale|a11y|footer|notFound)\./;
 
@@ -55,6 +69,8 @@ const CHROME_KEY_LEAK = /chrome\.(nav|header|locale|a11y|footer|notFound)\./;
 
 const armed =
   process.env.WARTALES_SMOKE_LIVE === "1" || process.argv.includes("--live");
+const buildArmed =
+  process.env.WARTALES_SMOKE_BUILD === "1" || process.argv.includes("--build");
 
 /** @type {{status:string,id:string,detail:string}[]} */
 const results = [];
@@ -70,7 +86,7 @@ async function fetchx(url, opts = {}, timeoutMs = 20000) {
   return fetch(url, { signal: AbortSignal.timeout(timeoutMs), ...opts });
 }
 
-function freePort() {
+function drawFreePort() {
   return new Promise((resolve, reject) => {
     const srv = createServer();
     srv.unref();
@@ -80,6 +96,30 @@ function freePort() {
       srv.close(() => resolve(port));
     });
   });
+}
+
+/** True iff the port can be bound again right now (m-7 tripwire). */
+function portRebindable(port) {
+  return new Promise((resolve) => {
+    const srv = createServer();
+    srv.unref();
+    srv.once("error", () => resolve(false));
+    srv.listen(port, "127.0.0.1", () => srv.close(() => resolve(true)));
+  });
+}
+
+/**
+ * m-7 fix (review-f4-tests r1): freePort had a bind→close→spawn TOCTOU —
+ * between close and `next dev`'s bind another process can take the port.
+ * Re-bind the drawn port as a tripwire and redraw on loss (best effort; the
+ * residual window is inherent to not owning the socket).
+ */
+async function freePort() {
+  for (let i = 0; i < 5; i++) {
+    const port = await drawFreePort();
+    if (await portRebindable(port)) return port;
+  }
+  throw new Error("could not draw a scratch port — lost the bind race 5×");
 }
 
 // ---- tiny HTML tooling (dependency-free, spec-derived only) -------------------
@@ -208,16 +248,37 @@ function stylesheetLinks(html) {
 let devProc = null;
 let devLog = "";
 
+/**
+ * m-7 fix (review-f4-tests r1): the kill is now BLOCKING (spawnSync, not a
+ * fire-and-forget spawn) and the caller awaits actual process exit. The old
+ * shape could leak the very server it tore down — and Next 16 allows one
+ * dev server per directory, so a leak poisons every later armed run with a
+ * boot-reachable FAIL.
+ */
 function killTree(proc) {
   try {
     if (process.platform === "win32") {
-      spawn("taskkill", ["/PID", String(proc.pid), "/T", "/F"], { stdio: "ignore" });
-    } else {
-      proc.kill("SIGTERM");
+      return (
+        spawnSync("taskkill", ["/PID", String(proc.pid), "/T", "/F"], {
+          stdio: "ignore",
+          timeout: 15000,
+        }).status === 0
+      );
     }
+    proc.kill("SIGTERM");
+    return true;
   } catch {
-    /* already gone */
+    return false; // already gone
   }
+}
+
+/** Resolves true once `proc` has exited, false on timeout. */
+async function awaitExit(proc, ms) {
+  const deadline = Date.now() + ms;
+  while (proc.exitCode === null && Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  return proc.exitCode !== null;
 }
 
 async function bootDev(port) {
@@ -250,11 +311,63 @@ async function bootDev(port) {
   }
   throw new Error(
     `next dev did not become reachable on :${port} within 240s\n--- boot log tail ---\n${devLog.slice(-2000)}`
+      + `\n(hint: Next 16 allows ONE dev server per directory — an orphaned or foreign next dev holding site/ fails every boot here; check \`netstat -ano | findstr :${port}\` and the log tail above)`
   );
 }
 
 const COMPILE_ERRORS =
   /Failed to compile|Module not found|Syntax Error|Type error|Cannot find module|Unhandled Runtime Error/i;
+
+// ---- contract loaders + guards (m-1/m-2/m-3 fixes) ------------------------------
+
+/**
+ * Live hrefs from src/lib/routes-manifest.ts (m-3): the nav-on-the-wire is
+ * bound to the manifest's live rows, so smoke reads the same contract the
+ * disk-level suite enforces. Tolerant flat-object scan; loud when nothing
+ * qualifies.
+ */
+function manifestLiveHrefs() {
+  const file = join(siteRoot, "src", "lib", "routes-manifest.ts");
+  if (!existsSync(file)) throw new Error("site/src/lib/routes-manifest.ts missing");
+  const out = [];
+  for (const m of readFileSync(file, "utf8").matchAll(/\{[^{}]*\}/gs)) {
+    if (!/\blive\s*:\s*true\b/.test(m[0])) continue;
+    const href = /href\s*:\s*"([^"]+)"/.exec(m[0])?.[1];
+    if (href) out.push(href);
+  }
+  if (out.length === 0) throw new Error("no live:true row with an href found in routes-manifest.ts");
+  return out;
+}
+
+/** Resolves a locale-neutral manifest href onto a served page's home path. */
+function resolveHome(home, href) {
+  if (href === "/") return home;
+  return home === "/" ? href : home.replace(/\/$/, "") + href;
+}
+
+/** chrome.locale.* label from a locale's own message file (§4 contract). */
+function chromeMessage(id, key) {
+  const file = join(siteRoot, "messages", `${id}.json`);
+  let cursor = JSON.parse(readFileSync(file, "utf8"));
+  for (const seg of ["chrome", ...key.split(".")]) {
+    cursor = cursor?.[seg];
+    if (cursor === undefined || cursor === null) {
+      throw new Error(`messages/${id}.json lacks chrome.${key}`);
+    }
+  }
+  return String(cursor);
+}
+
+/**
+ * m-2 fix (review-f4-tests r1): absence laws refuse to PASS over an empty
+ * pages map — if every root fetch died mid-run, a vacuous absence verdict
+ * would be dishonest even though roots-nine still fails the overall exit.
+ */
+function pagesGuard(id) {
+  if (pages.size > 0) return true;
+  record("FAIL", id, "pages map empty — roots-nine already failed; refusing a vacuous absence PASS");
+  return false;
+}
 
 // ---- legs ---------------------------------------------------------------------
 
@@ -369,6 +482,7 @@ async function legLocaleDeepMiss404(base) {
 }
 
 function legNoEnInternalHrefs() {
+  if (!pagesGuard("no-en-hrefs")) return;
   const offenders = [];
   for (const [home, page] of pages) {
     for (const a of anchorsOf(page.html)) {
@@ -385,6 +499,7 @@ function legNoEnInternalHrefs() {
 }
 
 function legNoChromeKeyLeak() {
+  if (!pagesGuard("no-chrome-leak")) return;
   const offenders = [];
   for (const [home, page] of pages) {
     const m = CHROME_KEY_LEAK.exec(stripTags(page.html));
@@ -398,7 +513,14 @@ function legNoChromeKeyLeak() {
 }
 
 function legCurlGreetable() {
+  if (!pagesGuard("curl-greetable")) return;
   const bad = [];
+  let manifestHrefs = null;
+  try {
+    manifestHrefs = manifestLiveHrefs();
+  } catch (e) {
+    bad.push(`routes-manifest unreadable: ${e.message}`);
+  }
   for (const [home, page] of pages) {
     const headers = tagSpans(page.html, "header");
     const footers = tagSpans(page.html, "footer");
@@ -410,11 +532,41 @@ function legCurlGreetable() {
     if (footers.length === 1 && !footers[0].inner.includes("WARTALES")) {
       bad.push(`${home}: wordmark repeat missing from the footer`);
     }
-    const navHtml = page.html.match(/<nav\b[\s\S]*?<\/nav>/gi)?.join("\n") ?? "";
-    if (!/<a\b[^>]*href=/i.test(navHtml)) bad.push(`${home}: nav group carries no <a href>`);
+    // m-3 fix (review-f4-tests r1): ≥1 nav anchor was never bound to the
+    // manifest — a hardcoded wrong link passed. The union of section-nav
+    // anchors must EQUAL the live rows' resolved hrefs (render-only-existing
+    // judged on the wire). The combobox's sr-only cross-locale row is its
+    // own <nav>, not section navigation — excluded by its listLabel.
+    if (manifestHrefs) {
+      let listLabel = null;
+      try {
+        listLabel = chromeMessage(HOME_ID[home], "locale.listLabel");
+      } catch {
+        /* label law owned by legSwitchLinks; don't double-report here */
+      }
+      const combo =
+        listLabel != null ? findElementByAttr(page.html, "aria-label", listLabel) : null;
+      const got = new Set();
+      for (const span of tagSpans(page.html, "nav")) {
+        if (combo && span.start === combo.start) continue;
+        for (const a of anchorsOf(span.inner)) {
+          const h = a.href.split(/[?#]/)[0];
+          if (h && !h.startsWith("#") && !/^https?:/i.test(h)) got.add(h);
+        }
+      }
+      const want = new Set(manifestHrefs.map((h) => resolveHome(home, h)));
+      const extra = [...got].filter((h) => !want.has(h));
+      const missing = [...want].filter((h) => !got.has(h));
+      if (missing.length) bad.push(`${home}: nav misses live-row link(s) ${missing.join(", ")}`);
+      if (extra.length) bad.push(`${home}: nav carries non-manifest link(s) ${extra.join(", ")}`);
+    }
   }
   if (bad.length === 0) {
-    record("PASS", "curl-greetable", "wordmark, ≥1 live-row nav link, landmarks present ×9 (AC 6, FRAMEWORK §2.14)");
+    record(
+      "PASS",
+      "curl-greetable",
+      "wordmark + landmarks present ×9; section-nav anchors equal the live manifest rows, resolved per locale (AC 6, FRAMEWORK §2.14)"
+    );
   } else {
     record("FAIL", "curl-greetable", bad.slice(0, 10).join("; "));
   }
@@ -422,13 +574,37 @@ function legCurlGreetable() {
 
 async function legSwitchLinks(base) {
   const bad = [];
+  if (!pagesGuard("switch-links")) return;
   const homes = new Set(HOMES);
   for (const [home, page] of pages) {
+    // m-1 fix (review-f4-tests r1): the membership law is scoped to the
+    // combobox's own server-rendered cross-locale row (<nav> carrying the
+    // chrome.locale.listLabel label — Radix never SSRs the popover items).
+    // The old page-wide anchor union stayed green when the combobox lost an
+    // entry, because wordmark/nav/footer duplicates compensated. Membership
+    // is EXACT: the row offers precisely the other eight locale homes.
+    let listLabel = null;
+    try {
+      listLabel = chromeMessage(HOME_ID[home], "locale.listLabel");
+    } catch (e) {
+      bad.push(`${home}: ${e.message}`);
+      continue;
+    }
+    const row = findElementByAttr(page.html, "aria-label", listLabel);
+    if (!row || row.tag.toLowerCase() !== "nav") {
+      bad.push(
+        `${home}: combobox cross-locale row (<nav aria-label="${listLabel}">) absent from served HTML`
+      );
+      continue;
+    }
     const offered = new Set(
-      anchorsOf(page.html).map((a) => a.href.split(/[?#]/)[0]).filter((h) => homes.has(h))
+      anchorsOf(row.inner).map((a) => a.href.split(/[?#]/)[0]).filter((h) => homes.has(h))
     );
-    const missing = HOMES.filter((h) => !offered.has(h));
-    if (missing.length) bad.push(`${home}: no switch link to ${missing.join(", ")}`);
+    const expected = new Set(HOMES.filter((h) => h !== home));
+    const missing = [...expected].filter((h) => !offered.has(h));
+    const extra = [...offered].filter((h) => !expected.has(h));
+    if (missing.length) bad.push(`${home}: combobox row lost switch link(s) to ${missing.join(", ")}`);
+    if (extra.length) bad.push(`${home}: combobox row carries unexpected locale link(s) ${extra.join(", ")}`);
   }
   for (const target of HOMES) {
     try {
@@ -439,13 +615,18 @@ async function legSwitchLinks(base) {
     }
   }
   if (bad.length === 0) {
-    record("PASS", "switch-links", "every locale-combobox item href resolves 200, same-path, correct prefix ×9 (AC 5)");
+    record(
+      "PASS",
+      "switch-links",
+      "combobox row offers exactly the other eight locale homes ×9; every switch target resolves 200 same-path (AC 5)"
+    );
   } else {
     record("FAIL", "switch-links", `${bad.slice(0, 8).join("; ")} (AC 5)`);
   }
 }
 
 function legSearchSlotStaged() {
+  if (!pagesGuard("search-slot-staged")) return;
   const bad = [];
   for (const [home, page] of pages) {
     const slot = findElementByAttr(page.html, "data-shell-slot", "search");
@@ -457,21 +638,24 @@ function legSearchSlotStaged() {
     const kids = topLevelChildren(inner);
     const els = kids.filter((k) => k.kind === "el").length;
     if (els === 0) continue; // F4-only state: renders nothing (§5)
-    // staged semantics (r2b): exactly the F5 search-field host and nothing else
+    // staged semantics (r2b): exactly the F5 search-field host and nothing
+    // else. m-9 fix (review-f4-tests r1): the old branch additionally demanded
+    // an <input>/<button> inside whatever F5 mounts — invented F5 internals
+    // (a standing false-red once F5 lands); structural exactness is the
+    // contract-level law and stays.
     if (els !== 1 || kids.some((k) => k.kind === "text")) {
       bad.push(`${home}: mounted slot holds ${els} element(s)/stray text, want exactly the one F5 field host`);
-    } else if (!/<input\b|<button\b/i.test(inner)) {
-      bad.push(`${home}: mounted slot content lacks any input/button affordance`);
     }
   }
   if (bad.length === 0) {
-    record("PASS", "search-slot-staged", "slot present ×9; EMPTY at F4-only time, else exactly the F5 field host (AC 11 r2b — green both sides of the F5 mount)");
+    record("PASS", "search-slot-staged", "slot present ×9; EMPTY at F4-only time, else exactly one F5 field host, no stray text (AC 11 r2b — green both sides of the F5 mount)");
   } else {
     record("FAIL", "search-slot-staged", `${bad.slice(0, 8).join("; ")} (AC 11)`);
   }
 }
 
 function legSwapRoot() {
+  if (!pagesGuard("swap-root")) return;
   const bad = [];
   for (const [home, page] of pages) {
     const el = findElementByAttr(page.html, "data-search-swap-root");
@@ -488,6 +672,7 @@ function legSwapRoot() {
 }
 
 function legSearchOwnership() {
+  if (!pagesGuard("search-ownership")) return;
   const bad = [];
   for (const [home, page] of pages) {
     const slot = findElementByAttr(page.html, "data-shell-slot", "search");
@@ -527,6 +712,7 @@ async function legNoSearchRoute(base) {
 }
 
 function legNotoCjk() {
+  if (!pagesGuard("noto-cjk")) return;
   const bad = [];
   for (const [home, page] of pages) {
     const sheets = stylesheetLinks(page.html).filter(
@@ -626,6 +812,77 @@ function legBootClean() {
   }
 }
 
+/**
+ * M-2 fix (review-f4-tests r1) — AC 14's production-build clause finally has
+ * an executable assertion: `next build` must succeed AND all nine locale
+ * homes must be proven prerendered static.
+ *
+ * Evidence law measured on Next 16.3.3: `.next/prerender-manifest.json`
+ * carries `routes` — an OBJECT keyed by route (`routeType: "page"`,
+ * `compute: "static"`) — and there is deliberately NO `"/"` key: the bare
+ * pivot path is COMPOSED from the `/en` static artifact by the §3 pivot hop
+ * (that hop is curl-proven live by the pivot-301 leg). So the nine homes are
+ * proven via their nine locale-scoped artifacts `/{id}`. Fallback if a future
+ * Next moves that shape: the emitted dist documents
+ * `.next/server/app/<id>.html`. Never a silent pass either way. Guarded by
+ * WARTALES_SMOKE_BUILD=1/--build; runs AFTER dev-server teardown (a live
+ * `next dev` owns .next).
+ */
+function legProductionBuild() {
+  const bin = join(siteRoot, "node_modules", "next", "dist", "bin", "next");
+  if (!existsSync(bin)) {
+    record("FAIL", "build-prerender", "next is not installed — run `npm ci` in site/ before arming WARTALES_SMOKE_BUILD");
+    return;
+  }
+  console.log("build-prerender — running next build (AC 14; minutes, writes .next/)…");
+  const run = spawnSync(process.execPath, [bin, "build"], {
+    cwd: siteRoot,
+    encoding: "utf8",
+    timeout: 600000,
+  });
+  const out = `${run.stdout ?? ""}\n${run.stderr ?? ""}`;
+  if (run.error || run.status !== 0) {
+    record(
+      "FAIL",
+      "build-prerender",
+      `next build exited ${run.status ?? run.error?.code ?? "?"}:\n${out.slice(-1200)}`
+    );
+    return;
+  }
+  let via = null;
+  let routes = null;
+  const mfPath = join(siteRoot, ".next", "prerender-manifest.json");
+  try {
+    routes = JSON.parse(readFileSync(mfPath, "utf8")).routes;
+    if (routes && typeof routes === "object" && !Array.isArray(routes)) {
+      via = ".next/prerender-manifest.json routes";
+    } else {
+      routes = null;
+    }
+  } catch {
+    /* fall through to the dist-document fallback */
+  }
+  let missing;
+  if (via) {
+    // Bare "/" is composed from /en by the §3 pivot hop — prove the nine
+    // locale-scoped artifacts instead.
+    missing = LOCALES.filter((l) => {
+      const r = routes[`/${l.id}`];
+      return !r || r.routeType !== "page";
+    }).map((l) => `/${l.id}`);
+  } else {
+    via = ".next/server/app/<id>.html dist documents";
+    missing = LOCALES.filter(
+      (l) => !existsSync(join(siteRoot, ".next", "server", "app", `${l.id}.html`))
+    ).map((l) => `/${l.id}`);
+  }
+  if (missing.length === 0) {
+    record("PASS", "build-prerender", `next build ok — all nine homes prerendered static (${via}; bare "/" composed from /en by the §3 hop, pivot-301-curl-proven) (AC 14)`);
+  } else {
+    record("FAIL", "build-prerender", `homes not proven static (${via}): ${missing.join(", ")}`);
+  }
+}
+
 // ---- main ---------------------------------------------------------------------
 
 async function main() {
@@ -677,8 +934,28 @@ async function main() {
   legStageCheckPair();
 
   if (devProc) {
-    killTree(devProc);
+    // m-7 fix: blocking kill + verified exit — a leaked server trips Next 16's
+    // one-dev-server-per-dir lock on every later armed run.
+    const killed = killTree(devProc);
+    const exited = await awaitExit(devProc, 10000);
+    if (!killed || !exited) {
+      console.warn(
+        `WARN teardown — dev server pid ${devProc.pid} ${killed ? "did not exit within 10s" : "kill failed"}; an orphan here blocks future boots (one dev server per directory)`
+      );
+    }
     await new Promise((r) => setTimeout(r, 500));
+  }
+
+  // M-2 (AC 14 build/prerender leg) — after teardown; a live `next dev`
+  // owns .next while it runs.
+  if (buildArmed) {
+    legProductionBuild();
+  } else {
+    record(
+      "SKIP",
+      "build-prerender",
+      "disarmed — arm with WARTALES_SMOKE_BUILD=1 (or --build) to run `next build` + assert nine static homes (AC 14)"
+    );
   }
 
   const counts = { PASS: 0, FAIL: 0, SKIP: 0 };

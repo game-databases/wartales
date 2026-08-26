@@ -338,10 +338,21 @@ describe("§3 rule 5 / m5 r1 — unknown-segment 404 mechanism (static half)", (
       "site/src/i18n/request.ts must exist (§1 tree) — the dynamic half of " +
         "this law (curl /xx/foo → 404, never a redirect) is smoke.mjs AC-leg 4"
     ).not.toBeNull();
+    // m-4 fix (review-f4-tests r1): the old bare source grep was satisfiable
+    // by a COMMENT mentioning notFound(. Demand the call in a comments-and-
+    // strings-stripped copy instead. ("Before message resolution" ordering is
+    // not statically provable and stays owned by the dynamic legs.)
+    const code = (requestSrc as string)
+      .replace(/\/\*[\s\S]*?\*\//g, " ")
+      .replace(/(^|[^:])\/\/[^\n]*/g, "$1 ")
+      .replace(
+        /"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|`(?:\\.|[^`\\])*`/g,
+        '""'
+      );
     expect(
-      /notFound\s*\(/.test(requestSrc as string),
-      "request.ts must call notFound() on any id outside the §2 table " +
-        "(§1 tree comment, m5 r1)"
+      /notFound\s*\(/.test(code),
+      "request.ts must CALL notFound() on any id outside the §2 table — " +
+        "prose mentioning it does not count (m5 r1; m-4 r1)"
     ).toBe(true);
   });
 });

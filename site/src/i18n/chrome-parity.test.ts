@@ -1,5 +1,8 @@
-// F4 §7.3 — chrome-parity.test.ts (node-env, beside the site/messages/*.json
-// files it guards — the tokens.test.ts-beside-tokens.css placement precedent).
+// F4 §7.3 — chrome-parity.test.ts (node-env). m-6 fix (review-f4-tests r1):
+// moved from site/messages/ to under site/src/i18n/ — §7's header law places
+// every suite "beside or under `site/src`", and the zero-config `vitest run`
+// discovers it here unchanged. The subject stays site/messages/*.json
+// (resolved below); src/i18n/ is the module surface that consumes them.
 //
 // Spec: docs/spec-f4-app-shell.mdx §7 item 3 + §4. Gates under test:
 //   - nine locale message files exist, each a SINGLE `chrome` namespace object;
@@ -20,8 +23,8 @@ import { readFileSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const here = dirname(fileURLToPath(import.meta.url)); // site/messages
-const messagesDir = here;
+const here = dirname(fileURLToPath(import.meta.url)); // site/src/i18n
+const messagesDir = join(here, "..", "..", "messages");
 
 const LOCALE_IDS = ["en", "de", "es", "fr", "ko", "pl", "pt-br", "ru", "zh"];
 
@@ -50,13 +53,18 @@ let loadErrors: string[] = [];
 let ledgerKeys: string[] | null = null;
 let ledgerError: string | null = null;
 
-/** Flatten a single-namespace chrome object into dotted keys. */
+/**
+ * Flatten a single-namespace chrome object into dotted keys.
+ * m-8 fix (review-f4-tests r1): JSON `null` used to stringify as "null" and
+ * sail through the non-empty-value gate; it now flattens to "" so the
+ * emptiness law fires loudly naming key + file.
+ */
 function flatten(obj: unknown, prefix = "", out: Map<string, string> = new Map()): Map<string, string> {
   if (typeof obj !== "object" || obj === null) return out;
   for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
     const key = prefix ? `${prefix}.${k}` : k;
     if (typeof v === "object" && v !== null) flatten(v, key, out);
-    else out.set(key, String(v));
+    else out.set(key, v === null ? "" : String(v));
   }
   return out;
 }
