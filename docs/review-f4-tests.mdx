@@ -1,0 +1,242 @@
+# Review — F4 app-shell test suite (TestReviewer)
+
+**Verdict: NEEDS-FIX** — 0 BLOCKER, **2 MAJOR**, 9 MINOR. The suite family
+is fundamentally honest (red-first contract upheld in 3 of 4 vitest suites
+and in every smoke leg except one), the blind law was kept almost
+everywhere, and the disputed pivot-301 fix is ruled **necessary, minimal,
+and faithful** (confirmed against live response semantics). But the
+flagship stock-palette law of `shell-hygiene.test.ts` is **vacuous — it can
+never fire on any real Tailwind class spelling** (proven empirically, both
+at function level and by a full-suite mutation run), and AC 14's
+`next build` / static-prerender clause has **no executable assertion
+anywhere**.
+
+Reviewed blind-written state: commit `600b0e6` (4 vitest suites + smoke)
+plus the CodeWriter's surgical smoke edit landed in `c4f312f`. Working tree
+verified byte-identical to `c4f312f` for all five files before review.
+Read in full: `docs/spec-f4-app-shell.mdx` (all sections incl. §7–§8,
+r1/r1b/r2b ledgers), all five test files, both briefs
+(`testreviewer-f4.mdx`, `codereviewer-f4-build.mdx` for dispute context),
+`site/public/fonts/README.md`, `_stub-keys.json`, `site/package.json`.
+
+## Method (what was executed, not just read)
+
+- `vitest run`: **62/62 green today** — routes-manifest 6 +
+  chrome-parity 10 + shell-hygiene 11 + locale-routing 11 = the claimed 38
+  blind cases, plus the untouched F1 canon suite's 24.
+- Disarmed `node scripts/smoke.mjs`: 18 explicit SKIP lines naming the arm
+  instruction + stage-check-pair executing for real (this machine has
+  binaries staged → PASS); verdict `PASS — 1 passed, 0 failed, 18 skipped`,
+  **exit 0**.
+- Armed run attempted: **honest FAIL, exit 1** — see finding m-7 (a
+  pre-existing orphaned `next dev`, PID 60820 on :3777, trips Next 16's
+  one-dev-server-per-dir lock; the runner surfaced the true cause in its
+  boot-log tail rather than hanging or silently passing).
+- Live-leg verification done by read-only curls against that already-running
+  dev server serving this tree: `/en` → `301`, `Location: /`;
+  `/en/de` → `301 Location: /de`; `/en/fr` → `301 Location: /fr`;
+  `/xx/foo` → `404`, no redirect; `/de` → `200` with `<html lang="de">`.
+- Mutation probes ran exclusively on scratch copies (a throwaway subtree
+  mirroring the sweep layout, plus a verbatim function-replica script);
+  both removed afterwards; tree re-verified identical to `c4f312f`.
+
+## Axis 1 — AC coverage map (spec §8, 14 ACs)
+
+| AC | Enforced by | Gap |
+|---|---|---|
+| 1 boots clean, `/` 200 EN | smoke `boot-reachable` + `boot-clean` (dev-log regex `COMPILE_ERRORS`) + `roots-nine` | none material |
+| 2 nine roots 200 | smoke `roots-nine` ×9 | — |
+| 3 pivot-prefix law | smoke `pivot-301` (status + Location, ×9 targets) + `no-en-hrefs`; static half in routes-manifest test | — |
+| 4 no negotiation | smoke `no-negotiation` + `unknown-locale-404`; static `localeDetection:false` pin in locale-routing | — |
+| 5 switch links resolve | smoke `switch-links` | m-1: page-wide anchor scan, not combobox-scoped |
+| 6 curl-greetable HTML | smoke `curl-greetable` ×9 + `lang-attrs` ×9 + `no-chrome-leak` | m-3: nav anchors counted, never bound to manifest rows |
+| 7 vitest green, canon suite unmodified | the runner itself; verified 62/62 + zero git history on canon since import | process half correctly outside tests |
+| 8 chrome parity | chrome-parity suite (key set ×9, non-empty, placeholders, ledger bijection at F4) | — |
+| 9 canon untouched / aliasing / radius | shell-hygiene AC 9 describe (canon-literal, radius-ban, recipe-redefinition) + theme-wiring/aliasing | git-diff clause is process law, correctly untested |
+| 10 hygiene laws | shell-hygiene AC 10 describe | **M-1: stock-palette rule vacuous**; spacing/oklch clauses live |
+| 11 search slot + swap root | smoke `search-slot-staged`, `swap-root`, `search-ownership`, `no-search-route` (r2b-staged semantics honored) | m-9 heuristic note |
+| 12 assets resolve + fresh clone | smoke `assets-resolve` + `stage-check-pair` (runs disarmed too) | — |
+| 13 CJK routing discipline | smoke `noto-cjk` (presence zh/ko, absence ×7) | README-backed pattern, faithful |
+| 14 production build + localized deep-miss 404 | smoke `deep-miss-404` (verified live: 404, lang de) | **M-2: "next build succeeds; nine homes prerender static" asserted nowhere** |
+
+Per the brief's rubric ("an AC with no failing path = MAJOR"): AC 14 keeps a
+failing path for its served-artifact clause, so M-2 is scoped as a
+clause-level coverage hole inside a partially-enforced AC — still MAJOR,
+because a dynamic-rendering or prerender regression ships with every suite
+green, and spec r1 M4 claims the smoke enumerates *every* AC leg.
+
+## Axis 2 — vacuous-assertion hunt (mutations tried)
+
+**M-A (empirical, decisive).** Copied the hygiene suite into a scratch
+sweep-layout with a component containing only
+`bg-gray-900 text-zinc-100 border-neutral-700 hover:bg-slate-800 from-stone-200`:
+**suite passed 11/11 GREEN** against a visibly palette-broken shell.
+
+**M-B (selectivity proof).** Same fixture plus `p-4 gap-2 rounded-lg`:
+numeric-spacing and rounded-corner went red while "has zero stock-palette
+classes" stayed green with the violations in the same className string.
+
+Root cause — `site/src/styles/shell-hygiene.test.ts:86-92`:
+
+```ts
+const STOCK_PALETTE = /^(?:slate|gray|zinc|neutral|stone)-(\d{2,3})$/;
+function paletteHit(tok) { const m = STOCK_PALETTE.exec(baseClass(tok)); … }
+```
+
+The regex is anchored over the *whole* post-normalization token, and
+`baseClass()` strips variant/opacity/important syntax but never the utility
+prefix — so it matches only a bare `gray-500`, which is not valid Tailwind;
+every real spelling (`bg-gray-900`, `text-zinc-300`, `dark:bg-gray-800`,
+`from-stone-200/50`, `ring-zinc-500!`) misses. Function-replica probe
+confirms all eight realistic spellings return false. Sibling laws using the
+same tokenizer work (probe: `p-4`, `gap-2`, `hover:p-8`, `rounded`,
+`md:rounded-xl` all caught; `p-g4` correctly allowed).
+
+Everything else hunted came back sound:
+
+- **No mocks exist** in any suite — these are real-artifact suites over
+  files and HTTP; the "mock that always passes" class is absent by design.
+- Missing-fixture poisoning is exemplary: a missing sweep target pushes a
+  `sweep-target` violation that **poisons every `fail()` call**
+  (shell-hygiene.test.ts:203-211, 348-361) — demonstrated accidentally when
+  my first scratch copy lacked `src/components/`: all 10 laws red, not
+  vacuously green. `needRows()/needLoaded()/needEntries()` guards do the
+  same for the other three suites; discovery helpers fail loudly naming what
+  they looked for.
+- Absence laws over absent targets are guarded: manifest must be non-empty
+  and well-formed before the `/en`+`/search` absence loop runs;
+  `lang-attrs` fails (not passes) on an empty pages map
+  (smoke.mjs:291). Residual: seven later legs lack that empty-map guard —
+  if all nine root fetches threw (server died mid-run) they would print
+  vacuous PASS lines while `roots-nine` still fails the verdict — contained
+  dishonesty, filed as m-2.
+- Loop-over-empty-set traps: chrome-parity iterates loaded files behind
+  `needLoaded()` (throws on any load error); routes-manifest labelKey loop
+  requires ≥1 entry first. No vacuous loops found beyond m-2.
+- Regex-matches-everything: none found; conversely M-1 is
+  regex-matches-nothing. Adjacent nit: `VAR_FORM`
+  (shell-hygiene.test.ts:136) accepts `var(--bg-1, #100F0E)` — a literal
+  smuggled through a fallback survives the canon-literal gate for
+  canon-named props outside the `GAME_EXACT` enumeration (the enumerated
+  rows' exact() check would still catch their own names) — m-5.
+- Contrived: `flatten()` coerces JSON `null` values to the string `"null"`,
+  which passes the non-empty gate (chrome-parity.test.ts:54-62) — m-8.
+
+## Axis 3 — blind-law integrity
+
+Kept at contract level almost throughout. The suites hardcode the §2 table,
+§4 inventory, and the one-row manifest fixture as expected values (pinning,
+correct); tolerant shape-discovery in the two blind-prone suites accepts
+reasonable spellings and otherwise fails loudly — exactly what a blind pair
+needs. Faithful external-contract anchoring: `noto-cjk` greps for
+Google-hosted Noto Sans SC/KR split-subset links because the fonts README
+(lines 58–63) prescribes exactly that pattern. Two overreaches:
+
+- m-9: `search-slot-staged`'s post-mount branch invents F5 internals —
+  requiring an `<input>` or `<button>` inside whatever F5 mounts
+  (smoke.mjs:461-465). r2b staged semantics ("exactly the F5 field host")
+  are honored, but the affordance guess can false-red after F5 lands. The
+  r2b errata exists precisely to prevent post-F5 false reds; this heuristic
+  partially reintroduces one.
+- m-4: locale-routing's static half of the unknown-segment law greps
+  `/notFound\s*\(/` in request.ts source (locale-routing.test.ts:335-346) —
+  satisfiable by a comment, and "before message resolution" ordering is not
+  statically provable. The dynamic half (`/xx/foo` → 404, verified live)
+  covers the outcome, so this stays MINOR.
+
+Also noted, not defects: `PIVOT_KEYS` flag check is conditional on some row
+carrying a flag (locale-routing.test.ts:254-262) — acceptable under declared
+shape tolerance since the load-bearing `defaultLocale === "en"` assertion is
+unconditional.
+
+## Axis 4 — smoke runner correctness
+
+**Guard honesty: verified honest.** Disarmed run prints per-leg SKIP lines
+with the arming instruction (smoke.mjs:646-656), still executes the
+dev-server-free `stage-check-pair` (line 677), and exits 0 — matching the
+documented contract. No disarmed path prints PASS except the genuinely
+server-free stage pair. Verdict line reports skip counts explicitly. Exit
+codes verified empirically in both directions today: disarmed → 0; boot
+failure → recorded FAIL → exit 1; crash handler exits 1.
+
+**The disputed pivot-301 ruling: the CodeWriter's claim is CONFIRMED.**
+Old line: `(res.headers.get("location") ?? "").replace(/\/$/,"")`. For the
+conformant response to `/en` the Location IS `/`; stripping its trailing
+slash yields `""`, compared against `wantLoc("/en") === "/"` → permanent
+false FAIL for ANY conformant app. Demonstrated live: this shell answers
+`301 Location: /` (curl above). The fix
+(c4f312f, smoke.mjs:305-309) — strip one trailing slash only when
+`raw.length > 1` — preserves `/`, still normalizes `/fr/` → `/fr`, still
+fails a missing Location (`"" ≠ "/"`) and query-bearing mismatches. Minimal
+(two lines + explanatory comment), faithful (adds no leniency), and it did
+not touch any other leg. Cross-pair propriety is the Code Reviewer's axis;
+from the test-integrity seat the edit improves the suite.
+
+Leg-quality notes: `pivot-301` generalizes AC 3's two examples to all nine
+targets and asserts permanence + Location each — stronger than spec letter.
+`assets-resolve` SKIP honesty is genuine: unstaged binaries produce explicit
+per-ref SKIP lines; staged-but-unfetchable is a FAIL; staged machine whose
+documents declare zero refs is a FAIL (wiring defect), unstaged machine zero
+refs is an honest defer.
+
+## Axis 5 — suite hygiene
+
+- No `vitest.config.*` added (verified absent); `test: vitest run`
+  byte-present; zero-config discovery confirmed by the run output listing
+  all five files.
+- Canon untouched: `git log e82d8a1..HEAD` shows zero commits touching
+  `tokens.css`/`tokens.test.ts`; canon suite passes 24/24 unmodified.
+- Imports: suites use only `vitest`, `node:*`, and relative paths — no `@/`
+  alias (which would require config that must not exist).
+- Placement: three suites beside their subjects under `src/**` per §7 —
+  but `chrome-parity.test.ts` sits in `site/messages/`, violating §7's
+  header law ("beside or under `site/src`"). It IS discovered by the
+  zero-config run, so the violation costs nothing mechanically — m-6.
+- Flaky-timing traps: none of the node:test `after()` class — setup is
+  `beforeAll`-only, no global temp state, fixtures deterministic. The
+  adjacent trap lives in the smoke teardown/cleanup path — m-7:
+  `killTree` fires `taskkill /T /F` without awaiting or verifying
+  (smoke.mjs:211-221), `freePort` has the usual bind-close-spawn TOCTOU
+  (73-83), and Next 16's one-dev-server-per-dir lock means any foreign or
+  leaked dev server turns every subsequent armed run into a
+  `boot-reachable` FAIL. That failure mode was observed live during this
+  review (orphan PID 60820 on :3777 from an earlier session; my armed run
+  failed honestly within seconds with the cause in the log tail). A leaked
+  server from the runner's own past runs would poison future runs the same
+  way — hence a flaky-cleanup finding, not just an environment note. My own
+  run leaked nothing (port-table diff before/after: none).
+
+## Findings
+
+| id | sev | finding |
+|---|---|---|
+| M-1 | MAJOR | Stock-palette law vacuous: `STOCK_PALETTE` anchored whole-token never matches prefixed utilities (`bg-gray-900`, `text-zinc-100`, …). Empirical: full suite 11/11 GREEN against a palette-broken shell (mutation A), selectively green beside red sibling rules (mutation B). Fix direction: match the shade suffix on any utility prefix (e.g. `(?:^|-)(?:slate\|gray\|zinc\|neutral\|stone)-\d{2,3}$` after prefix-aware normalization), keeping the g-scale allow-list intact. |
+| M-2 | MAJOR | AC 14 build clause unasserted: no leg runs `next build` or checks the nine homes prerender static; smoke boots `next dev` only (smoke.mjs:631-690). Spec r1 M4 says smoke enumerates every AC leg. Add a build leg (or an explicitly delegated verifier the way AC 12 got `stage-assets --check`). |
+| m-1 | MINOR | `switch-links` scans all page anchors, not the combobox: EN + current-locale entries could vanish from the combobox while the wordmark/nav/footer/sr-only cross-locale row (locale-combobox.tsx:80-95) keep the leg green. Most drop-a-locale mutations still fail it. |
+| m-2 | MINOR | Seven smoke absence legs (`no-en-hrefs`, `no-chrome-leak`, `curl-greetable`, `search-slot-staged`, `swap-root`, `search-ownership`, `noto-cjk`) iterate `pages` without the empty-map guard `legLangAttrs` has; all-nine-fetches-thrown would print vacuous PASSes (verdict still fails via `roots-nine`). |
+| m-3 | MINOR | `curl-greetable` asserts ≥1 nav `<a href>`, never that rendered nav hrefs equal the manifest rows' resolved hrefs; a hardcoded wrong link in nav-row would pass smoke (disk-level law is covered by routes-manifest tests). |
+| m-4 | MINOR | request.ts static half is a source grep satisfiable by a comment; ordering ("before message resolution") unproven statically; outcome covered live by `unknown-locale-404`/deep-miss legs. |
+| m-5 | MINOR | `VAR_FORM` accepts `var(--canon, <literal>)` fallback smuggling for canon-named props outside the `GAME_EXACT` enumeration (shell-hygiene.test.ts:136, applied at 259-265). |
+| m-6 | MINOR | `chrome-parity.test.ts` placed in `site/messages/` against §7's "beside or under `site/src`" placement law; discovered anyway by the zero-config run, so mechanical impact none. |
+| m-7 | MINOR | Armed-runner cleanup/serialization traps: fire-and-forget unverified `taskkill` teardown, freePort TOCTOU, and Next 16's one-dev-server-per-dir lock — observed live (orphan :3777 blocked the armed run; honest fast FAIL, cause visible in log tail). |
+| m-8 | MINOR | `flatten()` renders JSON `null` values as the string `"null"`, passing the non-empty-value gate (chrome-parity.test.ts:54-62); contrived input. |
+| m-9 | MINOR | Post-mount slot heuristic demands `<input>`/`<button>` inside F5's mounted host (smoke.mjs:461-465) — invented F5 internals; potential standing false-red after F5 despite r2b's intent. |
+
+Not defects, verified positive: red-first loud failures on missing fixtures
+in all four suites; sweep-target poisoning; stub-ledger bijection at F4
+(ledger == the 13 keys, byte-identical across ×9); `routeFileExists`
+dead-link law; r2b-staged slot semantics implemented as specified;
+`stage-check-pair` executing disarmed; exit-code honesty both directions.
+
+## Count table
+
+| severity | count |
+|---|---|
+| BLOCKER | 0 |
+| MAJOR | 2 (M-1, M-2) |
+| MINOR | 9 (m-1…m-9) |
+| **total** | **11** |
+
+Ruling embedded above: pivot-301 dispute — old `.replace(/\/$/,"")`
+unpassable for conformant `/en` responses: **CONFIRMED**; fix minimal +
+faithful: **YES**.
