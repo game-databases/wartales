@@ -1,0 +1,317 @@
+# Verify Dig 15 — Verifier B (adversarial audit)
+
+**VERDICT: SOUND** — with 4 MAJOR findings that narrow what "closed" may
+mean, none of which breaks a counted edge or a mechanical claim.
+
+Finding counts: **BLOCKER 0 · MAJOR 4 · MINOR 4**. Every counted number of
+Dig 15 reproduced independently (1,560 / 1,484 / 41 / 4,365 / 37 / 262 /
+761 / 0 leakage); all 4,365 evidence locators survived a full-corpus
+break attempt; zero missed carriers on any of the 761 no-carrier rows.
+What did not survive is the *closure rhetoric*: data.cdb itself
+adjudicates 31 of the 262 "unadjudicable" name-hit directions, the
+derived-family admission line is arbitrary, and PROOF.md R10's "no open
+extraction debt on bars 1–2" overstates.
+
+Auditor: fresh Verifier B, adversarial brief
+[briefs/verifier-dig15-b.mdx](briefs/verifier-dig15-b.mdx). Read-only
+except this file and scratch under `output/_verify-dig15b/`. Scripts:
+`v1_tally.py`, `v2_locators.py`, `v3_schema_census.py` (+ 
+`v3_schema_refs.json`), `v4_nocarrier_sweep.py`, `v5_namehits.py`,
+`v6_ui_coverage.py`. No subagents, no commits.
+
+---
+
+## 1. Attack A — no-carrier audit (761 rows)
+
+Three independent probes, then a 19-row sample across 16 pairs. Result:
+**zero missed carriers found on any row classed `no-carrier`.**
+
+**A1 — hidden-sub-sheet schema census (V3).** The dig's residual sweep was
+exact-name over draft strings; its schema check read only TOP-LEVEL metas
+columns (`props` is type 17). So I enumerated every `6:<sheet>` reference
+column declared inside data.cdb hidden sub-sheets
+(`extracted/harvest/res/data.cdb`, 386 sheets): **297 typed refs**, each
+resolved to a dotted row path and evaluated against the draft rows.
+Every populated typed carrier whose values resolve into a managed target
+kind lands on a derived-evidence or name-hit direction — **none on a
+no-carrier row**. (Where they land instead = findings M1/M2 below.)
+
+**A2 — normalized + enum sweep (V4), corpus-wide over all 761 dirs.**
+Case/punctuation-insensitive equality plus the dig's own enum regex
+`(Skill|Status|UnitClass|Trait|Attribute|Item)\.\w+` run over EVERY string
+field of EVERY kind (the dig ran it only on `skill.script`). Findings:
+
+- Probe A produced 46 no-carrier directions with normalized hits; manual
+  adjudication of every untyped-path hit showed they are all benign:
+  typed-to-a-third-kind collisions (`stats[].attribute` values also naming
+  bonus ids, `types[].unitClass` values also naming item ids, …) or
+  punctuation variants that fail exact match (`recipe.props.feature
+  'Edoran2'` vs region `Edoran_2`; biome vocabulary `edoran2` vs region
+  ids) with no schema type behind them → see minor m3.
+- Probe B found large enum-ref carrier mass OUTSIDE `skill.script`, but
+  all of it sits on `element.script` (deferred kind, outside the scaffold):
+  Item.X ×191, Trait.X ×65, Status.X ×41, UnitClass.X ×33 resolving refs
+  → minor m1.
+
+**A3 — 19-row sample across 16 pairs, per-row probes.** Rows: activity→skill,
+recipe→activity, counter→activity, status→activity, mission→activity,
+battle→itemType, confessions→skill, unitPattern→activity,
+fiefEvent→attribute, groupType→skill, env→skill, region→mission,
+notify→tutorial, loot→recipe, item→condition, battle→notify,
+frescos→skill, class→activity, counter→battle. For each: V3 typed-carrier
+census (none reachable), V4 exact/normalized/enum result (zero unpinned
+hits), plus a code-level probe sampling 6 random target-kind entity ids
+per direction and grepping them as literals through hl-src/src, filtered
+for source-kind-named files. Only two candidate hits surfaced and both
+dissolved on context read:
+
+- `battle→itemType`: `"Bow"` in `src/battle/BattleMode.hx.hx:1436` — a
+  comparison against the renfort weapon-type string `v56.wp`, i.e. the
+  already-modeled class→itemType carrier being consumed, not a battle
+  payload.
+- `fiefEvent→attribute`: `"Strength"` in
+  `src/st/player/fief/FiefEventManager.hx.hx:6620` — trait-gating logic
+  (`canGetTrait`, trait id `'Nimble'`) comparing stat names, not a fiefEvent
+  payload column.
+
+Per the brief's rubric ("one missed no-carrier carrier = MAJOR"): none found.
+
+## 2. Attack B — derived-evidence locators
+
+**B1 — mechanical break attempt on ALL 4,365 edges, not 10 (V2).** For
+every edge in every `_logic/*.jsonl`: filename X__Y ⇒ fromId ∈ ids[X] ∧
+toId ∈ ids[Y]; payload locator `<kind>.jsonl#<id>:<path>='<val>'`
+re-resolved against the actual draft row (id exists, path resolves, value
+present at path, value == toId); hscript locator offset checked in-range
+and substring-exact, name == toId. **Result: 4,365/4,365 clean, 0
+failures, 0 duplicate (fromId,toId) pairs, mechanisms inferred 3,123 /
+logic 1,242.** Direction convention verified against matrix.json ordered
+pairs (producer carries the payload; consumer id equals it).
+
+**B2 — semantic sampling of 10 families against data.cdb typing.** Each
+sampled family's join path checked against the hidden sub-sheet schema it
+rides on — every one is schema-declared exactly as used:
+
+| family | path | data.cdb declaration | verdict |
+|---|---|---|---|
+| startChoice__unitPattern (11) | props.pattern | startChoice@props.pattern = 6:unitPattern | holds |
+| itemType__item (20) | baseBonusDefault | itemType@props.baseBonusDefault = 6:item | holds |
+| item__skill (381) | props.skill | item@props.skill = 6:skill | holds |
+| class__trait (22) | props.trait | unitClass@props.trait = 6:trait | holds |
+| counter__confessions (90) | props.confession | counter@props.confession = 6:confessions | holds |
+| status__skill | props.skills[].skill | status@props@skills.skill = 6:skill | holds |
+| fiefEvent__effect (200) | consequences.effects[].ref | fiefEvent@consequences@effects.ref = 6:effect | holds |
+| groupType__loot (93+) | props.loot[].t | groupType@props@loot.t = 6:loot | holds |
+| region__counter (48) | props.counters.* | region@props@counters.* = 6:counter | holds |
+| trait__bonus | contentBonuses[].bonus | trait@props@contentBonuses.bonus = 6:bonus | holds |
+
+**B3 — corroboration citations checked.** `Group.hx.hx:3268` reads
+`v6 = v5.pattern` (consumer of `.pattern`, as claimed);
+`Unit.hx.hx:19222` opens `battle.Unit.getCaptureChance // f#7774`;
+`Debrief.hx.hx:3107/3113` are the `XpWinBasePerEnemy(Killed)` constant
+reads; f#6543/6544/6605/15187/25108 all exist in
+`hl-src/_functions-index.jsonl` with the claimed identities. One hscript
+edge hand-checked in script context:
+`skill.jsonl#A1ArenaRuleZones.script@159` lands inside
+`u.cancelStatus(Status.A1ArenaBlueGaz)` — direction skill→status correct.
+No inverted consumer/producer confusion found anywhere sampled.
+
+## 3. Attack C — unadjudicated honesty (262 rows)
+
+**C1 — independent set reproduction (V5).** Re-implemented the exact-name
+residual sweep from first principles (own pin list transcribed from the
+tool source + canonical join keys), restricted to the scaffold (managed ×
+managed, modeled and derived directions excluded). **My hit-set == ledger
+name-hit set: 262/262, symmetric difference empty both ways.** The log's
+"audit hit-set == ledger set exactly" claim reproduces under an
+independent implementation.
+
+**C2 — no leakage into counted edges (V1).** Ledger class sums 761+262+
+217+96+66+33+25+23+1 = 1,484 rows; transitions 1,560 = 39 modeled +
+37 derived + 1,484 ledgered; edge-file directions ∩ ledgered directions =
+∅; the only edge-file directions not marked derived-evidence are exactly
+the four declared extra-scaffold ones (bonus__bonus 127, confessions__trait
+37, mission__mission 6, skill__skill 148; 4,047 + 318 = 4,365 ✓); per-dir
+counts transition table vs files identical.
+
+**C3 — but the class text is factually wrong for 31 of 262 → MAJOR M1.**
+And 116 of the 262 rest ONLY on the row's own `id` field colliding with a
+target id (e.g. bonus→icon quotes `id×11 … 'ActionPoint:id=ActionPoint'`)
+— those are namespace coincidences of the entity's own identifier, not
+"payload values", yet they count into the 262 and into quoted per-row
+totals → MINOR m2.
+
+## 4. Attack D — UI coverage map
+
+**D1 — mechanical layer clean (V6).** All 29 pattern-bearing rows re-checked:
+69/69 cited hl-src lines match their `verifiedByPattern` regexes; every
+`satisfiedBy` family total matches its artifact (canonical + _logic);
+statuses sum 19+3+4+4+1 = 31 rows over 20 surfaces, matching `_meta`.
+
+**D2 — six surfaces against site reality.** item-tooltip (covered) ↔ PT04a/
+PT04b hover jobs whose data dep is the relink layer; craft-window
+(covered-derived item__activity 21 edges) ↔ PT03/PT04 + Craft.hx.hx:8
+composed over `ui.win.Activity` ✓; start-choice (covered-derived
+startChoice__unitPattern) ↔ PT07 company creator ✓; debrief-panel
+(logic-covered XpWin*/powerScale) ↔ PT09 calculators, tools-plan §scoring
+row 2 ✓; counter-display/paths-panel (covered) ↔ PT14 trackers over
+counter ids ✓; runtime-trade-price-matrix (gap) ↔ PT09 trade planner
+(tools-plan rank 17, §roadmap "town×good matrix").
+
+**D3 — the gap is real and its unblock is concrete-ish.** No static
+town×good price dataset exists anywhere under `extracted/`; counterparts
+verified shipped (TradeGood* constants in `logic/constants.jsonl`,
+f#6543 distance-gradient decoded in disasm-formula-findings §3.3,
+f#6605 quality multipliers, element@items containers). Weakness noted:
+"deterministic recompute" quietly assumes static nearest-producer inputs
+(`Place.getLocalProduction()`, deferred-kind payload) — half the live
+matrix (stock refresh) is genuinely runtime state, which the row itself
+says honestly. Not raised above MINOR (m-grouped with m1 scope note).
+
+**D4 — completeness of the 20-surface enumeration is undemonstrated →
+MAJOR M4.** `ui/win/` alone holds **106 window sources** (plus subdirs
+`tavern/ pit/ e2/ thebeast/ fief/`); the map covers ~16 of them and gives
+no enumeration argument (no "all ui/win files classified" pass, no
+texts.xml-group → surface closure despite citing the 213-group dump).
+Concrete unmapped relation-bearing windows include `TradeRoute.hx.hx`
+(a whole route-profit UI adjacent to the declared gap),
+`GarnisonManager.hx.hx`, `Gambling/Stake`, `OilPanel`, `CampChest`,
+`WeaponDisplay`. DR bar 2 says "**All** UI links analyzed".
+
+## 5. Attack E — overclaim check (PROOF R10 phrasing)
+
+DR bar definitions ([decision-register.md §DR-2026-08-17-relink]):
+bar 1 "complete pairwise relinking… missing pairs are derived; unresolved
+pairs ledgered with concrete unblock"; bar 2 "ALL UI links analyzed…
+coverage map shipped". RELATIONS.md correctly stays untouched
+(sha256 of matrix.json still matches the header parity hash
+`5efaba53…` — canonical bytes untouched by the dig).
+
+- Bar 1's LETTER holds: every one of the 1,560 directions is derived or
+  concretely ledgered; nothing silently dropped.
+- R10's "closed at evidence layer" would be defensible if the evidence
+  layer were exhaustive. It is not (M1/M2): 31 directions carry
+  data.cdb-declared carriers parked as "unadjudicable", and equally-typed
+  siblings of emitted families were skipped. R10's tail sentence "**no
+  open extraction debt on bars 1–2; re-freeze only**" is therefore an
+  OVERCLAIM → MAJOR M3: deriving the parked typed carriers (≈450+ resolving
+  refs across 31 directions, plus unemitted self-pair families like
+  item.refItem ×326) is extraction work, not mechanical re-freeze
+  promotion. The honest phrasing is "closed for everything enumerable by
+  the dig's exact-name method; typed-carrier adjudication still open".
+
+## 6. Attack F — sibling hygiene
+
+Scoped `git status` + mtimes inside the dig window (Aug 26 05:30–06:10):
+designated surfaces only — `extracted/relinks/_logic/*` (05:50),
+`ui_link_coverage.jsonl` (06:04), `docs/data-dig-log.mdx` (M),
+`extracted/PROOF.md` R10 row (mtime 05:57), the three tools
+(03:10/05:50/05:52), `output/_dig-relink-matrix/*`. Canonical
+`extracted/relinks/*.jsonl` all Aug 25 09:59 (pre-dig); `matrix.json` Aug
+25 18:19 with parity sha intact. Non-designated writes in the window
+belong to named siblings, NOT dig 15:
+`locale_availability.jsonl` (2.96 GB) + `.meta.json` + modified
+`pipeline/tools/locale_bridge_dig.py` — locale agent, tool self-identifies
+in the meta (`R5 orchestrator ruling 2026-08-26`, dig-14 lineage per
+commit 37af0ad); `docs/verify-dig15-a.mdx` — verifier A. Nothing else.
+
+---
+
+## Findings
+
+### MAJOR
+
+- **M1 — 31 of 262 "unadjudicated-name-hits" directions are adjudicated by
+  data.cdb itself; their ledger text asserts the opposite.**
+  Anchor: `extracted/relinks/_logic/_ledger.jsonl` rows classed
+  `unadjudicated-name-hits` vs `extracted/harvest/res/data.cdb` hidden
+  sub-sheet columns. Examples: startChoice→counter
+  (`startChoice@props.pathCounter = 6:counter`, 10/10 resolve), bonus→icon
+  (`bonus@props.icon = 6:icon`, 43/43), trait→skill
+  (`trait@props.skill = 6:skill`, 5/5), env→item
+  (`env@camp.contextualTool = 6:item`, 18/18). Total: 31 directions /
+  449 resolving refs (list in `output/_verify-dig15b/v3_schema_refs.json`).
+  Every one carries the text "the matching paths carry **no schema type**
+  (hidden sub-sheets … unadjudicable)" — false: the type IS declared in
+  the hidden sub-sheets the same sentence proposes consulting, in a file
+  the pack already harvests. Demonstrating probe: V3 census
+  (`v3_schema_census.py`). Consequence: ≈12% of the class is derivable
+  evidence misfiled as unadjudicable, and queue addition #2 ("adjudicate
+  via hidden sub-sheet typing") asks for work already mechanically done.
+
+- **M2 — the derived-family admission line is arbitrary, so the evidence
+  layer is a subset, not a closure.** Same sheet, same proof strength,
+  different outcomes: `startChoice.props.pattern→unitPattern` (typed
+  6:unitPattern, 11/11) became flagship derived-evidence while
+  `startChoice.props.pathCounter→counter` (typed 6:counter, 10/10) on the
+  SAME sheet got parked as name-hits. Inside already-emitted families,
+  additional typed carriers were left unemitted: `item__skill.jsonl`
+  carries only `props.skill` (381) while `item@props.passiveSkill`
+  (6:skill) resolves 283 more; `skill→status tooltipStatus[].st` resolves
+  772; `class→status pitStatus/importantStatus/oils` resolve 34+7+7;
+  `item.tool.tavern.bonuses[].bonus` 132. Modeled-direction fold notes
+  were shipped for exactly ONE case (confessions→trait) while four equal
+  cases went unfilled (counter→icon displayIcon ×8, status→attribute
+  attributePercent/attributeValue ×8, item→itemType refCustomization ×8 +
+  displayType ×1). Self-pair families were emitted for skill/bonus/mission
+  but not item__item (`refItem` ×326, `refItemLoca` ×49,
+  `converts.item` ×9), groupType__groupType (×57), fiefGoal/status/region/
+  trait self-carriers — while the log presents the three as "the rest are
+  self-chain families", implying exhaustiveness. Probe: V3 census + path
+  tally of `_logic` evidence strings.
+
+- **M3 — PROOF.md R10 closure phrasing overstates.** Anchor:
+  `extracted/PROOF.md` R10: "DR bars 1–2 closed at evidence layer …
+  Re-freeze only — no open extraction debt on bars 1–2." Given M1+M2 there
+  IS open extraction debt on bar 1 (deriving ≥31 typed-carrier directions
+  and the missing self-pair families), and on bar 2 the enumeration debt
+  of M4. Bar 1's letter ("derived or concretely ledgered") is satisfied;
+  the closure sentence is not. Probe: this file §4–§5.
+
+- **M4 — bar 2 coverage map ships without a completeness argument.**
+  Anchor: `extracted/relinks/ui_link_coverage.jsonl` (20 surfaces) vs
+  `extracted/decompiled/hl-src/src/ui/win/` (106 window sources + 6
+  subdirectories of further windows). No pass classifies the unmapped
+  majority; DR bar 2 requires "ALL UI links analyzed". Concrete unmapped
+  relation-bearing surfaces: TradeRoute, GarnisonManager, Gambling/Stake,
+  OilPanel, CampChest, WeaponDisplay, tavern/*. Probe: directory count +
+  spot reads (§4 D4).
+
+### MINOR
+
+- **m1 — deferred-kind outbound carrier mass is enumerable but appears
+  nowhere.** element/group/place/levelProps sit outside the 40-kind
+  scaffold (so no bar-1 violation), yet V3/V4 show 43 uncovered populated
+  typed paths totalling 5,574 resolving refs (element→class `npc.unit`
+  1,199; group→groupType `props.type` 791; element→region `npc.region`
+  516; element→item dialogue itemCost 476 …) plus ~330 resolving enum refs
+  in `element.script`. Neither the deliverables nor the queue additions
+  state this boundary or queue it.
+- **m2 — own-id collisions inflate the 262-class presentation.** 116 of
+  the 262 have hits ONLY at the row's own `id` path (e.g. bonus→icon
+  quoting `ActionPoint:id='ActionPoint'`); the class text calls these
+  "payload values coinciding". Harmless (never edges) but the class is
+  44% id-coincidence noise, and per-row quoted totals include it.
+- **m3 — the exact-match limitation of the sweep is documented nowhere.**
+  Normalized equality finds near-carriers the class text's "zero
+  exact-name payload matches" wording hides: amb/env/region `.biome`
+  vocabularies (`edoran2`, `alazar`, …) equal region ids modulo
+  case+underscore (`Edoran_2`) — plausibly a real soft relation
+  (ambience sets per region family), currently invisible to every ledger
+  class. Adjudication likely "collision", but it should be recorded to
+  be dismissed.
+- **m4 — attribution guard for sibling writes.** `locale_availability.jsonl`
+  (2.96 GB) beside the canonical relink files is locale-agent output
+  (`pipeline/tools/locale_bridge_dig.py`, R5 ruling meta), not dig-15
+  fallout; recorded so future audits do not accuse the dig of touching it.
+
+### Clean attacks (ran, nothing found)
+
+No-carrier hunt via hidden-sub-sheet typed carriers (297 refs, A1);
+normalized + out-of-script enum sweep over all 761 no-carrier dirs (A2);
+19-row × 16-pair code-literal probe (A3, two candidates dissolved in
+context); full 4,365-edge locator break attempt (B1, zero failures);
+10-family CDB-typing cross-check incl. function-id index checks (B2/B3);
+independent 262-set reproduction, empty symmetric difference (C1);
+leakage probe of counted edges (C2, empty); UI regex re-verification 69/69
++ totals (D1); gap-reality probe (D3); canonical parity sha (§6).

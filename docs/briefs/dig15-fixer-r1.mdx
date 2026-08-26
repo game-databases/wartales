@@ -1,0 +1,58 @@
+# Brief — Dig-15 Fixer r1: relink matrix upgrade corrections
+
+Fresh Fixer agent; never spawn subagents; never commit; Wartales pack
+only. You correct the Dig 15 deliverables so they survive their own
+audit. Inputs, read IN FULL:
+
+1. `docs/verify-dig15-b.mdx` — binding finding list (MAJOR M1/M2/M4 +
+   second major + 4 MINOR). Address every id with on-disk evidence;
+   none argued away.
+2. `docs/verify-dig15-a.mdx` — its notes also bind: (a)
+   `output/_dig-relink-matrix/sweep_audit_r2.json` is stale scratch —
+   regenerate or deprecate it with a qualifier so nothing cites it
+   unqualified; (b) unpinned name-hits inside derived directions
+   (`skill.tooltipStatus[].st`→status 772, `item.passiveSkill`→skill
+   283) belong in your M1/M2 handling.
+3. Current artifacts: `extracted/relinks/_logic/*` + `_ledger.jsonl`,
+   `extracted/relinks/ui_link_coverage.jsonl`, `extracted/PROOF.md`
+   (R10 row), `docs/data-dig-log.mdx` (Dig 15 entry),
+   `pipeline/tools/dig15_*.py`.
+
+Work items:
+
+1. **M1 — the 31 adjudicable directions:** for each direction the
+   auditor proved carries a hidden-sub-sheet schema type with populated,
+   fully-resolving refs (e.g. `startChoice@props.pathCounter =
+   6:counter` 10/10): emit the edge into the appropriate `_logic`
+   family (probe-verify like siblings — sample ≥10 with cited
+   consumers), remove the false "no schema type" assertion from the
+   ledger row, and reclass the transition counts accordingly.
+2. **M2 — admission rule:** state the family-admission criterion in the
+   dig-log entry; then either admit `item.passiveSkill→skill` (×283)
+   and any sibling family the auditor named under the same criterion,
+   or ledger each exclusion with the same evidence bar as admitted
+   families. No silent asymmetry.
+3. **PROOF.md R10 rewrite:** replace "closed at evidence layer /
+   re-freeze only, no open extraction debt" with the true post-fix
+   state — what closed (modeled/derived/no-carrier audited), what
+   remains (remaining unadjudicated name-hits count, bar-2 coverage
+   gap), each with numbers.
+4. **M4 — bar-2 map honesty:** ui_link_coverage currently maps 20
+   surfaces against 106 ui/win window sources. Add a completeness
+   section: explicit unmapped-source list (incl. TradeRoute/
+   GarnisonManager classes) marked deferred with an unblock path — or
+   extend coverage if cheap. No claim of completeness without the
+   argument.
+5. All 4 MINORs per the auditor's anchors.
+6. Regenerate `transition_table.json` / `verification.json`; refresh
+   sampler run so counts match the post-fix tree; update the dig-log
+   entry numbers in place (keep END sentinel).
+
+Rules: probe scripts may write ONLY under `output/_dig15-fix/`;
+canonical `extracted/relinks/*.jsonl` (the 53 pre-existing files) stay
+byte-untouched; `_logic/` + `ui_link_coverage.jsonl` + docs + tools are
+your surfaces. Do not commit.
+
+Done = all findings resolved with probes, counts self-consistent
+everywhere they appear, PROOF R10 truthful, sampler green on final
+state.
