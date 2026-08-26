@@ -1,0 +1,55 @@
+# Brief — Dig-14 Fixer r1: locale wave-2 corrections
+
+Fresh Fixer agent; never spawn subagents; never commit; Wartales pack
+only. You correct the Dig 14 deliverables so they survive both audits.
+Inputs, read IN FULL:
+
+1. `docs/verify-dig14-b.mdx` — binding adversarial findings (BLOCKER:
+   ~382 entities × 9 locales with translated prose in `props.texts`
+   silently unemitted, refs at dead `title` column, mislogged as drift;
+   MAJOR: `flatten_struct` shared counters dict across sibling
+   `<lineN>` wrappers drops repeated tags at index≥1 (~12,295 cell
+   slots / 388 entities); MAJOR: UI layer drops 105 nested groups /
+   1,259 keyed strings per file vs claimed "40 groups / 889 strings";
+   MAJOR: third filler instance breaks "exactly 2 pack-wide"; 4 MINOR).
+2. `docs/verify-dig14-a.mdx` — binding mechanical findings (F-1
+   MAJOR: headline 198,899/A 96,811 quoted from an intermediate emit —
+   disk/report hold 198,233/A 96,145; F-2 MINOR: skill reconciliation
+   claim false in shipped report; F-3 MINOR: 21st round-trip failure is
+   the documented fr-only filler, not a drift entity).
+3. Current surfaces: `pipeline/tools/locale_bridge_dig.py`,
+   `extracted/locales/**`, `extracted/relinks/locale_availability.jsonl`
+   + `.meta.json`, `output/_dig-locale-wave2/report.json`,
+   `docs/data-dig-log.mdx` (Dig 14 entry),
+   `docs/locale-key-convention.mdx` §8, `extracted/PROOF.md`.
+
+Work items, in order:
+
+1. **BLOCKER — props.texts emission:** extend the bridge so entities
+   whose localizable prose resolves through `props.texts` emit their
+   cells (the dead-`title`-ref class, ~382 × 9). Reclassify those
+   round-trip failures honestly (they should now resolve); update
+   availability rows. If any of the 382 genuinely cannot resolve,
+   ledger each with reason — no silent drops.
+2. **flatten_struct per-wrapper counters** — fix the shared-dict bug;
+   re-emit affected kinds; verify a previously-vanished repeated tag
+   now appears in ≥3 sampled entities.
+3. **UI inventory completeness** — include nested groups/keyed strings;
+   freeze the true counts; keep the fr−111 absence claim re-proven.
+4. **Filler census** — recount exhaustively (≥3 known); freeze honest
+   number everywhere it appears.
+5. **Docs truth pass** — recompute ALL headline figures from the FINAL
+   report only (dual-extractor totals, reconciliation claims, round-trip
+   classification); A's F-1/F-2/F-3 fold in here; dig-log entry updated
+   in place (END sentinel intact); PROOF R9 wording matches post-fix
+   reality; note availability-row delta for the landing summary.
+6. Re-run determinism double-run + your verification mode over the
+   final tree; refresh report.json.
+
+Rules: probe writes ONLY under `output/_dig14-fix/`; wave-1's 27
+overlays stay byte-identical (regression-check at end); canonical
+relinks except availability files untouched; no commits.
+
+Done = all findings from BOTH audits resolved with probes, every
+figure in docs reproducible from shipped artifacts, sampler-equivalent
+green on final state, wave-1 intact.
