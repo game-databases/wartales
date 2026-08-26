@@ -1,0 +1,36 @@
+# Brief — Dig 16: R10b canonical wiring of `_logic` matrix evidence
+
+Fresh Dig agent; never spawn subagents; never commit; Wartales pack
+only. Deliverables: upgraded `extracted/relinks/matrix.json` +
+`RELATIONS.md` (+ `_meta` provenance), dig-log entry, PROOF R10 wiring
+note. Scratch ONLY under `output/_dig-canonical-wiring/`.
+
+Context (read first): `docs/verify-dig15-{a,b,delta}.mdx`,
+`docs/arbiter-rule8-gate.mdx` R10b rider ruling (parallel rider,
+must complete before Batch 4 DB pages),
+`extracted/relinks/_logic/*` (107 families / 7,184 edges / 1,432-row
+ledger), current `matrix.json` + RELATIONS.md §4.2-as-amended envelope,
+`pipeline/tools/relink_catalog.py` + `validate_all.py`.
+
+Work:
+1. Promote verified `_logic` evidence into the canonical plane WITHOUT
+   destroying existing canonical semantics: modeled pairs stay;
+   derived directions gain their edges with mechanism=`logic`, evidence
+   locators preserved (family file + line refs); ledgered classes stay
+   OUT of edge sets but appear in envelope accounting
+   (deferredTargetPairs/ledgered sections) exactly as §4.2 defines.
+2. Update RELATIONS.md: relation rows gain their upgraded status +
+   counts; admission rule recorded; open-debt section mirrors PROOF R10.
+3. Envelope totals recomputed and internally consistent everywhere
+   (totals/pairs/selfPairs/deferredTargetPairs/textKeyCoverage).
+4. Probes: validate_all relink legs green on final state; sampler-style
+   spot rederivation of 10 promoted edges from locator→canonical row;
+   byte-stability double-run of whatever emitter you build (tools under
+   pipeline/tools/ if needed, hash-pinnable).
+5. Dig-log entry with END sentinel; PROOF.md R10 gains "wired" note.
+
+Canonical safety: keep pre-wiring snapshots under scratch; any consumer
+breakage (cdb_verify, stage tests) must be surfaced not patched around.
+
+Final message: edges before/after in canonical plane, envelope totals,
+probe outputs summary.

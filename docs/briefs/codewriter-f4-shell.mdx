@@ -1,0 +1,40 @@
+# Brief — CodeWriter: F4 app shell (Batch 3)
+
+Fresh CodeWriter agent; never spawn subagents; never commit; Wartales
+pack only. Build `docs/spec-f4-app-shell.mdx` EXACTLY — it is frozen
+BUILD-READY (arbiter APPROVE + r1b/r2b erratas applied; every AC
+executable).
+
+Read first, IN FULL: the spec itself; FRAMEWORK.md §2.20 (+§2.7/§2.15/
+§2.11); `_foundation/localization-architecture.md`;
+`_foundation/decision-register.md` [DR-2026-08-20-locale-urls],
+[DR-2026-08-22-search-is-not-a-page], [DR-2026-08-24-wartales-roster];
+`design/shadcn-adoption.mdx`; `site/src/styles/tokens.css` +
+`tokens.test.ts` (F1 CANON — edit neither); `site/public/fonts/README.md`
++ `site/public/assets/ui/README.md` staging patterns; current `site/`
+tree + `package.json` extension law.
+
+Build laws:
+- §9 files-touched lists are exhaustive: create ONLY Created entries,
+  modify ONLY Modified entries, touch NOTHING in Never-touched. A
+  sibling TestWriter owns the test files — your suites come from the
+  spec's contracts, but DO NOT create/edit any `*.test.ts` beyond
+  what §9 assigns you (none) and no vitest.config (extension law).
+- Implement every `(r1)`/`(r1b)`/`(r2)`/`(r2b)`-tagged behavior
+  (catch-all not-found, hygiene grep incl. globals.css non-color
+  aliasing law, staged search slot per AC-11 r2b text, pageSegments
+  consumption via api.manifest when present else derivation).
+- Chrome i18n: 9 keyed files + stub ledger per §4 — content lands when
+  translations wire in; keys exist NOW with EN strings + empty other
+  locales per the stub law.
+- Fonts/textures staged per README patterns; assets resolve (AC legs).
+- Verify before finishing: `npm run dev` boots clean; all nine locale
+  roots render; `/en/*`→bare 301; curl-greetable HTML;
+  `npm test` green INCLUDING existing tokens suite; production build
+  prerenders nine homes. Quote the command outputs in your final
+  message. Scratch builds only inside `site/`; `.next/` stays
+  gitignored-local anyway.
+
+Do not commit. Final message: files created/modified vs §9, verification
+command outputs, any deviation from spec (should be none — deviations
+are defects).

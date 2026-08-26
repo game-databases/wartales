@@ -1,0 +1,33 @@
+# Brief — TestWriter: F4 app shell (Batch 3, BLIND)
+
+Fresh TestWriter agent; never spawn subagents; never commit; Wartales
+pack only. Write the test suite for `docs/spec-f4-app-shell.mdx` §7–§8
+— BLIND: you are running in parallel with a CodeWriter you must NOT
+wait for or read. Do NOT read anything under `site/src/app/**`,
+`site/src/components/**`, or `site/middleware.ts` even if they appear
+mid-session — your contracts are the SPEC alone. (You MAY read
+`package.json`, `tokens.test.ts`, tokens.css, vitest config state, and
+spec-referenced standards.)
+
+Deliverables (exactly §7's test spec):
+1. Four node-env vitest suites covering the AC groups: locale routing
+   table ×9 + `/en/*` 301 law + unknown-segment 404; chrome i18n parity
+   (13-key inventory ×9 + stub-ledger emptiness law); manifest-driven
+   nav render-only-existing + search-slot contract (AC-11 r2b staged
+   semantics); token wiring/hygiene predicates (AC 9 failing-command
+   mirror incl. globals.css non-color aliasing).
+2. `scripts/smoke.mjs` executable curl-runner per §7 enumerating every
+   AC leg (nine roots, 301s, assets, CJK stylesheet scoping, staged
+   slot emptiness, boot log) — written to pass against a CONFORMANT
+   implementation; where a leg needs the dev server, guard with the
+   documented env check so bare `npm test` stays green offline.
+3. Suites must FAIL against a missing/nonconformant shell (write them
+   red-first mentally: assert specifics, not existence).
+
+Laws: existing tokens suite untouched and green; `test: vitest run`
+script untouched; no vitest.config creation; tests live exactly where
+§7 places them; do not modify any non-test file. If the CodeWriter's
+files land mid-run, ignore them entirely.
+
+Final message: suite/file list, case counts per suite, which ACs each
+covers, and confirmation of blindness.

@@ -1,0 +1,36 @@
+# Brief — Dig 17: deferred-kind outbound carriers (R6 rider, heaviest risk)
+
+Fresh Dig agent; never spawn subagents; never commit; Wartales pack
+only. Deliverables: outbound carrier families for deferred kinds
+(element/group/place/levelProps) under `extracted/relinks/_logic/`
+(same family-file convention), ledger updates, dig-log entry, PROOF
+R10/R6-row update. Scratch ONLY under `output/_dig-deferred-carriers/`.
+
+Context (read first): `docs/arbiter-rule8-gate.mdx` — this is the
+heaviest flagged risk: **73 typed paths / 13,429 resolving refs**
+outbound from element/group/place/levelProps (dialogue graphs,
+npc.unit, group types) sit unemitted; pages consuming NPC/dialogue/
+place corpora ship inbound-only until this lands. Sources: data.cdb
+hidden sub-sheets (typed carriers — the dig-15 M1 method), HBSON
+prefabs (`pipeline/tools/hbson_decode.py`), hl-src structured text for
+consumers, `docs/data-dig-log.mdx` dig-15 entry for the family/probe
+conventions.
+
+Work:
+1. Enumerate the 73 paths × resolving-ref mass; classify each path:
+   typed-in-hidden-sub-sheet / prefab-carried / code-side-only.
+2. Emit families per dig-15 convention (`_meta.cdbDeclarations` chain,
+   ≥10 sampled probe-verifications per family citing consumers in
+   hl-src); direction convention identical (ordered pairs, source kind
+   first).
+3. Admit under the dig-15 admission rule (record it); ledger anything
+   below the bar honestly — no silent drops, no overclaim.
+4. Probes: dangling=0 across new edges; independent break attempt on
+   15 sampled locators; determinism double-run; validate_all legs stay
+   green (new families must register cleanly or extend the registry as
+   dig-15 did).
+5. Update availability of counts EVERYWHERE they appear (ledger rows,
+   PROOF rows, dig-log) — recount-governed, no magic constants.
+
+Final message: families emitted, edges added, probe/break-attempt
+results, remaining honest debt.

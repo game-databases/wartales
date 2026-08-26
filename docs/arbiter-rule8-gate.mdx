@@ -1,0 +1,322 @@
+# Arbiter — Rule-8 data-completeness gate (P2)
+
+**VERDICT: GATE-OPEN** — frontend builds may start (Batch 3). The opening
+carries **12 riders** that MUST run in parallel, each with a named piece and
+a hard batch deadline (§5); **zero open items block Batch 3 outright**, and
+none is waived — every one stays ledgered with an owner piece and an unblock
+path. Four riders convert from parallel to blocking at their named batch
+boundary (R1 → Batch 4, R6 → place/element/unit pages, R7 → Batch 5, R8/R9 →
+their tool pieces). P5 items in §6.
+
+Arbiter: fresh agent, session 2026-08-26, working only in
+`wartales/`; no subagents; no commits; writes confined to this file. Read in
+full before ruling: [AGENTS.md](../AGENTS.md) (root),
+[_foundation/decision-register.md](../../_foundation/decision-register.md),
+[_foundation/extraction-doctrine.md](../../_foundation/extraction-doctrine.md),
+[promptForDB.md](../promptForDB.md) (rule 8),
+[FRAMEWORK.md §2 + §6–§8](../../FRAMEWORK.md), [spec.md](../spec.md),
+[extracted/PROOF.md](../extracted/PROOF.md),
+[docs/data-dig-log.mdx](data-dig-log.mdx) (all digs incl. 14 + 15 and their
+open-debt ledgers), [EXTRACTION-LOG.md](../EXTRACTION-LOG.md),
+[PROGRESS.mdx](../PROGRESS.mdx), all six verify verdicts
+([dig15-a](verify-dig15-a.mdx) · [dig15-b](verify-dig15-b.mdx) ·
+[dig15-delta](verify-dig15-delta.mdx) · [dig14-a](verify-dig14-a.mdx) ·
+[dig14-b](verify-dig14-b.mdx) · [dig14-delta](verify-dig14-delta.mdx)), plus
+first-hand disk checks of `relinks/_logic/` (108 files = 107 families +
+`_ledger.jsonl`, 1,432 rows), `ui_link_coverage.jsonl`, `formulas.jsonl`,
+`maps.json`, `media-catalogue.jsonl`, and git history (`28a1766` dig 14
+landed, `8c62386` dig 15 landed, `145f02f` Batch 2 fired).
+
+---
+
+## 1. Why the gate opens
+
+Rule 8 asks whether every join, derivation, and logic reconstruction that is
+possible from the extracted corpus is **finished or honestly ledgered** such
+that frontend consumes contracts without deriving. Measured against that bar:
+
+1. **The corpus itself is closed and proven.** 40,201 pak entries at Δ=0 byte
+   accounting; CastleDB whole-file closure (11,473 rows reconciled by an
+   independent verifier); HBSON decode 3,536/3,536 zero-slack + byte-exact
+   re-encode; hlboot walked to EOF with slack 0 and decompiled twice over
+   (operand + structured text, 52,114 functions / 2,508,050 ops, determinism
+   proven by double emit); battle terrain 5,880/5,880 under a derived layout;
+   world↔tile transform pinned by carrier arithmetic with a frozen-gate
+   validation battery. Every "closed" row of PROOF.md traces to a counted
+   artifact — the delta verifiers re-derived them independently and I found
+   no surviving overclaim ([verify-dig15-delta §D7](verify-dig15-delta.mdx):
+   `"no open extraction debt"` and `"no schema type"` both grep to zero).
+
+2. **Relations are complete or concretely ledgered.** All 1,560 ordered
+   directions are classified: 39 modeled hard, 89 derived-evidence
+   (107 `_logic` family files / 7,184 edges / 0 dangling — sampler 107/107,
+   full-corpus locator break attempt clean, independent delta recount exact),
+   1,432 ledgered across nine classes with concrete unblocks. Nothing is
+   silently dropped; the sweep limitation (exact-name matching) is recorded
+   where it exists.
+
+3. **Locale coverage is closed at GATE level.** 34 kinds × 9 locales, 88,441
+   overlay entity rows, dual-extractor verified 217,611/217,611 with 0
+   mismatch after the r2 fix round; drift reconciliation exact (14,456 =
+   9,827 bridged + 4,629 absent-everywhere); filler census exhaustive and
+   symmetric at exactly 3 instances; UI chrome layer emitted (en 2,148 /
+   fr 1,897 addressable keys) with the fr vintage stamped `buildid-fallback`
+   rather than invented. What remains is polish, not gaps (§4).
+
+4. **Calculator-relevant logic is decoded and cited.** Capture odds
+   (`battle.Unit.getCaptureChance` f#7774), prisoner roll (pcs 502–540),
+   trade distance gradient (`st.Item.getLocalPriceFactor` f#6543, 50-unit
+   free radius, pow gradient), combat XP composition (`Debrief.addXP`
+   f#25108 + XpWin* constants), guard cap/pierce/backstab
+   (`SkillTargetPreview.calcDamages` pcs 60–115), adaptive difficulty
+   parameter sets ×18 levels ×21 region-tiers ×4 modes, terrain grid roles
+   h/n/i/w — all exist as readable structured text with op ranges or hl-src
+   line numbers a calculator can cite.
+
+5. **The verification chain is real.** Six verdicts, three per dig, including
+   two adversarial audits whose MAJOR findings were actually fixed rather
+   than argued away (dig 14's silently-unemitted prose class; dig 15's misfiled
+   typed carriers), then re-proven by delta passes. PROOF language was
+   corrected downward where audits demanded it.
+
+What keeps this from being unconditional: several data-answerable work items
+remain possible from the corpus (deferred-kind outbound carriers, 126
+unmapped UI windows, marker-layer typing, the trade-price static half,
+protocol inventory). None feeds a Batch 3 surface, each has a named owner
+piece, and each carries a batch deadline below — which is precisely the
+RIDER class this gate exists to administer. A GATE-HOLD would idle foundations
+that consume already-frozen contracts while adding no honesty; a pass without
+deadlines would let later batches derive. This ruling takes the middle path
+the rule's own routing vocabulary provides.
+
+---
+
+## 2. Required explicit rulings
+
+### 2.1 R10b — canonical wiring of `_logic/` into matrix.json / RELATIONS.md
+
+**Ruling: RIDER, mandatory, must land before Batch 4 (DB core) starts. Not
+blocking Batch 3.**
+
+The canonical catalog plane still describes the pre-dig-15 tree:
+`matrix.json` totals read `modeledDirections: 39` and its cells say
+`partial → ordered-pair upgrade dig` for directions whose evidence shipped
+hours later under `extracted/relinks/_logic/` (89 derived directions,
+7,184 edges). The dig deliberately left RELATIONS.md untouched (catalog
+generator is arbiter-frozen; promotion is a spec re-freeze per the Dig 15
+token map: 56 files onto ordered-pair cells, 33 onto R3 cells, 9 self-chain,
+9 folds, per-file `_meta.promotionExpectation`). That was correct process and
+it now becomes the pack's largest consumer-facing risk: none of the four
+build-ready specs mentions `_logic` (grep across F2/F4/F5/PT16 = 0 hits;
+F2 cites only `extracted/relinks/*` and `locale_availability.jsonl`), so an
+entity-page builder binding to the catalog contract would see 39 modeled
+directions and miss 7,184 verified edges — forced either to derive or to ship
+relation-poor pages. Both are rule-8 defects.
+
+Mechanics are cheap and proven: promotion via the existing admission rule
+(`FIX_ROUND_CARRIERS`), catalog regen via `relink_catalog.py` (byte-stable),
+validator re-freeze rides along. Owner piece: one fixer executing queue
+addition (1) plus the spec re-freeze entry the freeze note requires (changes
+to the frozen spec need a decision-register entry). Deadline: **before the
+first Batch 4 CodeWriter launches**; Batch 3 (shell, search chrome, SEO
+layer, icon CDN) consumes no relation edges and proceeds now.
+
+### 2.2 Dig-14 D-1 — emitter attribute regex skips `<t id ="…">`
+
+**Ruling: RIDER (already in flight per commit `145f02f`), trivial severity.**
+Six genuinely key-addressable fr chrome strings under
+`ui/brewBarrel/noValidBarrel/` are dropped because the tokenizer requires the
+quote immediately after the attribute name; the docs sentence "all 251 missing
+fr keys correspond one-for-one to id-less `<t>` rows" is true only for
+245/251. Fix is the delta verifier's one-liner (`([\w.\-]+)\s*=`) plus the
+sentence correction in the log, convention §8.3, and PROOF R9. Impact is 6
+site-chrome strings in one locale at depth 3 — polish. Must land with the
+next locale tool touch; never allowed to become a silent permanent drift
+(the parseProblems lines disclose it today, unquantified).
+
+### 2.3 OCallClosure typing follow-up (8,964 unresolved sites)
+
+**Riding ruling: RIDER, P5-weighted.** Closure call-typing through
+OStaticClosure/OInstanceClosure producers is the one large unresolved
+decompile family; sites render verbatim behind a grows-only ledger. No
+calculator or page consumes closure call targets today — every formula the
+tools-plan names is already resolved at function granularity with cited op
+ranges. Route as a readability/capability upgrade (unlocks readable
+event/callback wiring for future deep tools), sequenced behind the riders
+that feed actual pages. Not a gate item; must stay visible in `_unresolved.jsonl`
+until done.
+
+### 2.4 Unadjudicated name-hit adjudication queue
+
+**Ruling: RIDER (parallel dig), scoped to the honest residue.** Post-fix the
+class is 188 directions, of which 128 rest only on the row's own `id`
+colliding with a target id (namespace coincidence — dismissible by inspection)
+and **60 quote real payload-value collisions awaiting a code-consumer proof**
+(hidden-sub-sheet typing is exhausted — the fix round applied it; verify-b
+M1's "31 adjudicated by data.cdb itself" set was emitted instead). Two
+residuals prove the queue is live work, not ceremony: verify-b M2 named
+`class→status pitStatus/importantStatus/oils` (34+7+7 resolving refs) and my
+disk check confirms `class__status.jsonl` carries only
+`props.status[].kind` — those carriers' disposition appears nowhere in
+`p1_census.json` (0 oil mentions) or the merge list. Owner piece: one
+adjudication dig over the 60 (+ the M2 stragglers), outcomes =
+emit-family / collision-with-reason. Deadline: before Batch 6 tool pieces
+touch the affected kinds; several collisions "look real" (dig's own note).
+
+### 2.5 Deferred UI-link surfaces (126 windows)
+
+**Ruling: RIDER (bar-2 extension dig), enumeration-honest today.** Bar 2's
+letter is satisfied at enumeration level — `_meta.completeness` lists ALL 140
+`ui/win` sources, maps 14, defers 126 explicitly, and names the seven
+relation-bearing candidates (TradeRoute, GarnisonManager, Gambling, Stake,
+OilPanel, CampChest, WeaponDisplay). Per-relation analysis is queued analyst
+time over shipped sources. Deadline logic: the extension dig starts in
+parallel now, but CampChest/OilPanel/WeaponDisplay/TradeRoute analyses must
+land before any piece builds camp-layout, oils/weapon-display pages, or the
+trade planner respectively — those windows carry exactly the relations those
+pieces would otherwise have to infer from payloads.
+
+---
+
+## 3. Join completeness — spec relations M1–M8 / E1–E8
+
+Per-relation mechanism audit (canonical pair files + `_logic/` evidence +
+datasets; "deferred" always = ledgered with unblock):
+
+| Rel | Mechanism status | Evidence |
+|---|---|---|
+| M1 region↔place↔camp↔item | Covered for CDB-managed legs (region→kingdom 13, fiefPlace__item 173, env→item via `camp.contextualTool`, poi/town coords 607); **deferred legs**: element→region `npc.region` ×516 sits in the deferred-kind outbound queue; building-camp has decoded raw bytes but no emitted dataset/family | relinks + `_logic/env__item`, `poi_tile_coords.jsonl`; queue item (3) |
+| M2 recipe↔station↔materials | Mostly hard (craft 667 rows; recipe__item 3,515; recipe__icon 460; item__activity 21 stations). Quality tiers constants shipped; golden-strike composition still `[mixed]` in formulas.jsonl | formulas row `crafting.quality-tiers`; rider R12 fold |
+| M3 weapon↔class↔skill | Covered hard+evidence (class__item 914, class__skill 874, class__itemType 221, item__skill 664 = 381+283 passiveSkill). **DLC-gating flags: no artifact claims this leg** — neither covered nor ledgered by name; route into rider R4 scope so it stops being implicit | relinks; gap noted here |
+| M4 region↔poi typed layers | Coordinates shipped (607 rows, validated projection); **typed split pending**: 11 H-POI legend kinds ride generic poi rows with pins 0 by design (Dig 11 queue 2) | maps.json marker taxonomy; rider R7 |
+| M5 price matrix ×gradient×caps | Gradient decoded (f#6543/6544/6605); caps ≈35%/≈25% hand-measured; **the town×good matrix itself is the one declared gap** — nearest-producer inputs are deferred-kind payload, stock refresh is runtime state | ui_link_coverage `gap` row with honesty qualifiers; rider R8 |
+| M6 status-trait↔skill/item/weapon | Covered evidence (status__skill 54+135 tooltipStatus; trait__status `fromStatus`; confessions__trait 276+fold; class__status 44) minus the §2.4 oil stragglers | `_logic/`; rider R4 |
+| M7 quest/npc↔dialogue↔outcome | Confessions/mission/tutorial datasets + element dialogue payloads emitted (dialog paths in availability field templates); **choice→target graph edges not yet emitted** (element self-family queued) | datasets + queue (3); rider R6 |
+| M8 spawn tables / unit trichotomy | battle_scene.jsonl 97+15 covering all 108 CDB scenes with spawns/passability; groupType__loot 93+, loot__item 994, capture odds decoded; **group→groupType props.type ×791 queued** (deferred-kind outbound) | Dig 12 + `_logic/groupType__loot`; rider R6 |
+| E1 drop/spawn/capture probabilities | Covered logic-wise (loot probas inline, capture f#7774, spawn scaling constants ×DIFF) | formulas.jsonl |
+| E2 recipe multi-source sites | Thin but present (item__activity 21; activity prefabs 45) — covered-derived | ui_link_coverage |
+| E3 versioned truth | Closed (buildId stamps everywhere; R5 stamping rule applied; patch-diff fires when TargetBuildID lands — trigger, not debt) | EXTRACTION-LOG §4 |
+| E4 economy closure | Wages/food/tiredness/morale confirmed-in-client; closure shares M5's matrix gap | rider R8 |
+| E5 difficulty scaling | Fully parameterized (30 DIFF constant variants resolved ×4 modes) | constants.jsonl |
+| E6 achievement unlock graph | Dataset + join solved keyless (212/235 client match, solver proven); **the condition graph itself is open E6 logic work** — honestly carried in R2 residue | rider R9 |
+| E7 locale parity bridge | Closed by Dig 14 at gate level (residuals are owner-call polish, §6) | dig 14 triple-verified |
+| E8 complete pairwise matrix | Bar 1 satisfied at evidence layer (1,560 classified, 0 dangling); canonical promotion = §2.1 | rider R1 |
+
+No relation is silently uncovered. Three legs (M3 DLC flags, M7 dialogue
+graph, M8 group joins) move from implicit to explicitly routed by this
+ruling — that act itself is part of the gate's job.
+
+---
+
+## 4. Logic / Locale completeness, Honesty audit
+
+**Logic completeness — PASS with two small riders.** Every day-one calculator
+in tools-plan has its formula decoded and citable (capture odds, trade
+gradient, XP, guard caps, damage preview f#8320, adaptive difficulty,
+terrain). Still opaque: Valor points (explicit measured negative, P0-DIG via
+globals — rider R12 probe; players expect this mechanic and the pack says so
+honestly rather than inventing); four formulas rows remain `[mixed]`
+(trade.parameter-set, capture.knockout-recruit, arena.pits-economy,
+crafting.quality-tiers) awaiting the hl-src-line citation fold queued since
+Dig 13.
+
+**Locale completeness — PASS at gate level.** Overlays 34 kinds × 9 locales
+with exact drift accounting; UI chrome separated per localization-architecture
+§4; achievements proven en-only by cookie-controlled experiment (negative
+proven, not assumed); fr vintage stamped buildid-fallback. Remaining items
+are polish or owner calls: skill `levels` subSheet (80 refs outside the
+frozen wave-1 field set), stray frozen-kind prose (17 item + 27 skill cells
+×9), D-1's six keys, fr texts-vintage re-export upstream. None changes what
+a page can render today.
+
+**Honesty audit — PASS, with four doc-truth defects found by this arbiter**
+(all routed to rider R2; none is a data defect, none protects a false
+"closed"):
+
+1. **PROOF R4 sentence is false as written**: "MEDIA-CATALOGUE.md does not
+   exist yet either" — the file exists (map.pak imagery classes, 5 rows);
+   what is true is that audio/Wwise, HMD-model, and texture rows are still
+   absent from it, which is the actual residue. Reword.
+2. **The shipped VALIDATION-REPORT.md is stale**: dated 2026-08-25T19:45 with
+   `pass: true` describing availability rows=3779; disk holds 14,456 since
+   dig 14, and validate_all currently exits FAIL 7/8 on
+   `availability-regenerated` (recorded in verify-dig15-a V6 and unchanged at
+   verify-dig15-delta D6). Until expectations are re-frozen post-14/15 and
+   the report regenerated, nobody may quote stage-6 output as current proof.
+3. **EXTRACTION-LOG §2 pin table lags the toolchain**: `hbson_decode.py`,
+   `hl_disasm.py`, `hl_decompile.py`, `locale_bridge_dig.py`,
+   `formula_emit.py`, `icon_export.py`, `battle_terrain_dig.py`,
+   `dig15_*.py` have no provenance pins, and §3 still shows stage 3 decompile
+   NOT BUILT although `extracted/decompiled/**` (both layers, 100 MB+) exists
+   and is verified — the walk halts exit 3 by design. Honest in-log, but the
+   doctrine's "self-documenting entrypoint" owes the pins and the stage wiring.
+4. **maps.json `gates` labels are stale** ("D5 HBSON decode", "D5/D6 polygon
+   source" on layers whose gates closed in Digs 7/11) and PROOF R10's
+   `_meta.cdbDeclarations` claim reads broader than disk (83 of 107 families;
+   24 r1-era files carry older probe metadata — delta n2). Cosmetic but they
+   sit on contract surfaces consumers read.
+
+Positive honesty findings worth recording: the overclaim phrases verify-b M3
+objected to are extinct; stale figures (198,899) were purged from every
+living doc; the fillers census survived an exhaustive symmetric rebuild at
+exactly 3; basePrice is kept as a measured negative instead of a invented
+carrier; 89 REG prefabs keep null coordinates, never invented ones.
+
+---
+
+## 5. Riders — MUST run in parallel with Batch 3 (named pieces + deadlines)
+
+| # | Rider | Owner piece | Deadline (hard) |
+|---|---|---|---|
+| R1 | Canonical promotion + spec re-freeze: admit `_logic/` families into canonical relinks, regen matrix.json/RELATIONS.md, DR entry for the frozen-spec change; specs F2/PT04 name the evidence layer | fixer (queue addition 1) | **before Batch 4 launch** |
+| R2 | Validation + log truth re-freeze: validate_all expectation update post-14/15, regenerate VALIDATION-REPORT, wire decompile stage 3 into run_all, §2 pin table refresh, PROOF R4 reword, maps.json gate labels, R10 declarations-scope sentence | pipeline fixer | before next pipeline-touch commit |
+| R3 | D-1 attribute-regex one-liner + the 245/251 sentence fix (already launched) | micro-fixer | next locale tool touch |
+| R4 | Name-hit adjudication: 60 payload-value directions + M2 stragglers (`class→status` oils/pitStatus/importantStatus) + **add the unclaimed M3 DLC-gating leg** | adjudication dig | before Batch 6 kind-dependent tools |
+| R5 | Bar-2 extension: per-relation analysis of the 126 deferred windows, TradeRoute/GarnisonManager/Gambling/Stake/OilPanel/CampChest/WeaponDisplay first | analysis dig | window-specific (see §2.5) |
+| R6 | Deferred-kind outbound carriers: 73 populated typed paths / 13,429 resolving refs + ~330 `element.script` enum refs (dialogue graph, npc.unit, group types) | carrier emission dig (queue addition 3) | **before place/element/unit-facing pages + interrogation DB build** |
+| R7 | Map completions: split the 11 H-POI typed marker layers out of generic poi rows; emit region polygons from layers2D through the pinned sampler; optional splat slot→material micro-dig | map dig (Dig 11 queue 2–3) | **before Batch 5 (/map) launch** |
+| R8 | Trade-price-matrix static half: join nearest-producer deferred-kind inputs + deterministic recompute from shipped constants; stock-refresh half stays honestly runtime | economy sim dig (queue addition 5) | **before trade-route planner/atlas build** |
+| R9 | Achievement unlock-condition graph (E6) over counters + decompiled check sites; keyed GetSchemaForGame upgrade when STEAM_WEB_API_KEY fills | logic dig | **before achievement checklist hub build** |
+| R10 | Protocol section: static co-op protocol inventory from mpman + native signatures into `extracted/protocol/` (doctrine owes it; zero new access needed) | protocol dig | before P5 DoD |
+| R11 | Decompile upgrades: OCallClosure typing (8,964 sites) + sugar folds (ternary/short-circuit/do-while) | decompile upgrade | P5-weighted, opportunistic |
+| R12 | Formula-citation hygiene: fold the four `[MIXED]` rows to hl-src citations + targeted Valor-points globals probe (close or re-evidence the P0-DIG) | small dig | before tracker/calculator pieces cite them |
+
+**Rider count: 12.** Zero BLOCKS-FRONTEND items. Four deadlines above are
+batch-boundary conversions (R1, R6, R7, R8/R9): if a boundary arrives before
+its rider lands, the corresponding batch waits — the gate does not reopen
+by silence.
+
+## 6. P5-DoD items (owner-gated or DoD-time, non-blocking)
+
+- skill `levels` subSheet + frozen-kind stray prose emission — owner call
+  before any frozen-schema change.
+- Audio offload + catalogue completion (Wwise/HMD/texture rows into
+  MEDIA-CATALOGUE) — offload itself awaits the owner pick against the table.
+- Texture conversion chain (.tx probe, DDS→webp bulk) — catalogue-first
+  owner pick.
+- ja authored-translation lane ship call (declared omit-until-translated).
+- Save-format facts — record only if a tool ever needs them (don't fight).
+- TargetBuildID 21238928 patch watch — standing ops; first landing triggers
+  rerun + first patch-diff dataset (E3's payoff, not debt).
+
+---
+
+## 7. Axis table
+
+| Axis | Verdict | One line |
+|---|---|---|
+| Join completeness | PASS w/ riders | All 1,560 directions modeled/derived/ledgered (39+89+1,432, 7,184 edges, 0 dangling); M1–M8/E1–E8 each carry a mechanism or a routed deferral; canonical promotion of the evidence layer is rider R1. |
+| Logic completeness | PASS w/ riders | Capture odds, trade gradient, XP, guard caps, difficulty scaling, terrain all decoded with citations; valor points honest negative (R12); four `[mixed]` formula rows owe citation folds. |
+| Locale completeness | PASS | 34 kinds × 9 locales + UI chrome, dual-extractor 217,611/217,611 + 19,081/19,081, drift exact, fillers exactly 3; residuals are polish/owner-call, none gate-level. |
+| Honesty audit | PASS w/ corrections | PROOF/dig-log claims reproduce under independent recount; four doc-truth defects found by this arbiter (stale catalogue sentence, stale VALIDATION-REPORT + red validator leg, unpinned new tools/stage table, stale maps.json gate labels) — all routed to R2, none hides data debt. |
+| Residual-work routing | COMPLETE | 12 riders with named owners + batch deadlines; 0 blockers; 6 P5 items; batch-boundary conversions explicit (R1→B4, R6→unit/place pages, R7→B5, R8/R9→their tools). |
+
+**Heaviest remaining data risk:** the deferred-kind outbound carrier mass
+(73 typed paths / 13,429 resolving refs across element/group/place/levelProps)
+— the single largest unshipped join surface, sitting directly under the
+NPC/dialogue/place corpus that the interrogation DB, company builder, and
+unit-facing pages consume; until rider R6 emits it, those surfaces would
+either ship inbound-only shells or force frontend derivation, the exact
+failure rule 8 exists to prevent.
+
+<!-- END OF wartales/docs/arbiter-rule8-gate.mdx -->

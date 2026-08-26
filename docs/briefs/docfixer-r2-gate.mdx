@@ -1,0 +1,26 @@
+# Brief — DocFixer: gate-arbiter R2 rider (doc-truth corrections)
+
+Fresh Fixer agent; never spawn subagents; never commit; Wartales pack
+only. Apply the R2 rider from `docs/arbiter-rule8-gate.mdx` (read its
+rider table + honesty-audit section first): four doc-truth defects.
+
+1. Stale PROOF R4 catalogue sentence — correct to current catalogue
+   reality (cite what changed and when).
+2. Stale VALIDATION-REPORT + currently-red validate_all leg — refresh
+   the report; investigate the red leg (likely dig-14's locale-bridge
+   surface now that D-1 fixer is landing concurrent changes — coordinate
+   by re-running after its files settle; if the leg is genuinely broken
+   by the D-1 regex change, fix the validator expectation, never the
+   data).
+3. Unpinned new tools + stage-3 "NOT BUILT" label in EXTRACTION-LOG.md
+   despite landed decompile output — pin sha256s for every tool added/
+   changed since the last pin sweep (dig15_*, locale_bridge_dig final,
+   others per git log), correct the stage-3 row.
+4. Stale maps.json gate labels — update to post-dig-11/12 truth.
+
+Rules: docs + EXTRACTION-LOG pins only; no code changes except a
+validator EXPECTATION if provably stale; run validate_all at the end
+and quote its summary; keep all END sentinels.
+
+Final message: per-item resolution one-liner + final validate_all
+summary line.
