@@ -1,0 +1,277 @@
+# Verify Dig 14 B — adversarial audit of the locale wave-2 dig
+
+**Verdict: UNSOUND** — 1 BLOCKER · 3 MAJOR · 4 MINOR.
+
+The dig's *emitted cells* are excellent — every one of 102,088 mechanism-B
+overlay cells byte-matches an independently written raw-XML extractor, the
+id-joins are provably id-based and semantically right, markup survives
+verbatim, stamps are clean, and nearly all headline totals reproduce. The
+dig is unsound on **coverage honesty**: a flattener defect silently drops
+12,295 translated prose cell-slots from the mechanism-B overlays, an entire
+class of ~382 entities whose prose exists in all nine export locales emits
+nothing at all (one of them sits inside the round-trip sample and was
+misclassified as "drift"), and the UI namespace omits 1,259 keyed strings
+sitting in nested groups while reporting "889 per locale" as the inventory.
+Two headline proof numbers in the log/PROOF do not reproduce from the
+shipped report.
+
+Auditor: fresh Verifier B, no subagents, no commits. Scratch probes:
+`output/_verify-dig14b/` (all runnable: `common.py`, `probe1_join.py`,
+`probe2_markup.py`, `probe2b_dropped.py`, `probe3_roundtrip.py`,
+`probe3b_unaddressed.py`, `probe3c_lostprose.py`, `probe4_filler.py`).
+Sources read-only: `extracted/harvest/_lang-bridge/*.xml`,
+`extracted/data/_draft/*.jsonl`, `extracted/locales/**`,
+`extracted/relinks/*`, `pipeline/tools/locale_bridge_dig.py`,
+`output/_dig-locale-wave2/report.json`.
+
+---
+
+## Attack 1 — id-join kinds (4+ kinds × ≥10 rows): PASS
+
+Probe `probe1_join.py` (independent ElementTree walk + raw-block span
+search; nothing imported from the dig tool). Kinds place / group / element
+/ battle at 10 rows each, plus fiefMission 12, fiefPlace 19,
+fiefAdministration 15 — sampled from the *bridged* universe (draft id ∈
+export entry tags), deterministic seed 14.
+
+Result (`probe1_join.json`):
+
+```
+rows_sampled: 86   overlay_cells_checked: 513   rows_with_problems: 0
+pivot_draftFR==exportFR_name: 78/78
+negative_control_neighbor_differs: 76/76
+```
+
+* Plain cells equal my ET-extracted leaf text exactly; markup-bearing
+  cells found VERBATIM inside that entry's raw block.
+* **Off-by-one detector:** the drafts hold dev-pivot French inline, so
+  draft French name vs `export_fr.xml` French name for the same id must
+  match — it does 78/78 ("Intérieur du crâne"→"Inside the Skull",
+  "La Meute de $NAME"→"$NAME's Pack", "Coup pour Coup"→"Blow for Blow").
+  A positional join could never do this: draft order ≠ export order
+  (positional counterfactual in `probe1_join.json`: only 393/492 place ids
+  share their index; index-join would give T1Hall→A1HauntedCastle).
+* **Negative control:** file-order neighbor differs at the name field
+  76/76, so an off-by-one would have been caught.
+
+No off-by-one, no sheet mismatch. The join is genuinely id-based.
+
+## Attack 2 — markup fidelity: PASS (forward), with a coverage BLOCKER-class defect next door
+
+Probe `probe2_markup.py` — independent token walker over the raw bytes
+(atomic dotted tags, `<lineN>` collapses onto its wrapper component,
+per-element occurrence counters), building `{path: raw_span}` for every
+element of every entry of all 7 struct sheets × 9 locales:
+
+```
+forward cells checked: 102088 | bad: 0
+markup-bearing cells byte-verified: 18482
+```
+
+Every emitted overlay value equals the exact raw span after the single
+documented `html.unescape`; inline `<br/>`, `<i>`, `<narrator>` survive
+byte-for-byte (examples in `probe2_markup.json`). A-side spot check: 50
+top-level item/skill/class cells across en/fr re-extracted by ET — 0 bad.
+**One silently-normalized cell beyond policy: none.**
+
+But the reverse sweep (every prose-vocabulary node in the XML must appear
+in the overlay) found thousands of source cells that never made it into
+any overlay → MAJOR M1 below.
+
+### MAJOR M1 — flatten_struct silently drops repeated tags across sibling `<lineN>` wrappers (12,295 cell-slots)
+
+Anchor: `pipeline/tools/locale_bridge_dig.py::flatten_struct` — the
+`if m:` line-branch calls `rec(ch, nc, counters)` passing the **parent's
+counters dict through into every sibling line subtree**, so the second and
+later occurrences of a tag gain spurious indices (`…[1].text[1]`), miss
+their own prose pattern, and are recursed past as "structure". Per-element
+fresh counters (what `scan_leaf_map` uses) would have kept them.
+
+Demonstrating probe (their own code):
+
+```python
+import locale_bridge_dig as L
+fl = L.flatten_struct(ent_G1Sport, raw, L.STRUCT_TEXT_PATTERNS['place'])
+# -> ['props.sport.rules[0].desc', 'world.name']
+# raw XML has <line1><desc>The other one is on fire...</desc></line1> too
+```
+
+`extracted/locales/en/place.json` G1Sport carries exactly those two keys;
+the line1 desc exists translated in all locales and is emitted nowhere.
+
+Blast radius (`probe2b_dropped.py`, all 7 kinds × 9 locales):
+**12,295 dropped non-empty prose cells**; entities losing ≥1 cell:
+element 384, place 3, fiefPlace 1. Top dropped templates:
+`props.goals[0].props.helpTips[1].text` ×1098,
+`dialog.Start.choices[1].props.customTxt` ×702, `…tipText` ×603 … — note
+the vocabulary itself pins `helpTips\[\d+\]\.text`, i.e. the shape was
+known and enumerated, yet index≥1 instances fall out. No entity loses ALL
+cells (checked), so drift counts are not poisoned and every *emitted*
+value stays byte-correct — under-emission only. Their dual-extractor proof
+could not see this: it verifies emitted cells against `scan_leaf_map`
+(per-element counters) and only where keys agree; the dual-parser ET
+proof skipped struct sheets outright.
+
+## Attack 3 — drift accounting / round-trip failures: FAIL (BLOCKER)
+
+Probe `probe3_roundtrip.py` replicates the sampler contract exactly (seed
+20318128, one RNG, kinds alphabetical, pool = sorted distinct draft ids,
+n = 30/15/10 else 3): 148 sampled, 127 resolve in all nine, **21
+failures** — reproducing their counts but not their list:
+
+* MINOR m1: the report truncates — `locale_bridge_dig.py:1289`
+  `"failures": [...][:20]`. The shipped list has 20 entries; the 21st
+  (found only by recomputation) is `notify/G2TierryAbodeDaugther`.
+
+Independent classification of all 21 against raw exports in all nine
+locales (`probe3_roundtrip.json`):
+
+| class | count |
+|---|---:|
+| absent in raw exports of all 9 locales (true drift) | 19 |
+| resolves in 8 locales, missing fr only (`fiefCondition/GovernmentAssign`) | 1 |
+| present with translated text in ALL 9 locales, emitted nowhere (`notify/G2TierryAbodeDaugther`) | 1 |
+
+### BLOCKER B1 — a sample failure resolves everywhere in source and was called a data gap; the class behind it is ~382 entities
+
+`notify/G2TierryAbodeDaugther`, verified end-to-end:
+
+* Draft row: only ref is `title.textKey → notify/title` (leaf absent from
+  the export entry in every locale); its real prose sits in
+  `props.texts[0].text` with **no textKey** ("Vos questions ont fait
+  pleurer Hella." dev-pivot French inline).
+* Raw export entries in all 9 locales carry
+  `<props.texts><line0><text>` fully translated ("Your questions made
+  Hella cry." / "Eure Fragen haben Hella zum Weinen gebracht." …).
+* Neither mechanism addresses `props.texts` → entity omitted from all 9
+  overlays, counted in `drift_absent_everywhere`, and the log asserts the
+  21 failures are "data gaps, not addressing failures".
+
+This is exactly the brief's BLOCKER trigger: a failure that resolves in
+some locale = resolver bug. And the sample barely caught it — the class is
+large. `probe3c_lostprose.py` (entities whose refs all miss while their
+export entries hold non-empty leaves outside every ref'd column):
+**382 A-kind entities × 9 locales of unaddressed translated prose** —
+notify 311, bonus 35, fiefEvent 28, counter 4, credits 2,
+fiefAlignment 1, startChoice 1 (my sweep also flagged confessions 87 —
+false positive, excluded: nested `data[].choices[].texts[]` refs cover
+those paths; fr/en spot checks confirm e.g. bonus R1FarmSupplyFront
+'Supply the Front Lines'/'Approvisionner le front', counter BaseSong
+'Adventures Galore'/"D'aventure en aventure" are real lost translations).
+
+Additionally `fiefCondition/GovernmentAssign` fails in fr only, so the log
+sentence "**all 21 failures are drift entities failing in every locale**"
+is false as stated (it holds for 19/21). That piece is misclassification,
+not a resolver bug — fr's fiefCondition sheet genuinely lacks the row
+(18 vs en 20 entries) — but the blanket claim does not survive.
+
+## Attack 4 — filler census: FAIL (MAJOR)
+
+The claimed 2 instances reproduce exactly: my fields[]-boolean sweep over
+`locale_availability.jsonl` finds precisely
+`fiefCondition/{CompleteFiefMission,GovernmentAssign} description`
+missing-fr-only, plus the entity-set diff en\fr shows only those two ids.
+Their census, however, counts only mechanism-A refs resolving in pivot and
+missing elsewhere — it cannot see reverse asymmetry or any mechanism-B
+kind.
+
+### MAJOR M2 — third undocumented locale-asymmetric instance (fr-EXTRA)
+
+`element/FiefdomMarketplace01Barber · dialog.Next1.choices[].props.disableReason`
+— present in **fr only**, missing in the other 8. Source-verified, not a
+bug artifact: fr's Next1 carries `<choices><line0 verb="DlgHairDress"
+target="Hairdress"><props.disableReason>Votre troupe doit être
+physiquement présent dans le fief…` while en/de/es/… Next1 have no choices
+block at all (raw dumps in probe transcript). So pack-wide there are
+**three** measured per-locale content deltas, not two: two fr-lacks, one
+fr-extra. PROOF R5's "the pack's only filler-class instances" and the
+log's "extends to all 34 kinds except this one measured fr-vintage delta"
+are both contradicted.
+
+## Attack 5 — UI namespace honesty: core claim PASSES, completeness FAILS (MAJOR)
+
+* **The 111-key absence claim is genuine.** All 111 en−fr keys checked
+  directly against the master `texts.xml` bytes: 110 have no
+  `id="…"`/`_id="…"` hit anywhere; the 111th regex suspect
+  (`trait_levels/confirm`) is my own false positive — master's
+  `<g id="trait_levels">` holds six **id-less** `<t>` rows. In fact the
+  fr parseProblems id-less counts sum to exactly 111
+  (unit_ranks 3 + trait_levels 6 + compass 8 + npc_recruit_talk 10 +
+  npc_talk_prison 5 + animal_* 8 + bounty_adjectives 62 + comparison 6),
+  i.e. the fr vintage usually *has the French text but without ids*, so
+  the key is genuinely unaddressable. Claim true as stated; wording could
+  note texts-vs-keys (MINOR m4). Totals reproduce: en 889 / fr 778 /
+  extra_vs_pivot 0 everywhere; UI dual-extractor 7,890/7,890 reproduces
+  from the report.
+* ### MAJOR M3 — nested groups dropped from the chrome namespace
+  Every locale logs the same 105 `unexpected <g>` problems (battle 3,
+  battlemode 17, skills 4, multiplayer 2, tips 16, confirm 3, ui 40,
+  npc_recruit_talk_localized 4, title 9, start 7). My token walk over
+  `texts_en.xml`: **197 nested `<g>`, holding 1,259 `<t>` leaves**, all
+  excluded by `parse_ui` (direct children only). The log sells "40 groups
+  + 4 top-level keys; 889 strings per locale" as the group inventory with
+  no denominator; `_inventory.parseProblems` lists the raw problem lines
+  but nothing quantifies or reconciles the omission, and much of it
+  (title/start/confirm/tips) is chrome-shaped. Emit-side-only
+  verification again (checks stored strings against the scanner map)
+  cannot see drops. If nested groups were deliberately out of chrome
+  scope, nothing declares it.
+
+## Attack 6 — R5 stamp abuse: PASS
+
+Raw-file inspection of all 18 bridge files: `export_fr.xml` root is bare
+`<cdb>`, `texts.xml` bare `<texts>`; the other 8 exports and 8 texts carry
+full headers (revision 43420, dates 2025-09-30/10-01).
+`extracted/relinks/locale_availability.meta.json` marks exactly those two
+headerless files `buildid-fallback` (20318128) and everything else
+`export-header` with the true attributes. No stamped source has a header;
+no headered source is masked. Header attrs in `report.headers` match the
+raw bytes.
+
+## Attack 7 — sibling hygiene: PASS (with live-repo notes)
+
+Worktree during audit: dig-14 surfaces only — `docs/data-dig-log.mdx`
+(dig 14 entry), `docs/locale-key-convention.mdx` (its §8 extension),
+`pipeline/tools/locale_bridge_dig.py`. `pipeline/tools/dig15_logic_edges.py`
+(+445 lines) and untracked `dig15_ui_coverage.py` belong to the dig-15
+fixer running concurrently — correctly attributable, untouched by dig 14.
+`docs/spec-f2-contracts.mdx` / `spec-f5-search.mdx` showed as modified at
+audit start and were committed/reverted mid-audit by the F2/F5 siblings
+(HEAD moved twice during this session: now 45d944d). Note: commit
+f0f68d1 "dig 14 landed" contains only the two verifier briefs — all dig-14
+artifacts are gitignored-local (`extracted/`, `output/`), so the wave-1
+byte-exactness oracle (run HEAD tool beside new tool) could not be
+re-verified without forbidden writes; flagged unverifiable, low risk.
+
+## Reproduction of headline numbers (from shipped `report.json`) — mostly exact
+
+| claim (log/PROOF) | reproduced | note |
+|---|---|---|
+| availability 14,456 = 9,474 bridged + 4,982 drift | ✓ 14456/9474/4982 | |
+| overlays 85,264 entity rows; fr 9,472 vs 9,474 | ✓ | delta = the 2 fiefCondition ids |
+| B raw-span 102,088 matched / 0 bad | ✓ + independently re-verified byte-exact | |
+| UI 7,890/7,890 | ✓ | |
+| skill residual delta 80 refs | ✓ (2826−2746) | |
+| export-only ids 0 × 7 kinds × 9 locales | ✓ re-verified from raw sets | |
+| **A raw-span 96,811 (total 198,899)** | ✗ report says **96,145 → 198,233** | MINOR m2: stale figure from an earlier run; overstated |
+| cell reconciliation "all true" | ✗ tool flags `skill.cells_total_matches=false` | MINOR m3: false by exactly the ledgered 80 levels refs; residual documented, blanket wording wrong |
+
+## Findings summary
+
+| # | severity | finding | anchor |
+|---|---|---|---|
+| B1 | BLOCKER | Round-trip failure `notify/G2TierryAbodeDaugther` carries translated prose in all 9 export locales yet emits nothing (refs point at a dead `title` column; `props.texts` unaddressed by either mechanism) and was classified "drift/data gap"; class size ≈382 A-kind entities; plus `GovernmentAssign` fails fr-only, falsifying "all 21 fail everywhere" | probe3/probe3c; `locale_bridge_dig.py` mechanisms A/B |
+| M1 | MAJOR | `flatten_struct` shares the counters dict across sibling `<lineN>` subtrees → repeated tags at index≥1 get spurious path segments and are dropped: 12,295 cell-slots, 388 entities (element 384) | `locale_bridge_dig.py::flatten_struct`; probe2b |
+| M2 | MAJOR | Third locale-asymmetric instance: `element/FiefdomMarketplace01Barber` disableReason exists in fr only — census structurally blind to it; "exactly 2 pack-wide" false | probe4; raw fr vs en Next1 blocks |
+| M3 | MAJOR | UI namespace drops 105 nested `<g>` groups / 1,259 keyed strings per file; inventory claimed as 40 groups / 889 strings with no denominator; disclosure limited to unquantified parseProblems lines | `parse_ui`; probe5 counts |
+| m1 | MINOR | Report `round_trip_sample.failures` truncated `[:20]`; the claimed 21st failure exists only outside the artifact | `locale_bridge_dig.py:1289` |
+| m2 | MINOR | Headline proof total 198,899 (A 96,811) not reproducible from shipped report (A=96,145 → 198,233) — stale run's figure, overstated | log §Proof 1; `report.json` |
+| m3 | MINOR | "per kind × locale … all true" contradicted by the tool's own `skill.cells_total_matches=false` (= the ledgered 80 levels refs) | log §Proof 4; report `cell_reconciliation_A.skill` |
+| m4 | MINOR | "fr lacks 111 keys" is about addressable keys; the fr text often exists in id-less form (exactly 111 id-less `<t>` rows) — worth precise wording | probe5; fr parseProblems sum |
+
+**Verdict: UNSOUND.** Fix path: reset per-element counters in the
+flatten_struct line branch (M1); add a mechanism-B-style pass for
+refless-inline prose columns in A kinds + dead-ref detection (B1);
+symmetric filler census incl. mechanism B and fr-extra direction (M2);
+quantify or scope-declare nested groups in the UI layer (M3); regenerate
+report and correct the two stale log/PROOF figures (m1–m3).
