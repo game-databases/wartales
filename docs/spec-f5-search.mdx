@@ -1,12 +1,15 @@
 # Wartales — F5 header search spec (piece F5)
 
-Status: IN REVISION r1 for Arbiter → CodeWriter+TestWriter · authored
+Status: IN REVISION r2 for Arbiter → CodeWriter+TestWriter · authored
 2026-08-26 by the Documentator from brief
 [`docs/briefs/documentator-f5-search.mdx`](./briefs/documentator-f5-search.mdx);
 revised r1 2026-08-26 — all twelve findings of
 [`review-spec-f5-search.mdx`](./review-spec-f5-search.mdx) resolved, see
-[Revision r1](#revision-r1); cross-spec dependencies in
-[r1 conflicts](#r1-conflicts).
+[Revision r1](#revision-r1); revised r2 2026-08-26 from brief
+[`docs/briefs/specfixer-f5-r2.mdx`](./briefs/specfixer-f5-r2.mdx) —
+arbiter residuals N-1/N-2/N-3 closed, erratum E-1 applied (route table
+derived-from-F2-§6), see [Revision r2](#revision-r2); cross-spec
+dependencies in [r1 conflicts](#r1-conflicts).
 Inputs read in full: root `AGENTS.md`,
 `_foundation/decision-register.md` (binding entry:
 [DR-2026-08-22-search-is-not-a-page]),
@@ -130,10 +133,10 @@ Other bindings consumed here:
   ```
 
   Growth procedure is the wkk precedent (`EXPECTED_PAIR_FILES` re-freeze):
-  when R9/dig-14 lands wave-2 overlays (and PT02 pins their routes), the
-  list is extended in the emitter and the frozen numbers below are
-  re-derived in the same commit. Until then the emitter refuses any kind
-  whose overlays are absent (exit 2), so silent partial waves cannot ship.
+  when R9/dig-14 lands wave-2 overlays, the list is extended in the
+  emitter and the frozen numbers below are re-derived in the same
+  commit. Until then the emitter refuses any kind whose overlays are
+  absent (exit 2), so silent partial waves cannot ship.
   TypeScript never re-declares this list: the manifest publishes it
   (`kinds`) and the matcher surfaces it as `KIND_ORDER`
   ([§4.1](#41-module-rules)); the honesty chain is mechanical end to end
@@ -144,11 +147,17 @@ Other bindings consumed here:
   `L ∈ namedLocales`.
 - **Name values**: read from overlay `<locale>/<kind>.json`, shape
   `{ "<entityId>": { "name"?: str, "description"?: str } }`
-  (locale-key-convention §3). Names may carry Heaps rich-text markup — the
+  (locale-key-convention §3). The value key is `description`, measured
+  from disk at r2, not assumed: every entry of the 27 searchable overlay
+  files ×9 carries `description` (29,889 entries; zero raw `desc`) — the
+  bridge column name `desc` is aliased to `description` by the emitter
+  and survives raw only in wave-2 non-searchable overlays
+  (`tutorial.json`). Names may carry Heaps rich-text markup — the
   matcher strips it before normalizing ([§4.3](#4-3-name-normalization)).
 - **Frozen numbers** (recounted from disk at r1, buildid 20318128;
+  kinds recount refreshed at r2 on the post-regen generation;
   locale-key-convention §5/§7 agrees): the searchable universe is the
-  `item`/`skill`/`class` subset of avail — avail itself carries 33 kinds
+  `item`/`skill`/`class` subset of avail — avail itself carries 34 kinds
   (14,456 rows); the subset measured 2026-08-26:
   - universe **3,779** rows (item 2,125 / skill 1,373 / class 281);
   - **458** with no bridge leaf in *any* locale (item 318 / skill 137 /
@@ -177,6 +186,7 @@ import json, collections
 rows = [json.loads(l) for l in
         open("extracted/relinks/locale_availability.jsonl", encoding="utf-8")]
 sub = [r for r in rows if r["kind"] in ("item", "skill", "class")]
+print(len(rows), len(set(r["kind"] for r in rows)))                            # 14456 34
 print(len(sub), collections.Counter(r["kind"] for r in sub))                   # 3779 …2125/1373/281
 print(sum(not r["availableLocales"] for r in sub))                             # 458
 print(sum(bool(r["availableLocales"]) and not r["namedLocales"] for r in sub)) # 102
@@ -245,7 +255,7 @@ published schema ([§3.4](#34-determinism)) (r1):
   "buildId": "20318128",
   "rows": [
     { "kind": "item", "id": "A1AstronomerLetter",
-      "name": "Astronomers Letter", "href": "/db/item/A1AstronomerLetter" }
+      "name": "Astronomers Letter", "href": "/item/A1AstronomerLetter" }
   ]
 }
 ```
@@ -282,27 +292,37 @@ buildId is the only freshness stamp (machine plane, D2-compatible).
 
 ### 3.3 The href route table (declared seam)
 
-`href` is composed **at emit time** from one declared table — links are
-data, not something the frontend derives. `{seg}` is the **URL segment**
-taken from F4's routing table (F4 §2 id column — lowercase; client codes
+**derived-from-F2-§6** (r2). `href` is composed **at emit time** from one
+declared table — links are data, not something the frontend derives.
+The page shape is F2 §6's frozen URL law verbatim (re-checked against F2's
+own concurrent r1 revision before freezing): entity pages WITHOUT a `/db`
+prefix — pivot `/{kind}/{id}`, locale `/{P}/{kind}/{id}` over the
+lowercase PAGE-plane presentation ids (`{P}` = `de es fr ko pl pt-br ru
+zh`, paired with the DATA-plane client codes, `pt-br` ↔ `pt-BR`); `/db`
+is reserved for PT02's landing/taxonomy surface and never appears in an
+entity href
+([spec-f2-contracts.mdx §6](./spec-f2-contracts.mdx#6-static-json-api-url-architecture)).
+`{seg}` is the **URL segment**
+taken from F4's routing table — the same presentation ids F2 §6 pins (F4
+§2 id column — lowercase; client codes
 never leak into hrefs, [§2](#2-ground-truth-and-vocabulary)):
 
 | client code (artifact key) | URL segment | pivot href | non-pivot href |
 |---|---|---|---|
-| en | *(pivot — none)* | `/db/item/{id}` etc. | — |
-| de es fr ko pl ru zh | same as code | — | `/{seg}/db/{kind}/{id}` |
-| pt-BR | `pt-br` | — | `/pt-br/db/{kind}/{id}` |
+| en | *(pivot — none)* | `/{kind}/{id}` e.g. `/item/A1AstronomerLetter` | — |
+| de es fr ko pl ru zh | same as code | — | `/{seg}/{kind}/{id}` |
+| pt-BR | `pt-br` | — | `/pt-br/{kind}/{id}` |
 
-Concretely: a Portuguese hit emits `href="/pt-br/db/item/X"` — composed
+Concretely: a Portuguese hit emits `href="/pt-br/item/X"` — composed
 from F4's segment (`pt-br`), which F4 routing serves (unknown segments
 404, F4 §3 rule 5). Composing from the client code would ship
 `/pt-BR/…` and dead-link every result in that index (r1 finding M1,
 closed by construction). The pivot composes bare per
-[DR-2026-08-20-locale-urls]. The `/db/…`
-shape follows the NWG structural reference (design-standard §2) and is
-**provisional pending PT02/PT03 IA freeze** — recorded as a contract hole
-([§13](#13-contract-holes-found)); a route change is an emitter-table edit
-plus a rerun, never a frontend change.
+[DR-2026-08-20-locale-urls]. If F2 §6 ever renames the shape, its own
+rename-and-301 law governs ([F2 §6](./spec-f2-contracts.mdx#6-static-json-api-url-architecture),
+[F2 §4](./spec-f2-contracts.mdx#4-stable-identity-and-the-kind-universe))
+— and the change here stays an emitter-table edit plus a rerun, never a
+frontend change.
 
 ### 3.4 Determinism
 
@@ -391,9 +411,15 @@ claim below executed in Python `unicodedata` (same semantics as JS
   [H-5](#13-contract-holes-found)); Turkish `İ` incidentally folds to
   `i` and stays out of scope (no `tr` locale).
 - **ko** — NFKD decomposes syllables to conjoining jamo (category Lo, so
-  step 5 never eats them); both sides normalize identically, so a
-  partially-typed jamo query (`ㅎㅏ`) already matches `한…` mid-word —
-  desirable for a field that answers as you type
+  step 5 never eats them); compatibility jamo fold to choseong/jungseong
+  forms only, never to jongseong, so `한국` and `ㅎㅏㄴㄱㅜㄱ` do NOT
+  normalize to the same string (r2 correction of the r1 "normalize
+  identically" claim). What holds — and all tier-2 matching needs — is
+  the shared leading-jamo prefix: a partially-typed jamo query (`ㅎㅏ`)
+  prefix-matches `한…` mid-word,
+  `normalize("한국").startsWith(normalize("ㅎㅏ"))` (executed green in
+  Node at r2, proof in [Revision r2](#revision-r2)) — desirable for a
+  field that answers as you type
   ([DR-2026-08-22-inputs-answer-as-you-type]).
 - **zh** — hanzi pass through NFKD/NFD unchanged (step 4 folds full-width
   variants, `ＸＹ → xy`); matching is plain substring, no segmentation needed at this
@@ -676,8 +702,15 @@ Suites:
    (`<b>X</b> → x`, `<item>OilBrave</item> Concentrate` →
    `oilbrave concentrate`); bracket-macro strip (`Leiche von [NAME]` →
    `leiche von`, `[Guard]X → x`); color-span strip
-   (`<bad>::value::</bad> X → x`); jamo decomposition
-   (`한국` ↔ `ㅎㅏㄴㄱㅜㄱ` equivalence); hanzi immutability
+   (`<bad>::value::</bad> X → x`); ko jamo law (r2 — the r1
+   `한국 ↔ ㅎㅏㄴㄱㅜㄱ equivalence` case was false under this pipeline
+   and is deleted; frozen instead to what the §4.3 steps actually yield):
+   `normalize("한국") === "한국"` (syllables decompose WITH
+   jongseong finals), `normalize("ㅎㅏㄴㄱㅜㄱ") === "하ᄂ구ᄀ"`
+   (compatibility jamo fold to choseong/jungseong only), the two NOT
+   equal, and the prefix property
+   `normalize("한국").startsWith(normalize("ㅎㅏ")) === true`;
+   hanzi immutability
    (`长剑` stable); full-width fold (`ＸＹ→xy`); whitespace collapse;
    idempotence (`f(f(s)) === f(s)`).
 2. `searchRows.test.ts` — **runs in BOTH projects** (same file, executed
@@ -770,7 +803,10 @@ root.
 - **AC-8** — matcher parity: `vitest run` executes `searchRows.test.ts`
   under BOTH projects; all fixture queries (incl. `ё`→`е`, fr accents,
   ko jamo partial, zh substring) produce deep-equal arrays in both.
-- **AC-9** — normalize unit table green (all §9.1 cases + idempotence).
+- **AC-9** (r2) — normalize unit table green: all §9.1 cases including
+  the ko jamo law as re-frozen there (decomposed-syllable form,
+  compatibility-jamo mapping, and the prefix property — NOT string
+  equivalence) + idempotence.
 - **AC-10** — component suite green: every §9.3 bullet, including the
   hidden-not-unmounted + scroll-preservation triple assertion and the
   blur non-behavior.
@@ -852,10 +888,20 @@ tokens/styles, `run_all.sh` (pure forwarder).
 
 ## 13. Contract holes found
 
-- **H-1 — route table provisional.** §3.3's `/db/{kind}/{id}` follows the
-  NWG reference but PT02/PT03 own the real IA (slugs per seo-standard §1
-  may replace ids). Change = emitter table edit + rerun; consumers of the
-  artifact are unaffected. Must reconcile before DB-core pages land.
+- **H-1 — RESOLVED (r2): route table derived-from-F2-§6.** The r1 text
+  called §3.3's `/db/{kind}/{id}` provisional pending a PT02/PT03 IA
+  choice — a misattribution: F2 §6 is already frozen and pins entity
+  pages WITHOUT the `/db` prefix (`/{kind}/{id}`,
+  `/{P}/{kind}/{id}` over the page-plane presentation ids;
+  `/db` reserved for PT02's landing/taxonomy surface; FRAMEWORK's
+  `/db/…` example demoted to evidence shape), with ids verbatim and
+  slugs only ever additive
+  ([spec-f2-contracts.mdx §6](./spec-f2-contracts.mdx#6-static-json-api-url-architecture),
+  [§4](./spec-f2-contracts.mdx#4-stable-identity-and-the-kind-universe)).
+  §3.3 now derives verbatim from that law; no IA choice is owed before
+  DB-core pages land. Remaining law unchanged: if F2 §6 itself ever
+  renames the shape, its rename-and-301 governs — emitter table edit +
+  rerun; consumers of the artifact are unaffected.
 - **H-2 — served-404 + capture-list legs need the app.** The DR's
   clause-1 guarantees are fully specified here; two of their proofs
   (served `GET /search` → 404; capture-list exclusion) become executable
@@ -883,9 +929,10 @@ tokens/styles, `run_all.sh` (pure forwarder).
   §4.3; if German players report misses, the fix extends `normalizeName`
   (one place, both sides inherit it) — never a per-surface workaround.
 - **H-6 — wave-2 growth.** `SEARCHABLE_KINDS` re-freeze (§2) must land in
-  the same commit as R9's wave-2 overlays and PT02's routes for those
-  kinds; the emitter's refusal gate (exit 2) is what forces the
-  reconciliation rather than trusting it.
+  the same commit as R9's wave-2 overlays for those kinds — their
+  kind-first page routes are already pinned by F2 §6, so no separate
+  route freeze exists to pair with (r2); the emitter's refusal gate
+  (exit 2) is what forces the reconciliation rather than trusting it.
 
 ## r1 conflicts
 
@@ -937,3 +984,40 @@ disk evidence, none argued away).
 AC count after revision: **16** — numbering unchanged; AC-1, AC-4, AC-5
 bodies revised in place and tagged `(r1)`; every AC remains executable
 by its named suite/artifact.
+
+## Revision r2
+
+Ledger for the [`arbiter-f5-search.mdx`](./arbiter-f5-search.mdx)
+residuals (2026-08-26, brief
+[`docs/briefs/specfixer-f5-r2.mdx`](./briefs/specfixer-f5-r2.mdx): one
+MAJOR + two MINOR + routed erratum E-1). Corpus-churn disclosure: the
+concurrent dig session rewrote overlays + avail at 07:14, AFTER the
+arbiter's verifications (07:08) — so every claim below was re-measured
+this pass against the settled generation (buildId 20318128) rather than
+carried, and one arbiter premise inverted on the newer disk (N-2).
+
+| id | resolution | sections touched |
+|---|---|---|
+| N-1 | MAJOR closed. The re-frozen r1 ko case `한국 ↔ ㅎㅏㄴㄱㅜㄱ equivalence` confirmed FALSE in Node under the exact §4.3 steps 1–8 (proof below) and is DELETED. Re-frozen to the three assertions that execute true: decomposed-syllable form, compatibility-jamo mapping, and the tier-2 prefix law `normalize("한국").startsWith(normalize("ㅎㅏ"))`; literals written codepoint-exact into §9 suite 1 and verified byte-on-disk. §4.3's ko bullet narrowed from "both sides normalize identically" to the shared-leading-jamo prefix property. AC-9 amended in place; AC-8 untouched (its "ko jamo partial" leg rides the prefix law). | §4.3, §9 suite 1, AC-9 |
+| N-2 | MINOR closed by measurement — premise inverted. The r2 disk sample disproves the arbiter's claim: all 27 searchable overlay files ×9 (the emitter's only inputs) carry value key `description` — 29,889 entries, ZERO raw `desc`. The citation therefore does NOT flip to `desc`; instead §2 hardens with the measured evidence and names the alias: bridge column `desc` → emitted `description`, raw `desc` surviving only in wave-2 non-searchable overlays (`tutorial.json`). Freezing `desc` would have made the spec false on the current generation. | §2 (Name values) |
+| N-3 | MINOR closed. Kinds recounted from disk on the settled generation: avail carries **34** kinds (14,456 rows), not 33 — frozen. Recount snippet extended to print `len(rows)` and the kind count so the number re-derives with every refreeze. Searchable-subset anchors reproduced identically post-regen (3,779 = 458 + 102 + 3,219; item 2,125 / skill 1,373 / class 281) — no other §2 number moved. | §2 (Frozen numbers + recount snippet) |
+| E-1 | ERRATUM applied per arbiter route option (i). §3.3 re-derived verbatim from FROZEN F2 §6: entity pages WITHOUT `/db` — pivot `/{kind}/{id}`, locale `/{seg}/{kind}/{id}`; `/db` reserved for PT02's landing/taxonomy surface; table marked **derived-from-F2-§6**; §3.2 example href re-derived to `/item/A1AstronomerLetter`; H-1 rewritten RESOLVED naming F2 §6 (ids verbatim, slugs only additive, rename-and-301 law inherited); remaining PT02 route attributions deleted from §2's growth procedure and H-6. No IA choice owed before DB-core pages land. F2 §6 was RE-READ IN FULL before freezing because its own concurrent r1 revision landed mid-pass — the no-`/db` law is unchanged and its new page-plane presentation-id pairing (`pt-br` ↔ `pt-BR`) is adopted into §3.3's wording. | §3.2, §3.3, §13 H-1/H-6, §2 |
+
+### N-1 execution proof (Node, §4.3 steps 1–8 verbatim, run twice this session)
+
+```text
+normalize(han)          = U+1112 U+1161 U+11AB U+1100 U+116E U+11A8
+normalize(jamo full)    = U+1112 U+1161 U+1102 U+1100 U+116E U+1100
+normalize(jamo partial) = U+1112 U+1161
+equivalence normalize(han) === normalize(jamo full)        : false
+prefix      normalize(han).startsWith(normalize(jamo partial)) : true
+pin         normalize(jamo full) === conjoining U+1112 U+1161 U+1102 U+1100 U+116E U+1100 : true
+```
+
+(`han` = 한국 U+D55C U+AD6D; `jamo full` = ㅎㅏㄴㄱㅜㄱ U+314E U+314F
+U+3134 U+3131 U+315C U+3131; `jamo partial` = ㅎㅏ.)
+
+AC count after revision: **16** — numbering unchanged; AC-9 amended in
+place and tagged `(r2)`; every AC remains executable by its named
+suite/artifact. E-2 stays routed to the orchestrator (F4 AC-11 + §7.6
+smoke legs — F4-owned files, untouchable from this piece).
