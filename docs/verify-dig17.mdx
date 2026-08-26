@@ -1,0 +1,300 @@
+# Verification — Dig 17: deferred-kind outbound carriers
+
+**Verdict: PASS** — every mechanical figure reproduces exactly from an
+independent rebuild, and the adversarial pass (fresh break attempts,
+mechanism attack on the code-side arm, ledger honesty, overclaim scan)
+found **no failing id and no data defect**. Two LOW-severity,
+cosmetic-class findings are recorded below (ledger-file prose counting,
+one family's corroboration fallback); neither touches a number, an edge,
+or a claim that gates R10(b).
+
+- **Failing ids:** none.
+- **Findings:** V17-1 (LOW, artifact prose), V17-2 (LOW, citation
+  coverage), V17-3 (nuance, wording) — details in §Findings.
+- Verifier: fresh agent per
+  [briefs/verifier-dig17.mdx](briefs/verifier-dig17.mdx); 2026-08-26;
+  no subagents, no commits; scratch under `output/_verify-dig17/` only
+  (`v_census.py`, `v_counts.py`, `v_det.py`, `v_spot.py`, `v_mech.py`,
+  `v_hlcite.py`, `v_ledger.py`, `v_catalog.py` + captured outputs).
+  Repo bytes untouched (git clean at start; validate_all was executed in
+  a byte-copy sandbox under scratch).
+
+Subject under test: [data-dig-log Dig 17](data-dig-log.mdx), tool
+[`pipeline/tools/dig17_deferred_carriers.py`](../pipeline/tools/dig17_deferred_carriers.py),
+artifacts `extracted/relinks/_logic/` (+49 families, `_ledger_deferred.jsonl`),
+`extracted/relinks/matrix.json`, RELATIONS.md §"Deferred-kind outbound
+carriers", PROOF.md R10(b).
+
+---
+
+## Mechanical
+
+### M1 — Census reproduction (independent rebuild): EXACT
+
+`output/_verify-dig17/v_census.py` re-enumerates the declared typed-path
+table from each source kind's `_meta.hiddenSubSheets` with its own DFS
+(not the dig's scripts) and resolves every populated value against the
+target id sets:
+
+```
+MANAGED-TARGET : declared=80 populated=73 resolvedSum=13429
+OTHER-TARGET   : declared=24 populated=20 resolvedSum=2102
+CLAIM managed: 80 declared / 73 populated / 13,429 resolving -> mine: 80/73/13429
+CLAIM other:   24 declared / 20 populated / 2,102 refs       -> mine: 24/20/2102
+```
+
+104 declared `6:` columns confirmed (element 61 · group 20 · place 15 ·
+levelProps 8). Per-key counts match the emitter table line-for-line
+(`npc.unit` 1,199 · `props.type` 791 · `verb` 3,225/3,226 with the single
+unresolved `NotifyForsakenAfterCombat` · `items.content[].item` 1,770 ·
+`npc.region` 516 …). The 24-path bucket decomposes exactly as 20
+populated sibling-deferred/constant paths (2,102 refs) + 2 compound
+(`dialog[].choices[].target`, `dialog[].props.copyDialog`) + 2
+schema-empty — matching `_ledger_deferred.jsonl` row composition
+(9 schema-empty paths listed there = my 7 managed-zero-pop + 2
+sibling-zero-pop, compounds excluded from that row by design).
+
+Arithmetic closure across the two channels reproduces the log's totals:
+13,429 − 33 negated − 34 anonymous + 2,102 sibling/const = **15,464**
+typed resolving occurrences (claimed 15,464); script kept 6,906.
+
+### M2 — Count integrity from disk: EXACT
+
+`v_counts.py` (fresh id-universe load, both endpoint joins):
+
+```
+_logic jsonl files total : 158   (108 pre-existing + 49 dig-17 families
+                                  + 1 dig-17 ledger)
+edges total              : 17467
+  -> managed-kind targets : 12164   (claim 12,164)
+  -> sibling/const targets: 5303    (claim 5,303)
+method histogram : cdb-payload-id-join 12722 | hscript-enum-ref:* 4745
+mechanism        : inferred 12722 | logic 4745
+duplicate (fromId,toId) pairs: 0
+PROBLEMS (0)          # incl. per-file rowCount == lines, filename/kind,
+                      # dangling fromId AND toId against fresh id sets
+_ledger_deferred.jsonl: rows(excl header)=6 classes={negated-polarity,
+  compound-dialog-node, schema-empty, unadjudicated-name-hits,
+  script-non-resolving, anonymous-carrier-rows}
+```
+
+Largest families match the log's table (element__element 4,019 ·
+element__item 3,424 · element__icon 1,963 · element__class 1,224 ·
+element__place 877 · group__groupType 790 …).
+
+### M3 — Spot rederivations + consumer greps: 12/12 OK, citations true
+
+`v_hlcite.py` validates every family's `_meta.hlCorroboration` against
+the decompiled bytes; 39/49 cite a `file.hx.hx:line` span whose ±2-line
+window names a carrier token, e.g.:
+
+```
+element__class.jsonl   ent/p/Npc.hx.hx:249 [unit]     unit = npc.unit;
+element__region.jsonl  st/Unit.hx.hx:27252 [region]   v8 = npc.region;
+group__groupType.jsonl st/Group.hx.hx:3273 [props]    v3 = v4.props;
+ent/Roaming.hx.hx:8102 [props] v4 = v5.props;         # hideout next line
+levelProps__class      battle/Gen.hx.hx:8729 [spawnkind] var v28 = data.spawnKind;
+```
+
+The 10 non-parsed cases were verified by hand: Confession.hx.hx:7227
+reads `v14 = v65.dlc` (element→constant), FiefEventManager.hx.hx exists
+reading `.fiefEvent` (element→fiefEvent), and the five script-only
+families plus element→place cite the f#12343 mechanism text (attacked
+directly in A8 below). Note the brief's "element__item npc.unit"
+compresses two carriers: `npc.unit` targets **class**
+(`element__class.jsonl`); both readings were covered in the sample.
+
+### M4 — Determinism double-run: byte-identical, equals shipped
+
+The shipped emitter ran UNMODIFIED twice (imported module, output
+directory redirected into scratch — repo never written):
+
+```
+families written: 49  edges: 17467  dangling: 0          (both runs)
+typed resolving refs: 15464  script resolving refs: 6906
+(script refs skipped inside comments: 127)
+ledger rows incl. header: 7
+run1 files=50 run2 files=50
+run1 vs run2 differing files : 0 []
+run1 vs SHIPPED differing     : 0 []
+shipped dig==17 files         : 50; run1 covers all: True
+```
+
+### M5 — validate_all: PASS 8/8 both legs, reproduced in sandbox
+
+Ran in a byte-copy sandbox (`output/_verify-dig17/sandbox/`) so the
+report artifacts land outside the repo tree:
+
+```
+validation: PASS (8/8 checks)      # WITH dig-17 files
+  [ok] verifier-gates … [ok] census-closure: 10207 + 1266 == 11473
+  [ok] census-per-kind: 0 deviations
+  [ok] relink-integrity: pairFiles=51; edges=19130; valid:false=0; valid:null=72
+  [ok] availability-regenerated … [ok] catalog-parity: pairCount=780 …
+  [ok] hbson-independent: banned=absent; nonManaged=4 ->
+       ['locale_availability.jsonl','ui_link_coverage.jsonl',
+        '_logic\_ledger.jsonl','_logic\_ledger_deferred.jsonl']
+
+validation: PASS (8/8 checks)      # AFTER removing the 50 dig-17 files
+  [ok] hbson-independent: banned=absent; nonManaged=3 -> […no deferred ledger]
+```
+
+The A/B delta is exactly the single `hbson-independent` nonManaged record
+gaining `_ledger_deferred.jsonl`, as claimed.
+
+### M6 — Catalog arithmetic: EXACT
+
+```
+matrix.json sha256: f83f4d931f3b86d9e67c3156…  == dig-log pin True
+deferredOutbound: directions 49, summed edges 17467 (claim/disk 17467);
+  per-direction edges, sha256, method split and cdbDeclarations all equal disk
+derivedEvidence: directions 107, summed edges 7184 (claim/disk 7184);
+  disk scaffold method split cdb-payload-id-join 5942 + hscript-enum-ref 1242
+  == catalog evidenceMethods
+ledgeredDeferred: rows=6, classes == disk ledger, sha256 == file hash
+before/after planes (vs output/_dig-deferred-carriers/_matrix_before_dig17.json):
+  pairs identical: True   selfPairs identical: True
+  derivedEvidence identical: True      # hard-modeled plane untouched
+```
+
+---
+
+## Adversarial
+
+### A7 — Fresh break attempt: 0 failures; 5/5 controls rejected
+
+Sample space excluded everything appearing anywhere in the dig's own
+scratch (`_dig-deferred-carriers/*`): fresh pool 17,238 of 17,467 edges.
+Seeded sample of 12 edges across 10 families (forced: element__element,
+element__item, group__groupType `props.type`, plus the `npc.unit`
+carrier in element__class) — every locator re-derived by this verifier's
+own grammar parser and navigator, e.g.:
+
+```
+[OK] element__class.jsonl  PitFoe011 -> Pit010
+     evidence: extracted/data/_draft/element.jsonl#PitFoe011:npc.unit='Pit010'
+     rederivation: present; target-id-membership=True
+[OK] group__groupType.jsonl T6PiratesTavern2Companion -> Companions
+[OK] element__element.jsonl E2R6MinePriest.script@359 'Element.E2R6MineBodil'
+     (byte-verified at offset)
+SUMMARY: spot failures=0/12  controls-rejected=5/5
+```
+
+Negative controls (verifier-built, all REJECTED): C1 wrong-value
+(same-kind target id swap `'Mead'->'A1AstronomerLetter'`), C2 shifted
+script offset +13, C3 swapped payload path
+(`items.content[].item`→`…loot`), C4 wrong source row (row lacks the
+path), C5 forged source kind (locator kind ≠ family source).
+
+### A8 — Code-side mechanism attack: mechanism TRUE, coverage COMPLETE
+
+Ground truth read in
+`extracted/decompiled/hl-src/src/script/Script.hx.hx`:
+
+- **f#12329 (:173) `makeCdbEnum`** body is
+  `for i in ids: Reflect.setField(obj, i, i)` — `<Prefix>.<Name>`
+  evaluates to the STRING `Name`, i.e. the sheet row's `id`. Exactly the
+  claimed runtime semantics.
+- **f#12343 (:59)** registers **exactly 21** literal GLOBALS namespaces
+  (Status, UnitClass, Attribute, Skill, Item, ItemType, Icon, GroupType,
+  Trait, Counter, Activity, Bonus, Region, Constant, Sound, Notify,
+  FiefGoal, FiefEvent, FiefPlace, Tutorial, Kingdom) — matches the
+  header counters (`label-op×21`) and the log's "21 literal namespaces".
+- **f#12340 (:329) `initScriptElement`** regex-replaces
+  `\bElement\.(…)\b`, `\bDialog\.`, `\bPlace\.`, `\bSound\.` → `"$1"`
+  BEFORE interpretation — the `Element.`/`Place.` arms bind to id strings
+  through this rewrite ("same runtime family", as the log words it).
+
+Three emitted pairs attacked end-to-end (offset byte-check + id-set
+membership + mechanism arm):
+
+```
+[element__element] A1BorderPostGuard1 -> element:A1BorderPostDoor
+  offset byte-check True (script@141 == 'Element.A1BorderPostDoor'); id True
+  mechanism: rewritten to string at f#12340=True; literal GLOBALS=False
+[element__place]  A1CannibalCaveWife -> place:A1Stables2   (script@246) OK
+[element__status] A1TavernCaveTavernKeeper -> status:ScaredUnit (script@40) OK
+  mechanism: literal GLOBALS registration (f#12343)=True
+```
+
+Coverage attack (this verifier's own scanner, comment-stripped, all four
+sources): raw `<Ident>.<Name>` tokens with an uppercase prefix =
+13,333; non-comment tokens outside the emitter's 22-entry map are
+**only `Dialog.` ×6,250** — a namespace deliberately out of scope
+(rewritten to strings at f#12340, but an API namespace with NO id
+dataset; its name-collisions with icon/class/groupType ids are precisely
+the ledger's unadjudicated block-id pattern). In-comment tokens carrying
+emitter-scope prefixes = exactly **127**, matching the claimed
+comment-strip count to the digit. No `FiefPlace.`/`Group.` occurrence
+exists outside comments — the one registered namespace absent from the
+emitter map is unused by any shipped script. **No missed namespace, no
+silent drop on the script side.**
+
+### A9 — Ledger honesty: compound-dialog-node justified
+
+Independent recount over ALL element rows:
+
+```
+choice->block refs: 2571   resolving into OWNING row's blocks: 2571
+MISSES: 0   (ledger claims 2,571 / 0)
+dialog[].props.copyDialog occurrences: 2 (claims x2)
+20 sampled refs re-checked against owning-row block sets: 20/20 OK
+```
+
+Emitting them as entity-id edges would be WRONG, proven two ways: 445
+distinct block ids sit on more than one row (`Start` on 2,214 rows,
+`Attack` on 79) so they are intra-element labels, not global identities;
+and 2/2,571 referenced targets coincidentally equal some OTHER element's
+id — an `element→element` emit would fabricate false joins onto
+unrelated NPC rows while dangling on the remaining 2,569. The ledger's
+"(element, blockId)-pairs, not entity ids" rationale holds.
+
+Supporting honesty checks, all exact: residual sweep independently
+reproduces **3,647** unpinned name hits with **250** own-id-only and the
+same top directions (element→icon 2,710, element→input 187,
+element→class 102 …); negated-polarity example verified live
+(`ConfessionInLove dialog[StartPragmatic_MM].props.noHasTrait='Relationship'`,
+trait exists, gate is absence-conditioned); the single typed-side
+unresolved `NotifyForsakenAfterCombat` sits truthfully in
+element__icon `_meta.unresolvedRefs`.
+
+### A10 — Overclaim scan: LANDED wording holds; no silent drop
+
+- PROOF.md R10(b) "LANDED by Dig 17" vs artifacts: 49 files / 17,467
+  edges / 0 dangling ✓; 73/13,429 reproduction ✓ (M1); 6,906 script refs
+  after stripping ✓ (raw 7,033 − 127); additive catalog sections with
+  hard plane byte-equal ✓ (M6); probes quoted above ✓.
+- Completeness of the exclusion set: all 104 declared columns are
+  accounted for — 73 populated-managed emitted (minus 33 negated refs +
+  34 anonymous incidences, both ledgered), 20 populated sibling/const
+  emitted, 9 schema-empty ledgered (row lists exactly those 9), 2
+  compound ledgered. Script side fully covered per A8. Payload side's
+  unpinned residue matches the ledger sweep exactly (3,647). Nothing
+  falls outside the six ledgered classes.
+- Historical records untouched: arbiter-rule8-gate.mdx last commit
+  predates the dig (08-26 10:45 < 12:52); dig-15 log entry retained
+  verbatim.
+- validate_all logs in the dig's scratch match my fresh runs byte-for-
+  byte in content (both legs).
+
+---
+
+## Findings
+
+| id | severity | statement |
+|---|---|---|
+| V17-1 | LOW | `_ledger_deferred.jsonl` anonymous-carrier-rows row says "**34 element rows** carry an AUTHORED-EMPTY `id`"; distinct authored-empty rows measure **10** — 34 is the (row × carrier-path) incidence count (`anonymous_skipped` increments once per admitted path), and `refs=34` is correct. The dig-log entry states it rightly ("10 anonymous element rows hold 34 resolving refs"); only the generated artifact's prose mislabels incidences as rows. Cosmetic; no edge affected. |
+| V17-2 | LOW | `element__place.hlCorroboration` cites only the f#12343 script mechanism (`HL_CORROBORATION` has no `element__place` entry), leaving the family's 5 typed edges (`props.fief.forcedPlace` ×4, `props.refCity` ×1) without named in-meta consumers. Real consumers exist and were located here: `st/player/fief/FiefSlot.hx.hx:89` reads `forcedPlace`; `ent/p/Dock.hx.hx:387` reads `refCity`. Relatedly, queue-addition (3)'s phrase "corroboration null in place__skill meta" names no literal field — substantively true though: `rewardSkill` has **zero** mentions in the whole decompiled corpus (grep), and place__skill's family-level citation covers the enclosing `warEffort` read. |
+| V17-3 | nuance | "All 49 families carry `_meta.cdbDeclarations`" is true as key-present; the 5 script-only families carry empty arrays (and empty `admissionTags`), which RELATIONS.md renders as `script-enum namespace`. `final_numbers.json`'s `familiesWithCdbDeclarations: 44` is the honest non-empty count. |
+
+None of the three blocks R10(b); none changes a count, an edge, or a
+gate-facing claim.
+
+## Verifier scratch index
+
+`output/_verify-dig17/`: `baseline_logic_hashes.json`,
+`census_verify.json`, `v_census.py` → console capture,
+`v_counts.py`, `v_det.py` (+`run1/`,`run2/`,`run1.stdout.txt`),
+`spot_check.txt` (`v_spot.py`), `mech_check.txt` (`v_mech.py`),
+`hlcite_check.txt` (`v_hlcite.py`), `ledger_check.txt` (`v_ledger.py`),
+`catalog_check.txt` (`v_catalog.py`), `sandbox/` (validate_all A/B).
