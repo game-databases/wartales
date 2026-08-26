@@ -1,0 +1,270 @@
+# Verify — Dig 14 locale wave-2, verifier A (mechanical)
+
+**Verdict: FAIL — failing item id: 8.** Items 1–7 all PASS with the data
+layer fully confirmed (zero value mismatches anywhere; byte-exact wave-1;
+determinism exact; independent re-extraction deep-equal on 8,238 entity
+bodies). Item 8 fails on documentation staleness: the Dig 14 log and
+[PROOF.md](../extracted/PROOF.md) cite dual-extractor magnitudes
+(198,899 / A 96,811) that the shipped proof artifact
+(`output/_dig-locale-wave2/report.json`) contradicts (measured 198,233 /
+A 96,145), plus two overbroad sentences. Findings F-1..F-3 below are
+docs-only defects with a one-commit fix; F-4 is a wording note.
+
+Method: fresh mechanical verifier; read-only everywhere except
+`docs/verify-dig14-a.mdx` (this file) and scratch
+`output/_verify-dig14a/`. Every probe is a script in that scratch dir,
+run with `C:\Python314\python.exe`; outputs below are pasted verbatim
+(batch dumps also saved as `_verify-dig14a/batch*.out.txt`). Tool regen
+runs used a redirected driver (`run_tool.py`) that imports the tool
+unmodified and repoints its three WRITE roots (`OUT_LOCALES`,
+`OUT_RELINKS`, `SCRATCH`) into scratch — `extracted/**` untouched.
+
+---
+
+## 1. Inventory — PASS
+
+```
+$ find extracted/locales -mindepth 2 -maxdepth 2 -name '*.json' ! -path '*/ui/*' | wc -l
+307                       # includes the pre-existing dig-10 _draft-achievements/en.json
+$ for d in extracted/locales/*/; do ...; done
+extracted/locales/de/ 34    en/ 34  es/ 34  fr/ 34  ko/ 34  pl/ 34  pt-BR/ 34  ru/ 34  zh/ 34
+extracted/locales/ui/ 10
+```
+
+- Overlay artifacts: **306 = 34 kinds x 9 locales, zero kinds honestly
+  absent** (one distinct kind-set; kinds listed in
+  `batch1.out.txt`). The 307th file is the dig-10 achievement overlay,
+  not a wave-2 artifact.
+- UI directory holds **10 `.json` files total: 9 locale tables +
+  `_inventory.json`** (fr sourced from master `texts.xml`, so there is
+  no 10th locale table — see finding-note on the log's "`×10`" phrasing
+  under item 6).
+- The determinism snapshot `output/_dig-locale-wave2/_det1.json` holds
+  exactly **468 sha256 keys**: `locales 318` (306 overlays +
+  `_draft-achievements` 2 + ui 10) + `relinks 150`. Recomputing all 468
+  against current disk: **450 match; 18 mismatch — all 18 under
+  `extracted/relinks/_logic/`**, i.e. the sibling dig-15 layer whose
+  files carry mtimes NEWER than the snapshot (2026-08-26 07:26:36;
+  commit 1875c5a launched a dig-15 fixer after dig 14 snapshotted).
+  **None of dig 14's own 450 artifacts drifted after emit.** (Re-run at
+  verify-end showed one further key, `relinks/ui_link_coverage.jsonl`,
+  newly changed mid-session — a live sibling dig-15 UI-coverage agent,
+  not dig-14 scope and not this verifier: all writes here were confined
+  to scratch.)
+
+## 2. Availability recount — PASS
+
+Independent tally over `extracted/relinks/locale_availability.jsonl`
+(`v1_inventory_availability.py`):
+
+```
+[2] availability rows: 14456
+[2] bridged (>=1 locale): 9474 | absent-everywhere: 4982 | sum: 14456
+[2] wave-1 subset rows: {'item': 2125, 'skill': 1373, 'class': 281} | sum: 3779
+[2] wave-1 field shapes: {('description', 'name'): 3779}
+[2] wave-1 rows violating frozen {description,name}: 0 []
+```
+
+Frozen wave-1 subset intact: 3,779 rows, `{description, name}` in every
+locale map. Per kind x locale decomposition spot-checks (report cross +
+shipped-jsonl cross):
+
+```
+[decomp] item/en:     ok=3508 empty=0 missing=351  refs=3859  total==refs True | split 318 ent / 323 cells + 28 partial = 351 True
+[decomp] trait/en:    ok=384  empty=0 missing=96   refs=480   total==refs True | split 3 ent / 6 cells + 90 partial = 96 True
+[decomp] tutorial/en: ok=221  empty=0 missing=4    refs=225   total==refs True | split 2 ent / 4 cells + 0 partial = 4 True
+[decomp] trait/en true cells in shipped availability jsonl: 384 == report ok: 384
+```
+
+Mechanism-B spot via the jsonl: `place` templates
+(`world.name`, `props.shortenedName`, `props.sport.rules[].desc`)
+true-cell counts 507/507 in BOTH en and fr. One flag carried to item 8:
+`cell_reconciliation_A.skill.all_true=false` in the shipped report —
+see **F-2**.
+
+## 3. Wave-1 non-regression — PASS
+
+HEAD tool extracted and run redirected (`git -C . show
+HEAD:pipeline/tools/locale_bridge_dig.py > lbd_HEAD.py`; 458 lines =
+the dig-2 version, `KINDS` pinned to item/skill/class):
+
+```
+en/item: regen=0505cba1a33884af shipped=0505cba1a33884af byte-identical=True
+fr/item: regen=e102ba97344fe01d shipped=e102ba97344fe01d byte-identical=True   (… de/es/pl/pt-BR/ru/ko/zh likewise)
+wave-1 overlay files byte-identical: 27/27 differing: 0        # extended to skill+class
+HEAD-regen availability rows: 3779 | shipped wave-1 subset: 3779
+differing rows by kind: {'class': 281}
+semantic disagreements (boolean flips / locale-list changes): 0 []
+```
+
+The brief's required test (item kind, 9 locales, byte-compare) passes;
+so does the stronger full 27-file claim. The only availability delta
+vs the HEAD emit is 281 `class` rows gaining an explicit
+`"description": false` key (HEAD emitted `{name}` only) — zero boolean
+flips; see **F-4**.
+
+## 4. Determinism spot — PASS
+
+Two full runs of the worktree tool into `det_run1/`, `det_run2/`:
+
+```
+run1 files: 319 | run2 files: 319 | same names: True
+run1 vs run2 differing files: 0 []
+run1 vs shipped compared: 318 | identical: 318
+trait en: run1 ee66633b09cbcbf7 run2 ee66633b09cbcbf7 shipped ee66633b09cbcbf7 | all equal: True
+trait.json 3-way equal across locales: 9 /9
+```
+
+Every emitted artifact — all 34x9 overlays, availability jsonl, meta,
+UI layer, inventory, report.json — is byte-identical across runs AND
+equal to what shipped. The worktree tool is provably the emitting tool.
+
+## 5. Dual-extractor spot (verifier's OWN parser) — PASS
+
+Wrote a fresh minimal parser (`v3_dual_extract.py`: my own tag regex,
+stack builder, raw-span leaves, independent ref walker and prune-rule
+rebuild from the contract in
+[locale-key-convention §2/§8](locale-key-convention.mdx)) — shares no
+code with `locale_bridge_dig.py`. Rebuilt overlay bodies from drafts +
+export XMLs and deep-compared against the SHIPPED JSONs, exceeding the
+brief's 3x3 sample by taking ALL entities of each sampled kind:
+
+```
+A rebuild vs shipped (deep-equal, all entities): 6636 / 6636 | unequal: 0 []
+    # item + confessions (mechanisms A frozen + A nested) x en/fr/zh
+[place/en] export entries=492 draft ids=534 export-only ids=0 []
+[place/fr] export entries=492 draft ids=534 export-only ids=0 []
+[place/zh] export entries=492 draft ids=534 export-only ids=0 []
+B rebuild vs shipped (deep-equal, all ids): 1602 / 1602 | unequal: 0 []
+quote item/Gold name (en): 'Krowns'
+quote skill/Bash name (zh): '碎颅'
+```
+
+Mechanism B join totality independently re-proven for place (export-only
+ids 0). Disk-side leaf census ties out: 96,145 (A kinds) + 102,088
+(B kinds) = **198,233 stored strings, every one accounted**; report
+raw-span verification records 0 mismatched / 0 absent across all 34
+kinds x 9 locales. No silent value mismatch of any kind.
+
+## 6. UI layer counts — PASS
+
+Recounted from the shipped files themselves:
+
+```
+keys per ui file: de 889 | en 889 | es 889 | fr 778 | ko 889 | pl 889 | pt-BR 889 | ru 889 | zh 889 | SUM: 7890
+en keys 889 | fr keys 778 | en-minus-fr 111 | fr-minus-en (extra_vs_pivot): 0
+inventory groups: 40 | topLevelKeys: 4 | groupInventory key-sum: 885 (+4 top-level = 889)
+inventory totals == file counts: True | missing_vs_pivot: {fr: 111} only
+spot-proof: 'animal_prison_desc/commentatilfaitpourseretrouverl' … absent in master texts.xml bytes=True, present in texts_en.xml bytes=True (3/3 sampled)
+```
+
+Internally consistent: 40 groups + 4 top-level keys = 889 en pivot keys;
+fr genuinely lacks 111 (byte-verified absent in the master file, not a
+parsing gap); sum 7,890 = the claimed matched-cells figure. Note: the ui
+directory contains 10 files INCLUDING `_inventory.json` (9 locale
+tables) — the log's "`extracted/locales/ui/` ×10 + `_inventory.json`"
+reads as 11 and should say 9+1.
+
+## 7. R5 stamps — PASS
+
+```
+stamp census: {('export','buildid-fallback'): 1, ('export','export-header'): 8,
+               ('ui','buildid-fallback'): 1, ('ui','export-header'): 8}
+files containing 'stampedBy' outside meta.json: []          # swept extracted/locales + extracted/relinks
+export_fr.xml root attrs: ('cdb', '')                        # bare — headerless
+texts.xml      root attrs: ('texts', '')                     # bare — headerless
+export_en.xml  root attrs: project="Wartales" version="126" lang="en" date="2025-09-30 13:56:29" revision="43420" softwareVersion="2"
+```
+
+Exactly the two documented sources carry `"stampedBy": "buildid-fallback"`
+with buildId 20318128 and NO invented date/revision fields; the other 16
+entries copy their real headers (revision 43420; dates 2025-09-30 /
+2025-10-01). Stamps live only in
+[locale_availability.meta.json](../extracted/relinks/locale_availability.meta.json),
+keyed file+locale, duplicated onto no row.
+
+## 8. Docs coherence — FAIL (F-1, F-2, F-3; note F-4)
+
+Traced OK against my measurements: 34 kinds · 27 ref-driven + 7
+id-join · 306 overlays · 85,264 overlay entity rows (= Σ per-file
+counts; 9,474 per locale, fr 9,472) · 14,456 = 9,474 + 4,982 · 3,779
+wave-1 rows · 40 groups + 4 top-level keys · 889/778 · 111 missing ·
+UI 7,890/7,890 · filler census exactly 2 instances
+(`fiefCondition/CompleteFiefMission` + `GovernmentAssign` descs resolve
+in 8 locales, fr 0/2 — direct overlay check) · mechanism-B dup ids
+element 102 / group 1 / place 2 (recounted from drafts) · round-trip
+127/148 reproduced exactly with seed 20318128 · skill residual "80 refs
+(74 resolve en)" reproduced exactly · END sentinels present in
+[data-dig-log.mdx](data-dig-log.mdx) and
+[locale-key-convention.mdx](locale-key-convention.mdx).
+
+### F-1 — MAJOR (docs): the headline dual-extractor magnitude is stale
+
+Dig 14 log proof #1 claims "**198,899 / 198,899 matched** … (A 96,811 +
+B 102,088)"; [PROOF.md](../extracted/PROOF.md) repeats 198,899 six
+times (§2 bridge row, derived-layer reconciliation, R9). Measured from
+the cited artifact and from disk:
+
+```
+claimed: A 96811 + B 102088 = 198899
+report:  A 96145 + B 102088 = 198233      # tool's own console digest agrees
+disk:    A-kinds 96145 + B-kinds 102088 = 198233 leaf strings
+delta:   666 = 74 resolving skill `levels[]` refs x 9 locales (measured: 80 levels refs, 74 resolve in EVERY locale)
+```
+
+Provenance nailed: 666 is exactly the skill-`levels` population that
+proof #7 documents as caught-and-fixed ("skill `levels` refs leaking
+past the frozen field set"); the docs were written AFTER the final
+report existed (report.json mtime 07:27:08 vs log 07:56:06, PROOF
+07:57:21), so they quote the pre-fix intermediate emit, not the shipped
+artifact. Substance unaffected — every EMITTED cell (198,233) is
+matched with 0 mismatched/0 absent. Fix: replace 198,899 → 198,233 and
+96,811 → 96,145 in both docs (2 spots in the log, 6 in PROOF.md).
+
+### F-2 — MINOR (docs): "ok+empty+missing == refs … (all true)" is false for skill as stated
+
+Log proof #4 asserts the identity for all kinds x locales. Shipped
+report: `cell_reconciliation_A.skill.detail_en = {"cells_total_matches":
+false, "missing_decomposes": true}` — skill refs denominator 2,826
+includes the 80 ledgered non-frozen `levels` refs while states count
+2,746 (Δ=80 exactly). Under the frozen-field-set reading every kind
+reconciles; PROOF R9's "cell reconciliations exact per kind x locale"
+needs the same qualifier.
+
+### F-3 — MINOR (docs): "all 21 failures are drift entities failing in every locale" — 20 of 21
+
+I reproduced the round-trip sample exactly (148 entities, seed
+20318128): 127 resolve in all nine; 21 fail. 20 are absent-everywhere
+drift; **`fiefCondition/GovernmentAssign` resolves in 8/9 and fails fr
+only** — it is one of the two documented filler instances, not a drift
+entity (its only ref is the description; fr prunes the whole body).
+Substance stands (data gap, not addressing failure) but the sentence
+misclassifies it. Also cosmetic: the report truncates its failures list
+to 20 names (`[:20]`) while the log says 21.
+
+### F-4 — NOTE: wave-1 class availability rows were normalized, not preserved verbatim
+
+HEAD-tool regen proves the dig-2 emit keyed class rows `{name}`; the
+shipped file keys all 3,779 wave-1 rows `{description, name}` (281
+class rows gained an explicit `"description": false`). Zero semantic
+diff. "Keep their exact frozen `{description, name}` shape"
+([locale-key-convention §8.1](locale-key-convention.mdx#8-dig-14-extension-all-cdb-text-kinds-ui-namespace-r5-stamps))
+is true by definition of the frozen shape but is a normalization of
+class relative to what dig 2 actually wrote — worth one clarifying word
+if the file is ever touched again.
+
+---
+
+## Probe inventory (all under `output/_verify-dig14a/`)
+
+`v1_inventory_availability.py` + `batch1.out.txt` (items 1, 2, 6, 7) ·
+`v1b_det_diff.py` (det-set drift localization) ·
+`v1c_mtime_report.py` + `batch2.out.txt` (mtimes, report arithmetic) ·
+`v2_diag.py` (A/B sums + leaf census) · `lbd_HEAD.py` +
+`run_tool.py` + `regen_head/` (item 3) · `det_run1/`, `det_run2/`
+(item 4) · `v3_dual_extract.py` (item 5, exit 0) · `v4_final.py` +
+`batch4.out.txt` (residuals: levels recount, round-trip reproduction,
+decompositions, filler direct check, UI absent-key spot proof).
+Nothing outside the deliverable and scratch was written;
+`extracted/**`, `pipeline/tools/locale_bridge_dig.py`, and docs are
+untouched.
