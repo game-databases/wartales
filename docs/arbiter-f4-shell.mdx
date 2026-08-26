@@ -1,0 +1,163 @@
+# Arbiter — F4 app shell spec r1 ([spec-f4-app-shell.mdx](./spec-f4-app-shell.mdx))
+
+**Verdict: APPROVE-FOR-BUILD** — all twelve findings of
+[review-spec-f4-shell.mdx](./review-spec-f4-shell.mdx) hold as revised
+(12 RESOLVED · 0 WEAKENED · 0 UNRESOLVED); one new MINOR defect introduced
+by the revision text (N1 below), non-gating. This approves the *spec*;
+the actual F4 build stays gated on the pack's rule-8 data-completeness
+gate (PROGRESS.mdx P2/Batch 2, opening after R9 dig-14 + R10 dig-15 land;
+Batch 3 launches the build) — approval is not a build order.
+
+Fresh Arbiter, 2026-08-26. Subject judged at commit `4ec987e` (working
+tree clean for this file). Read in full: root `AGENTS.md`,
+[review-spec-f4-shell.mdx](./review-spec-f4-shell.mdx),
+[spec-f4-app-shell.mdx](./spec-f4-app-shell.mdx) (revised, 548 lines,
+incl. the `## Revision r1` ledger and `(r1)`-tagged AC bodies),
+FRAMEWORK.md §2.7/§2.11/§2.14/§2.15/§2.20,
+`_foundation/localization-architecture.md`,
+`_foundation/design-standard.md`, `_foundation/decision-register.md`
+entries [DR-2026-08-24-wartales-roster], [DR-2026-08-20-locale-urls],
+[DR-2026-08-22-search-is-not-a-page],
+[DR-2026-08-18-page-size]; seam files
+[spec-f5-search.mdx](./spec-f5-search.mdx) §5/§6/§13 (judged at its
+in-flight r1 working-tree state — see Seam), [spec-pt16-seo.mdx](./spec-pt16-seo.mdx)
+§3 + landed r1, [spec-f2-contracts.mdx](./spec-f2-contracts.mdx) §4;
+canon `site/src/styles/tokens.css` + `tokens.test.ts` (both in full);
+on-disk facts: `site/.gitignore`, `site/package.json`,
+`site/public/fonts/README.md`, `spec.md` locales block, `pieces.mdx`
+F4/F5 rows, PROGRESS.mdx execution plan.
+
+## Per-finding rulings
+
+| id | sev | ruling | anchor (revised spec) |
+|---|---|---|---|
+| B1 | BLOCKER | **RESOLVED** | §1 tree: `[...rest]/page.tsx` — "catch-all whose only body is `notFound()` — the mechanism that makes the nested not-found fire for unmatched URLs (B1 r1)" |
+| M1 | MAJOR | **RESOLVED** | §5 inbound-seam bullet: `<main>` "server-renders **`data-search-swap-root`** on every page … F4 places the attribute and NOTHING else of F5" |
+| M2 | MAJOR | **RESOLVED** | §5 nav row: "At F4 the manifest holds **exactly one live row**: `{id:"home", href:"/", labelKey:"chrome.header.homeLabel", live:true}`" |
+| M3 | MAJOR | **RESOLVED** | §6.2 aliasing law + §7.5 sweep "includes `globals.css` … this suite is AC 9's failing command" |
+| M4 | MAJOR | **RESOLVED** | §7.6: "Full check list (r1, closing the AC 12/13 verification gaps)" |
+| m1 | MINOR | **RESOLVED** | §3 rule 6 recites "[DR-2026-08-18-page-size] home-canonical law: declare the URL that answers 200"; chip-words entry gone from §9 relinks |
+| m2 | MINOR | **RESOLVED** | §6.1: `@import "./tokens.css"` — "sibling-relative — `./styles/tokens.css` would resolve to `src/styles/styles/`" |
+| m3 | MINOR | **RESOLVED** | §0: .gitignore "as-found, not created here (r1) … this piece only extends it"; §9 Modified: EXTENDS, "nothing removed" |
+| m4 | MINOR | **RESOLVED** | §9 seam reconciliation: "this confirms the name for spec-pt16-seo §3 … no `routes.ts` exists or will" |
+| m5 | MINOR | **RESOLVED** | §3 rule 5: "`request.ts` validates the resolved `[locale]` id against the §2 table and calls `notFound()` BEFORE any message file resolves" |
+| m6 | MINOR | **RESOLVED** | §1 Compatibility gate (r1): zero-peer-conflict install, smoke over the six-call API surface, named fallback, stop-before-component-work |
+| m7 | MINOR | **MINOR → RESOLVED** | §2: "**Recorded decision (r1): lowercase `pt-br` URL segment** … Orchestrator may override before first deploy" |
+
+Notes per ruling, with the checks behind each:
+
+- **B1.** The added catch-all is the correct Next.js App Router mechanism:
+  a nested `not-found.tsx` alone never matches a URL; with
+  `app/[locale]/[...rest]/page.tsx` calling `notFound()` inside the
+  segment, `/de/<unknown>` reaches the locale-scoped boundary. File-set
+  closure restored (§9 Created lists the catch-all), so the builder
+  cannot be accused of silent additions. The unknown-locale case is
+  stated honestly — "an unknown-locale request answers its 404 from the
+  root boundary — there is no localizing a locale that does not exist"
+  (§3 rule 5) — so AC 14's static-prerender clause now describes only
+  what can exist. Amended AC 14 is executable as written: smoke curls
+  `/de/<unknown>` and asserts 404 + localized chrome + `<html lang="de">`.
+- **M1 / seam verified BOTH ways** (brief item 4). Attribute name exact
+  on both sides: `data-search-swap-root`. Element: F4 puts it on `<main>`,
+  "the wrapper holding page content between header and footer";
+  F5 §5.1 (current in-flight r1 text) reads "`data-search-swap-root` —
+  **F4 server-renders it** on the shell's `<main>` content wrapper of
+  every page" and "the swap target is **the element** carrying
+  `data-search-swap-root`" (singular — tightened from "any element"),
+  H-3 unchanged ("F4 must put the attribute on its main-content
+  wrapper"). Mount semantics agree: F5 sets `hidden` on it and inserts
+  the results container immediately before it, touching nothing else of
+  F4; F4 promises the attribute only — no toggling, no results view, no
+  matcher import. No fallback-slot ambiguity remains (F5 r1 removed the
+  header fallback render mode; a missing swap root is a composition
+  error). F4's outbound half (slot-only fence, DR clauses 1–5 handed to
+  F5, no `/search` anywhere) is unchanged and still complete. Caveat
+  recorded: [spec-f5-search.mdx](./spec-f5-search.mdx) is itself mid-r1
+  (working-tree modified); the seam passages above are its current bytes
+  and they conform to F4's landed r1, citing it ("conforms to F4's
+  landed r1 revision"). Both directions match — no finding.
+- **M2.** One declared live row keyed from the §4 thirteen kills both
+  horns of the contradiction: `chrome.header.homeLabel` exists among the
+  exactly-13 keys (recounted), §7.4's labelKey-parity rule passes on the
+  spec's own fixture, and AC 6's "≥1 nav `<a href>` per live manifest
+  row" becomes a deterministic boolean (1 row → 1 link). §7.4 routes-manifest
+  test pins labelKeys to the §4 inventory. The five stubbed `chrome.nav.*`
+  keys stay declared construction state under the §4 stub ledger — legal.
+- **M3.** Three-part fix all present: sweep scope now includes
+  `src/styles/globals.css` (tokens.css/tokens.test.ts correctly excluded
+  to avoid self-hits); the aliasing law mandates
+  `--color-bg-1: var(--bg-1)`-form over literal copies; AC 9 names
+  shell-hygiene as its failing command. tokens.test.ts confirmed (read
+  in full) to parse `tokens.css` alone (its reader, L13) — so the
+  reviewer's loophole description was accurate and the closure must live
+  in shell-hygiene, where it now does. F1 canon untouched: F4 edits
+  neither file (§0, §9 never-touched), disk bytes match the F1 canon
+  including the shadcn map, rarity system, and served-refs guard.
+  Residue → N1.
+- **M4.** Every previously uncovered leg now has an owner: AC 1 detected
+  via boot-log compile-error FAIL; AC 13 via Noto link present on `/zh`
+  + `/ko`, absent on the other seven, "pattern per the fonts README" —
+  pattern source verified on disk ("link Google's split-subset CSS for
+  Noto Sans SC/KR on those locale routes only"); AC 12 leg 1 via curl-200
+  over served HTML refs with explicit `SKIP:` lines on unstaged machines,
+  fresh-clone leg via the `stage-assets.mjs --check` nonzero-before /
+  zero-after pair, dev-still-renders asserted by the same smoke run.
+  SKIP discipline keeps the suite honest on machines without binaries.
+- **m5 nit (observation, not a defect).** §3 rule 5's rationale
+  parenthetical — "the static imports would otherwise throw a module
+  error for an unknown id" — misstates the failure mode (statically
+  imported tables cannot module-error at request time; the real hazard
+  is an undefined table lookup). The ordered mechanism it justifies
+  (validate id → `notFound()` before any message access) is correct and
+  curl-falsifiable either way; wording touch-up only.
+- **m7 cross-check.** F4's data-plane statement ("those use client codes
+  verbatim per spec-f2-contracts §4, `/data/pt-BR/…`") verified against
+  F2 §4's route table (`{L}` column = client codes). PT16's landed r1
+  (commit `ce0c90e`) separately records the F2-vs-F4 spelling collision
+  for arbitration; F4's own side is consistent with F2 and needs nothing.
+
+## New-defect sweep (diff neighborhoods)
+
+Every r1 hunk inspected: §0 scaffold scoping, §1 tree + compatibility
+gate, §2 recorded decision, §3 rules 5–6, §5 manifest row + inbound seam,
+§6 items 1/2/5, §7 items 4/5/6, §8 AC 9/11/14, §9 files/seams/relinks,
+revision ledger. Amended AC 9/11/14 remain executable as written; AC ids
+stable at 14; boundary fences (PT01 wholesale replacement, PT02 footer
+deepening, PT16 hreflang/sitemap/JSON-LD exclusion, PT17 mechanism/art
+split, F5 slot-only outbound + attribute-only inbound) restated after the
+ledger and hold. One new defect:
+
+### N1 — MINOR: the aliasing-law carve-out contradicts the canon it names, and the non-color slice of the loophole stays open (§6.2)
+
+§6.2: "Literals are allowed only for scalars the canon does not define
+(`--radius-*: 0`)". tokens.css L167–171 defines exactly that family —
+`--radius`, `--radius-sm/md/lg/xl`, all `0rem` — so the carve-out's own
+example names canon-defined scalars, and the shell-hygiene predicate as
+specified bans only "any hex/rgb/oklch/named-color literal" inside the
+`@theme` block. Consequence: a literal copy of a canon-defined
+non-color value (a radius length, or a font stack for the six `--font-*`
+mappings §6.2 lists without stating right-hand sides — where the
+aliasing form's own examples don't apply because the theme-namespace
+name equals the canon name) passes every stated command while
+duplicating a canon value. Today this is behaviorally inert — canon
+radius is 0, tokens.test.ts pins `parseFloat == 0`, and import order
+keeps tokens.css authoritative — which is why M3 stands RESOLVED and
+this does not gate. Required touch-up (one of, builder's first pass or a
+one-line spec edit): drop `--radius-*` from the allowed-literals example
+(require omission — Tailwind resolves the utilities from tokens.css's
+`:root` values — or an explicitly pinned form), and/or extend the
+shell-hygiene grep to any non-`var()` literal whose left side matches a
+canon token name.
+
+## Count summary
+
+| Measure | Count |
+|---|---|
+| Findings ruled | 12 (B1, M1–M4, m1–m7) |
+| RESOLVED / WEAKENED / UNRESOLVED | 12 / 0 / 0 |
+| New defects | 1 MINOR (N1) + 1 observation nit (m5 rationale wording) |
+| Seam check F4↔F5 | match both directions |
+| F1 canon | untouched; aliasing law closes the color-literal loophole with a named failing command |
+| **Verdict** | **APPROVE-FOR-BUILD** (build itself gated on PROGRESS Batch 2/3 rule-8 gate) |
+
+<!-- END OF wartales/docs/arbiter-f4-shell.mdx -->
