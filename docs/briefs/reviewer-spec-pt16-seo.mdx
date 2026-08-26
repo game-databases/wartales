@@ -1,0 +1,51 @@
+# Brief — Spec Reviewer: PT16 SEO/AEO infra
+
+Fresh Reviewer agent; never spawn subagents; never commit; Wartales pack
+only. Produce ONE review: `docs/review-spec-pt16-seo.mdx`. Review only —
+propose no fixes, edit nothing.
+
+Read IN FULL before judging: `docs/spec-pt16-seo.mdx` (the subject);
+`_foundation/seo-standard.md` §1–§9 IN FULL (binding — every clause);
+FRAMEWORK.md §2.10 + §8 DoD items touching SEO/AEO;
+`_foundation/localization-architecture.md` §2–§3 (hreflang cluster,
+unique titles) + §5.1 stable ids;
+`_foundation/decision-register.md` [DR-2026-08-20-locale-urls];
+`contracts/maps.schema.json`; `docs/spec-f2-contracts.mdx` if present
+(API-shape dependency — if absent, verify the dependency is flagged not
+designed); `docs/spec-f4-app-shell.mdx` §3 (URL law consumed, not
+redefined); `extracted/relinks/locale_availability.jsonl` header rows;
+icon CDN path convention in EXTRACTION-LOG.md §5; `docs/pieces.mdx`
+PT16 row; current `site/` tree as found.
+
+Review axes (findings classified BLOCKER / MAJOR / MINOR, each anchored
+to spec section + source):
+
+1. **Standard compliance** — every seo-standard §1–§9 clause either
+   satisfied by a spec section or explicitly deferred with an owner/piece
+   pointer. A silent violation = BLOCKER.
+2. **Traceability** — buildid 20318128, ~103k URL math, locale set ×9,
+   zh→zh-Hans mapping, crawler allowance list: each must trace to a real
+   frozen artifact or standard clause. Invented numbers = BLOCKER.
+3. **AC executability** — all 35 ACs falsifiable by the stated curl/file
+   assertion; BLOCKED-ON marks correct (what is genuinely blocked on
+   F4/F2/builds vs what could run today). Untestable AC = MAJOR.
+4. **Boundary integrity** — JSON payload shapes belong to F2, OG image
+   rendering to a later piece, RSS to PT18, page content to PT01–PT18:
+   PT16 must define slots/emitters, not page bodies. Scope bleed =
+   MAJOR.
+5. **URL/canonical coherence** — sitemap URL set vs F4's EN-bare +
+   8-prefixed law; facet noindex-vs-Disallow mechanism split technically
+   sound; hreflang cluster self-consistent (x-default, reciprocity).
+6. **JSON-LD correctness** — kind→node mapping table sane per schema.org
+   (VideoGame sitewide, ItemList lists, Thing entities, HowTo guides,
+   NewsArticle news, Dataset data pages, BreadcrumbList everywhere);
+   markup-follows-content ordering enforced structurally.
+7. **llms.txt + IndexNow** — citability wording matches §9 rules; denylist
+   self-check present; localhost-never-pings enforced; key file handling
+   sane (not committed secret material).
+8. **Files-touched exactness** — 21 paths under `site/src/lib/seo/` etc.,
+   zero edits to existing files claim verified against the tree.
+
+Verdict at top: **NEEDS_REVISION** (blockers/majors enumerated) or
+**READY_FOR_ARBITER**. Be harsh; cite evidence per finding. End with a
+count summary table.

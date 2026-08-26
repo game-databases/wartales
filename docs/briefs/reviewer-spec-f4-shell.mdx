@@ -1,0 +1,54 @@
+# Brief — Spec Reviewer: F4 app shell
+
+Fresh Reviewer agent; never spawn subagents; never commit; Wartales pack
+only. Produce ONE review: `docs/review-spec-f4-shell.mdx`. Review only —
+propose no fixes, edit nothing.
+
+Read IN FULL before judging: `docs/spec-f4-app-shell.mdx` (the subject);
+FRAMEWORK.md §2 in full (§2.20 stack law, §2.7, §2.15, §2.11);
+`_foundation/localization-architecture.md` in full;
+`_foundation/decision-register.md` [DR-2026-08-20-locale-urls],
+[DR-2026-08-24-wartales-roster], [DR-2026-08-22-search-is-not-a-page]
+(every clause); `_foundation/design-standard.md`;
+`_foundation/seo-standard.md` (only where F4 fences against PT16);
+`docs/pieces.mdx` F4 row; `site/src/styles/tokens.css` +
+`site/src/**/tokens.test.ts` (F1 canon); `docs/locale-key-convention.mdx`;
+`design/shadcn-adoption.mdx`; current `site/` tree + `site/package.json`
+as-found on disk.
+
+Review axes (findings classified BLOCKER / MAJOR / MINOR, each anchored
+to spec section + source line):
+
+1. **Traceability** — every versioned claim (Next.js major, React,
+   next-intl, Tailwind), every count (13 keys, 14 ACs, 9 locales), every
+   cited file path must exist and say what the spec claims. Verify
+   against disk, not memory. Invented numbers = BLOCKER.
+2. **AC executability** — each of the 14 acceptance criteria must be
+   falsifiable by a stated command/curl/test as written. An AC nobody
+   can run = MAJOR.
+3. **Boundary integrity** — fences vs F5 / PT01 / PT02 / PT16 / PT17
+   complete and one-sided; the reserved search slot must satisfy
+   DR-2026-08-22's anatomy clauses without implementing any of them.
+4. **Locale model** — the id/client-code/BCP47 table vs frozen
+   `locales.official` ×9; `pt-br` casing ruling consistent with
+   DR-2026-08-20 + localization-architecture URL rules; `ja`
+   non-site-facing claim sourced.
+5. **Feasibility** — the middleware/routing strategy
+   (`localePrefix: "as-needed"`, detection off, `/en/*`→bare **301**
+   pre-shim, unknown-segment 404, trailing-slash canonical, SSG via
+   generateStaticParams+setRequestLocale) must be implementable exactly
+   as specified with the pinned stack versions. Specified-but-impossible
+   = BLOCKER.
+6. **Canon protection** — tokens.css/tokens.test.ts never-touch law +
+   byte-diff AC leaves no re-declaration loophole (globals.css import
+   path, @theme map, g-suffix utilities).
+7. **Test adequacy** — 4 vitest suites + scripts/smoke.mjs cover all
+   14 ACs or state honest gaps; existing suites untouched; no vitest.config
+   added at F4 (per package.json extension law).
+8. **Files-touched exactness** — §9 created/modified/never-touched lists
+   vs the actual tree; anything missing or extra = MINOR (BLOCKER if it
+   touches another piece's surface).
+
+Verdict at top: **NEEDS_REVISION** (blockers/majors enumerated) or
+**READY_FOR_ARBITER**. Be harsh; cite evidence per finding. End with a
+count summary table.

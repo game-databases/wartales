@@ -1,0 +1,392 @@
+# F4 — App shell spec (Next.js scaffold, locale routing, chrome i18n)
+
+**Status:** piece spec, ready to build after the rule-8 gate opens Batch 3
+(planning deliverable — spec-writing is legal before the gate,
+[`PROGRESS.mdx`](../PROGRESS.mdx) Batch 1). **Authority:**
+[DR-2026-08-24-wartales-roster] (pack 52; provisional Umbrella tier;
+localhost-first) · owner shadcn directive
+([shadcn-adoption.mdx](../design/shadcn-adoption.mdx)) ·
+[DR-2026-08-20-locale-urls] (pivot bare paths) ·
+[DR-2026-08-22-search-is-not-a-page] (the header field is F5's — this spec
+only leaves the slot). **Stack law:** FRAMEWORK §2.20 default profile —
+Next.js **App Router** + React 19 + TypeScript; Pages Router and pure SPAs
+are excluded.
+
+Scope boundary (pieces.mdx): F4 delivers the **shell** — scaffold, locale
+machinery, chrome i18n, header/nav/footer anatomy. It does **not** deliver
+the search field (F5), the home page content (PT01), the taxonomy menu that
+later deepens the footer (PT02), hreflang/sitemap/JSON-LD (PT16), or the
+branded 404 art (PT17 — F4 ships the *mechanism* only).
+
+## 0. Evidence base
+
+- Locales: client-verified ×9 (`res.pak:/lang/{texts,export}_<l>.xml`),
+  frozen in [`spec.md`](../spec.md) `locales.official`; pivot EN; filler
+  policy `omit-until-translated`; `zh` ships store-named zh-Hans
+  ([locale-key-convention.mdx](./locale-key-convention.mdx) §1).
+- Token canon (F1, DONE, frozen): [`site/src/styles/tokens.css`](../site/src/styles/tokens.css)
+  + `tokens.test.ts` — byte-parity-guarded; **this piece edits neither
+  file** (§6). Fonts self-host contract:
+  [`site/public/fonts/README.md`](../site/public/fonts/README.md); texture
+  staging: [`site/public/assets/ui/README.md`](../site/public/assets/ui/README.md).
+- Shell references: NWG shell anatomy
+  (`_foundation/nw-site-new-deep-dive.md` §5 — the 3-level taxonomy menu
+  drives nav/footer; §9 — explicit routing only, `localeDetection: false`)
+  judged against the wikily.gg modern-wiki design language
+  (`_foundation/design-standard.md` §2) and the feel bar (§5).
+- Existing scaffold: `site/package.json` (`test: vitest run`; devDeps
+  jpeg-js + vitest) and `site/src/styles/*` exist — everything else under
+  `site/` is created by this piece.
+
+## 1. Scaffold
+
+App Router under `site/src/app/`, TypeScript strict, Tailwind v4
+(`@tailwindcss/postcss`), next-intl for locale routing and chrome i18n
+(FRAMEWORK §2.20 standard libraries). Next.js 16 line (the network's
+reference repo already proves it), React 19 — exact versions pinned in
+`package.json` at install.
+
+```text
+site/
+├─ next.config.ts                 # createNextIntlPlugin(); no other customization
+├─ tsconfig.json                  # strict; paths: "@/*" -> "src/*"
+├─ postcss.config.mjs             # @tailwindcss/postcss
+├─ package.json                   # EXTENDED (below) — "test": "vitest run" untouched
+├─ messages/                      # chrome i18n, §4 — 9 locale files + stub ledger
+├─ scripts/
+│  ├─ smoke.mjs                   # §8 executable AC runner (dev-server curl sweep)
+│  └─ stage-assets.mjs            # §7 fonts/texture staging per the READMEs
+├─ public/                        # fonts/ + assets/ui/ staged per README (existing)
+└─ src/
+   ├─ middleware.ts               # pivot-bare enforcement (§3)
+   ├─ app/
+   │  └─ [locale]/
+   │     ├─ layout.tsx            # <html lang>; fonts; globals; provider; shell
+   │     ├─ page.tsx              # smoke home — replaced wholesale by PT01
+   │     └─ not-found.tsx         # mechanism only — PT17 brands it
+   ├─ components/
+   │  ├─ ui/                      # shadcn primitives copied in (button, popover, command)
+   │  └─ shell/                   # header, nav-row, locale-combobox, search-slot, footer
+   ├─ i18n/
+   │  ├─ locales.ts               # single source-of-truth locale table (§2)
+   │  ├─ routing.ts               # defineRouting — THE segment law (§3)
+   │  ├─ request.ts               # getRequestConfig (static message imports)
+   │  └─ navigation.ts            # createNavigation (Link, redirect, usePathname)
+   ├─ lib/
+   │  └─ routes-manifest.ts       # nav/footer links; render-only-existing law (§5)
+   └─ styles/
+      ├─ tokens.css               # F1 CANON — ZERO EDITS
+      ├─ tokens.test.ts           # F1 CANON — ZERO EDITS
+      └─ globals.css              # NEW — imports tokens.css, wires Tailwind theme (§6)
+```
+
+`components.json` (shadcn) lands with the first primitive copy. Primitives
+copied at F4: `button` (nav/footer links), `popover` + `command` (locale
+combobox). Every primitive is upgraded per shadcn-adoption §layers —
+structure/interactions/motion/typography from the F1 canon; a stock-looking
+primitive fails the round (adoption §Verification). No vitest.config is
+added at F4: new tests stay node-env + relative-import so the existing
+zero-config run (`vitest run`) discovers both old and new suites unchanged;
+a config arrives with the first component-test piece (F5).
+
+**package.json extension** (add, never rewrite existing keys):
+
+- `scripts`: `dev`, `build`, `start`, `stage`, `smoke` (existing `test`
+  byte-identical).
+- deps: `next`, `react`, `react-dom`, `next-intl`, `cmdk`,
+  `@radix-ui/react-popover`, `clsx`, `class-variance-authority`,
+  `tailwind-merge`; devDeps: `typescript`, `tailwindcss` ^4,
+  `@tailwindcss/postcss`, `@types/node`, `@types/react`,
+  `@types/react-dom`. TanStack Table/Query/Leaflet are §2.20 standards but
+  belong to the pieces that consume data — not installed here.
+
+## 2. Locale model — one table, one derivation
+
+Client codes are the extraction truth; URL segments are a presentation
+concern ([locale-key-convention.mdx](./locale-key-convention.mdx) §1).
+`src/i18n/locales.ts` is the **single** mapping; everything else derives:
+
+| id = URL segment | client code | BCP-47 (`<html lang>`, hreflang) | native name (switcher) |
+|---|---|---|---|
+| `en` | `en` | `en` | English — **pivot, bare paths** |
+| `de` | `de` | `de` | Deutsch |
+| `es` | `es` | `es` | Español |
+| `fr` | `fr` | `fr` | Français |
+| `ko` | `ko` | `ko` | 한국어 |
+| `pl` | `pl` | `pl` | Polski |
+| `pt-br` | `pt-BR` | `pt-BR` | Português (Brasil) |
+| `ru` | `ru` | `ru` | Русский |
+| `zh` | `zh` | `zh-Hans` | 简体中文 |
+
+- Lowercase `pt-br` segment (URL hygiene; [DR-2026-08-20-locale-urls]
+  fixes membership and the bare-path law, not letter case — hreflang/lang
+  carry the true `pt-BR`). Orchestrator may override the casing; nothing
+  else in the spec depends on it.
+- `ja` (community-overlay candidate, spec `locales.community`) is **not**
+  site-facing at F4 — its ship call is a build-time decision per the frozen
+  spec; adding it is a table row + one messages file, nothing else.
+- Message files and router locale ids both use the `id` column; joins to
+  `extracted/` overlays (client codes) go through `clientCode`. No second
+  mapping may appear anywhere in `site/`.
+
+## 3. Routing — the exact middleware/segment strategy
+
+`src/i18n/routing.ts`:
+
+```ts
+defineRouting({
+  locales: ["en", "fr", "de", "es", "pl", "pt-br", "ru", "ko", "zh"],
+  defaultLocale: "en",
+  localePrefix: "as-needed",   // pivot bare, others prefixed
+  localeDetection: false,      // explicit links only (NWG §9; seo-standard §1)
+});
+```
+
+`src/middleware.ts` wraps `createMiddleware(routing)` with one **pre-shim**
+that guarantees the DR's permanent-redirect clause regardless of library
+default: any pathname equal to `/en` or starting `/en/` answers
+**301** → the same path stripped of the `/en` prefix. Rules pinned:
+
+1. **Pivot bare.** `/` and all pivot pages carry no locale segment;
+   canonical forms are bare ([DR-2026-08-20-locale-urls] ¶1).
+2. **`/en/*` never exists.** It 301s to the unprefixed path (never 302,
+   never a duplicate render). No internal `<a>`/`Link` may ever emit `/en`.
+3. **Eight prefixed locales**, fully localized pages, one locale's text per
+   page — never mixed (localization-architecture §1).
+4. **No negotiation.** No `Accept-Language`/geo redirect, ever: a curl of
+   `/` with `Accept-Language: fr` returns the EN page at `/`
+   (seo-standard §1: no crawler-blocking geo-redirects; NWG explicit-routing
+   precedent). Discovery of other locales is the switcher + link rows.
+5. **Unknown locale segment** (`/xx/...`) is a 404, not a redirect.
+6. **Trailing slash:** Next default (`trailingSlash: false`) — `/de/` 308s
+   to `/de`; canonicals are emitted in the answering form
+   ([DR-2026-08-21-drop-chip-words-and-updated-column] home-canonical law:
+   declare the URL that answers 200).
+7. **SSG:** `generateStaticParams` returns all nine ids; every
+   layout/page calls `setRequestLocale` so each locale home prerenders
+   statically. `<html lang>` takes the BCP-47 column, never the segment id.
+
+Deep-path locale switching follows localization-architecture §4: the
+switcher links the same page in the chosen locale when available, otherwise
+that locale's section index. At F4 the only page is the locale root, so
+every switch resolves; the law is implemented in `navigation.ts` now and
+exercised by later pieces.
+
+## 4. Chrome i18n — namespace, files ×9, stub-now/content-later
+
+Separate namespace from game content, keyed per-locale resource files, EN
+pivot, coverage-parity checked (localization-architecture §4). Files:
+`site/messages/<id>.json` ×9, each a single `chrome` namespace object.
+Game-content namespaces (overlays from `extracted/locales/*`, dig 14
+wave-2) never enter these files — they arrive as pipeline artifacts and get
+their own namespace/mechanism in the pieces that consume them.
+
+**Initial key inventory (exactly 13; values are EN stubs at F4):**
+
+```
+chrome.nav.database · chrome.nav.map · chrome.nav.guides · chrome.nav.news ·
+chrome.nav.tools · chrome.header.homeLabel · chrome.locale.triggerLabel ·
+chrome.locale.listLabel · chrome.a11y.skipToContent · chrome.footer.label ·
+chrome.footer.sections · chrome.notFound.title · chrome.notFound.body
+```
+
+(F5 owns its own keys — `search.*` enters with F5's commit, not before.
+Anti-slop: no key exists whose only job is explaining the UI.)
+
+**Stub policy, made mechanical.** `site/messages/_stub-keys.json` lists
+every key still carrying pivot-EN stub text in the non-pivot files (all 13
+at F4). Gates:
+
+- `chrome-parity` test (§7): identical key set ×9, no empty values,
+  identical `{placeholder}` sets per key, and every key in the stub ledger
+  holds a byte-identical value across all nine files (so a "translated"
+  value can't hide inside a stubbed key).
+- **Launch gate:** `_stub-keys.json` must be empty before any non-localhost
+  deploy — until then EN chrome on `/de` is a declared construction state,
+  not a shippable locale page. Real chrome copy translates from the game's
+  own localized UI vocabulary when dig 14's UI-string corpus lands; the
+  game's own nouns stay in the game's mix (design-standard §5.4).
+
+`request.ts` imports the nine files statically (deterministic SSG, no
+dynamic-import waterfalls). Server components read via
+`getTranslations("chrome")`; the provider passes `messages` for the one
+client island (locale combobox).
+
+## 5. Shell anatomy — NWG shell structure, wikily-grade finish, game chrome
+
+All chrome rides the F1 canon: `.wt-panel` surfaces, `HeaderBg` band
+(`--tex-header-bg`, slice 10, h35) with the −3px title offset, `ListHeader`
+row bands, white-outline hover / white-glow selection recipes
+(`--effect-hover-outline`, `--effect-selected-glow`), gold reserved to
+currency/selection/focus (`--ring`). Serif-first: EB Garamond chrome, IM
+Fell English wordmark. Text sizes only from the F1 ramp (≥12px floor,
+design-standard §3).
+
+**Header** (sticky, `banner` landmark, opaque `--bg-1` + bottom bevel
+`--border`):
+
+- Left: wordmark **WARTALES** (`--font-flavor`, `--text-display`) linking
+  to `/` (bare pivot path from every locale — one product, one home).
+- Nav row: section links rendered **only from
+  `src/lib/routes-manifest.ts`** entries whose target route exists
+  (`live: true`). Labels = `chrome.nav.*`; hover = white outline + text
+  brightens to `#FFFFFF`; active section = white glow. At F4 the manifest
+  is `{}`-empty-plus-home: unbuilt sections are omitted, never captioned
+  (copy-earns-its-place ¶2) — each landing piece flips its own row.
+- **Search slot (F5's piece):** a reserved mount in the header grid,
+  `data-shell-slot="search"`, rendering nothing at F4 — no input, no
+  "Search" word, no disabled control (omitted, not captioned). Contract
+  handed to F5: the mount occupies the nav row's right region; closed-state
+  "word in the nav", open-state grow-across-the-row, 2-char trigger and
+  in-place swap are F5's behaviors per
+  [DR-2026-08-22-search-is-not-a-page]. There is no `/search` route and no
+  search link anywhere in F4 output.
+- Right: **locale combobox** — Radix Popover + Command upgraded per F1 §4:
+  closed chip shows the current code (`DE`), list shows native names
+  (§2 table), typed filtering accepted, gold `--ring` focus, selected row =
+  white glow. Items are real `<a href>`s (server-renderable link graph,
+  seo-standard §2) built with `navigation.ts` Link so the path is preserved
+  and only the locale segment changes.
+- First focusable element: skip link (`chrome.a11y.skipToContent`).
+- Narrow viewport: nav collapses into a disclosure sheet — same chrome
+  recipes, comfortable touch targets, 12px floor intact.
+
+**Footer** (`contentinfo` landmark): same manifest-driven law — wordmark
+repeat, section link columns (they deepen automatically when PT02's
+taxonomy menu lands, NWG dbMenu pattern), no invented legal lines, no
+absence copy. Single source: the same `routes-manifest.ts` feeds header nav
+and footer, so the two can never disagree.
+
+**Smoke home** (`[locale]/page.tsx`): wordmark lockup over `--bg-1`, nothing
+else — no tagline, no data claims, no "coming soon" prose (anti-slop).
+PT01 replaces this file wholesale in its own commit.
+
+Landmarks: exactly one `banner`, one `contentinfo`, `navigation` on nav and
+footer groups; the page `<h1>` belongs to pages, never to the shell.
+
+## 6. Token wiring — Tailwind v4 theme over the frozen canon
+
+`globals.css` (the only new stylesheet):
+
+1. `@import "tailwindcss";` then `@import "./styles/tokens.css";` — the
+   F1 file is consumed verbatim, never duplicated, never edited
+   (tokens.test.ts byte-guards its literals; §7 keeps the suite green).
+2. `@theme inline` maps the shadcn slots and game tokens to utilities:
+   `--color-*` for every shadcn variable plus `--bg-1..4`, `--panel-well`,
+   the text ramp, `--selection`, `--positive/--negative/--warning`,
+   `--rarity-*`/`--light-rarity-*`, `--chart-1..5`, `--player-1..4`;
+   `--font-ui/flavor/cjk/sans/serif/mono` for the font utilities;
+   `--radius-*: 0`.
+3. **Spacing law:** Tailwind's numeric scale is NOT remapped onto the
+   game's 5px rhythm (silent conflation hazard). The game steps ship as
+   named utilities `--spacing-g1..g8 ← var(--space-1..8)` (`p-g4`,
+   `gap-g5`, …). Raw numeric spacing utilities (`p-4`, `gap-2`) are banned
+   in shell/app components — the hygiene test greps for them (§7).
+4. Base layer: `color-scheme: dark`; body = `--background`/`--foreground`;
+   no `.dark` variant exists (`:root` IS dark, F1 canon; no light theme
+   ships).
+5. Component classes from tokens.css (`.wt-panel`, `.rarity-tier-*`) are
+   used as-is; no second definition of any token or recipe anywhere in
+   `site/src` outside tokens.css (hygiene-tested).
+
+## 7. Test spec (all node-env, beside or under `site/src`, discovered by the untouched `vitest run`)
+
+1. **Existing canon stays green:** `tokens.test.ts` passes unmodified —
+   including the served-refs guard, which keeps failing `npm test` while
+   any declared font/texture binary is unstaged.
+2. **`locale-routing.test.ts`:** the §2 table has exactly the 9 frozen
+   client locales; `en` is the sole bare pivot; prefixes unique; BCP-47
+   values valid (`pt-br`→`pt-BR`, `zh`→`zh-Hans`); native names non-empty.
+3. **`chrome-parity.test.ts`:** the §4 gates (key-set ×9, non-empty,
+   placeholder parity, stub-ledger consistency, all-13-listed-at-F4).
+4. **`routes-manifest.test.ts`:** every `live: true` href resolves to an
+   existing route file on disk; every manifest entry has a `chrome.nav.*`
+   key in all nine message files. Dead nav links cannot ship.
+5. **`shell-hygiene.test.ts`:** greps `src/components/**` + `src/app/**`
+   for stock Tailwind palette classes (`slate|gray|zinc|neutral|stone-*-N`),
+   raw numeric spacing utilities, `oklch(`, and any `--`-token declaration
+   outside tokens.css — all must be absent.
+6. **`scripts/smoke.mjs`** (executable AC runner, exit-code verdict):
+   boots `next dev` on a scratch port, then curls the §8 matrix — status
+   codes, redirect Location + permanence, `lang` attributes, prefixed href
+   correctness, wordmark/nav/footer presence, absence of `/en/` internal
+   hrefs and of any search control. Prints one PASS/FAIL line per check.
+
+## 8. Acceptance criteria
+
+1. **Boots clean.** `npm run dev` serves on :3000 with zero build errors;
+   `/` returns 200 pivot EN.
+2. **Nine locale roots render:** `/`, `/fr`, `/de`, `/es`, `/pl`, `/pt-br`,
+   `/ru`, `/ko`, `/zh` each return 200 (smoke).
+3. **Pivot-prefix law:** `/en` and `/en/de` answer **301** to `/` and
+   `/de` respectively (Location asserted); no served page contains an
+   internal `href="/en..."` (smoke + grep of rendered HTML).
+4. **No negotiation:** `/` with `Accept-Language: fr` returns 200 EN at
+   `/`; `/xx/foo` returns 404 (never a locale redirect).
+5. **Switch links resolve:** every locale-combobox item href on each served
+   page returns 200 ×9, same-path (at F4: the locale root), correct prefix.
+6. **Curl-greetable HTML** (FRAMEWORK §2.14): `/` and `/de` served HTML
+   contain the wordmark, ≥1 nav `<a href>` per live manifest row, the
+   footer landmark, and `<html lang>` = `en`/`de` respectively; no raw
+   message keys (`chrome.`) leak into any served page.
+7. **Vitest green:** full suite passes — `tokens.test.ts` unmodified and
+   passing, plus the four new suites of §7.
+8. **Chrome parity:** key sets identical ×9; placeholder parity; stub
+   ledger lists exactly the stubbed keys and they are byte-identical across
+   locales (§4 gates).
+9. **Canon untouched:** `git diff` empty for `tokens.css`,
+   `tokens.test.ts`, `tokens-preview.html`, and `package.json`'s `test`
+   script; no token re-declared outside tokens.css.
+10. **Hygiene laws hold:** zero stock-palette classes, zero raw numeric
+    spacing utilities, zero `oklch(` in shell/app sources (test-enforced).
+11. **Search slot honored:** `data-shell-slot="search"` present and empty
+    in served header HTML; no search input, no "Search" nav word, no
+    `/search` route or link anywhere.
+12. **Assets resolve:** every `/fonts/*.woff2` and `/assets/ui/*.png` ref
+    reachable (curl 200) on a staged machine; on a fresh clone the dev
+    server still renders (bevel/stack fallbacks) and the missing-ref state
+    is reported by `npm run stage` with the README commands.
+13. **CJK routing discipline:** the `/zh` and `/ko` documents emit the
+    Noto split-subset stylesheet link (fonts README pattern); the other
+    seven locales emit none.
+14. **Production build:** `next build` succeeds; all nine locale homes
+    (plus locale-scoped not-found) prerender as static HTML.
+
+## 9. Files touched
+
+**Created:** `site/next.config.ts`,
+`site/tsconfig.json`, `site/postcss.config.mjs`,
+`site/src/middleware.ts`, `site/src/app/[locale]/layout.tsx`,
+`site/src/app/[locale]/page.tsx`, `site/src/app/[locale]/not-found.tsx`,
+`site/src/i18n/{locales,routing,request,navigation}.ts`,
+`site/src/lib/routes-manifest.ts`,
+`site/src/components/shell/{header,nav-row,locale-combobox,search-slot,footer}.tsx`,
+`site/src/components/ui/{button,popover,command}/…` (shadcn copies, upgraded),
+`site/components.json`, `site/src/styles/globals.css`,
+`site/messages/{en,fr,de,es,pl,pt-br,ru,ko,zh}.json` (×9),
+`site/messages/_stub-keys.json`, `site/scripts/{smoke,stage-assets}.mjs`,
+`site/.gitignore` (`.next/`, `next-env.d.ts`).
+
+**Modified:** `site/package.json` (deps + dev/build/start/stage/smoke
+scripts; `test` untouched). **Never touched:** `site/src/styles/tokens.css`,
+`site/src/styles/tokens.test.ts`, `site/src/styles/tokens-preview.html`,
+anything under `site/public/` (written only by the stage script, binaries
+stay uncommitted per the README conventions), anything under `extracted/`.
+
+Relinks: [pieces.mdx](./pieces.mdx) F4/F5 rows ·
+[spec-tokens.mdx](../design/spec-tokens.mdx) (F1 canon + component canon §4) ·
+[shadcn-adoption.mdx](../design/shadcn-adoption.mdx) ·
+[locale-key-convention.mdx](./locale-key-convention.mdx) ·
+[fonts README](../site/public/fonts/README.md) ·
+[textures README](../site/public/assets/ui/README.md) ·
+[`_foundation/localization-architecture.md`](../../_foundation/localization-architecture.md)
+§1–§5 · [`_foundation/design-standard.md`](../../_foundation/design-standard.md)
+§2, §3, §5 · [`_foundation/nw-site-new-deep-dive.md`](../../_foundation/nw-site-new-deep-dive.md)
+§5, §9 · [`_foundation/decision-register.md`](../../_foundation/decision-register.md)
+[DR-2026-08-24-wartales-roster], [DR-2026-08-20-locale-urls],
+[DR-2026-08-22-search-is-not-a-page],
+[DR-2026-08-22-copy-earns-its-place],
+[DR-2026-08-21-drop-chip-words-and-updated-column] ·
+[`FRAMEWORK.md`](../../FRAMEWORK.md) §2.7, §2.11, §2.14, §2.15, §2.20 ·
+[`spec.md`](../spec.md) `locales` block · [F5 brief](./briefs/documentator-f5-search.mdx)
+(slot consumer).

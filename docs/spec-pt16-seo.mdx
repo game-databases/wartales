@@ -1,0 +1,682 @@
+# Wartales — SEO/AEO infra spec (PT16: sitemaps · robots · JSON-LD · OG cards · llms.txt · IndexNow)
+
+Status: DRAFT r1 (2026-08-26) — awaiting Reviewer. Authored by the
+Documentator from brief
+[`docs/briefs/documentator-pt16-seo.mdx`](./briefs/documentator-pt16-seo.mdx),
+piece row [PT16](./pieces.mdx) ("SEO/AEO infra … data dep: emit stage").
+Inputs read in full: root [`AGENTS.md`](../../AGENTS.md),
+[`_foundation/decision-register.md`](../../_foundation/decision-register.md)
+(sentinel reached), [`_foundation/seo-standard.md`](../../_foundation/seo-standard.md)
+§1–§9 (sentinel reached), [`_foundation/localization-architecture.md`](../../_foundation/localization-architecture.md)
+(sentinel reached), [`_foundation/domain-doctrine.md`](../../_foundation/domain-doctrine.md),
+[`_foundation/site-sections.md`](../../_foundation/site-sections.md),
+[`_foundation/design-standard.md`](../../_foundation/design-standard.md),
+[`FRAMEWORK.md`](../../FRAMEWORK.md) end-to-end (§2.10 + §8 DoD govern here),
+pack [`spec.md`](../spec.md) (pack README.md / data-acquisition.md do not
+exist), [`contracts/maps.schema.json`](../contracts/maps.schema.json), the F2
+brief [`documentator-f2-contracts.mdx`](./briefs/documentator-f2-contracts.mdx),
+the F4 brief [`documentator-f4-shell.mdx`](./briefs/documentator-f4-shell.mdx),
+[`docs/icons-export.mdx`](./icons-export.mdx) (CDN path convention),
+[`extracted/relinks/locale_availability.jsonl`](../extracted/relinks/locale_availability.jsonl)
+(row shape verified on disk), and the current `site/` tree (F1 tokens +
+public assets only — no Next.js scaffold yet).
+
+## 0. Scope in one line
+
+Define the whole discoverability layer for the Wartales site before any of
+its routes exist: per-section per-locale sitemaps with buildid `lastmod`,
+the robots/noindex policy including the deliberate AI-crawler stance,
+schema.org JSON-LD emitters per page type, the OG/Twitter card slot fed
+from extracted art, the `/llms.txt` machine-data-plane contract, and the
+IndexNow publish ping — everything specified so that CodeWriter can land it
+as soon as F4's shell routes and F2's API shape freeze.
+
+## 1. Authority chain
+
+- **`seo-standard.md` §1–§9 is the binding standard.** Every section below
+  cites the rule it implements. Where this spec adds a Wartales-specific
+  value (URL segment spellings, section list, emitter inventory), it is a
+  local instantiation, never a second standard ([DR-2026-08-17-discoverability]:
+  do not invent one).
+- **FRAMEWORK §2.10** fixes the SEO/AEO layer contents: data-generated
+  titles/descriptions leading with the query phrase, BreadcrumbList +
+  FAQPage JSON-LD, per-entity OG cards, `/llms.txt`, static JSON API without
+  auth, category landing pages, hreflang matrix. **FRAMEWORK §8 DoD** turns
+  two of them into launch gates verified on the production origin:
+  `llms.txt` + unauthenticated static JSON API reachable and **non-empty**;
+  visible data-version evidence on every data-bearing surface; curl-grep
+  proves cross-links and quotable blocks in served HTML.
+- **Locale law**: pivot locale at bare paths, prefixes for every other
+  locale, `x-default` → pivot page, `/{pivot}/*` 301s to bare paths
+  ([DR-2026-08-20-locale-urls], seo-standard §1, localization-architecture
+  §1–§3). Unique per-locale title + meta description authored from the
+  game's own localization (localization-architecture §3).
+- **Provenance law (D2)**: the citable trust signal is the user-facing
+  class only — `buildId`/patch label and coverage scope. Repo-only classes
+  (source identity, URLs, license tags, acquisition paths, extractor
+  identity) are banned from pages, `llms.txt`, and the JSON API alike
+  (seo-standard §9 citability clause).
+- **Machine plane is not UI**: `/llms.txt`, JSON payloads, `data-*`
+  attributes and JSON-LD keep ISO instants and enum vocabulary that the
+  user surface may not print ([DR-2026-08-22-numbers-stand-alone];
+  [DR-2026-08-20-user-language-realtime] scopes the ban to UI; the
+  [DR-2026-08-18] boundary states `/llms.txt` addresses machine consumers
+  and its precision is the point).
+- **Anti-slop copy bar applies to every human-readable string this layer
+  generates** (titles, descriptions, OG alt text): no absence announcements,
+  no interface-explaining sentences, no read-twice labels
+  ([DR-2026-08-22-copy-earns-its-place]).
+- **Sequencing law** ([pieces.mdx](./pieces.mdx)): F4/F5 + PT16 skeleton
+  precede the DB core pieces. This spec is written against F4's route
+  registry and F2's contract manifest as declared dependencies ([§11](#11-dependencies-and-sequencing));
+  where those do not exist yet, the dependency is named and the acceptance
+  criterion is marked BLOCKED-ON, never loosened.
+
+## 2. Ground truth (frozen numbers this spec builds on)
+
+All numbers re-verified on disk this session, buildid **20318128**
+(TargetBuildID 21238928 queued — first patch-diff event):
+
+| Fact | Value | Source |
+|---|---|---|
+| Official locales | 9: `en, fr, de, es, pl, pt-BR, ru, ko, zh`; client-verified; `zh` ships store-named zh-Hans (`code-mapping: {zh: zh-Hans}`) | [spec.md §locales](../spec.md) |
+| Pivot | `en` at bare paths; all others prefixed | [DR-2026-08-20-locale-urls] |
+| Community locale | `ja` = authored-translation candidate, filler-policy `omit-until-translated` — absent everywhere until translated | spec.md §locales |
+| Locale availability artifact | `extracted/relinks/locale_availability.jsonl` — row = `{"availableLocales": [...], "fields": {<locale>: {name: true}}, "id", "kind", "namedLocales": [...]}`; regenerated per extraction rerun | on disk; localization-architecture §5.4 |
+| Managed kinds | 40 kinds promoted to canonical `extracted/data/<kind>.jsonl`; census total 11,473 entities | [spec-stages-datasets.mdx](./spec-stages-datasets.mdx) |
+| Icon CDN set | `output/cdn/v20318128/{kind}/{id}.webp` — 3,779 files (3,199 real art + 580 named placeholder); `misses.jsonl` enumerates every explicit-missing id | [icons-export.mdx](./icons-export.mdx) |
+| Icon pixel sizes | 96 px nominal, tile spans up to 96×192 preserved | icons-export.mdx |
+| Relations | 51 seed pair files / 19,130 edges; ordered-pair matrix upgrade is a later dig | spec-stages-datasets.mdx |
+| Maps | layers world-strategic, region-overlays, marker-layers, hunt-regions, battle-tactical, fief-districts; global affine transform pinned in `maps.json` `coordinateTransform` (Dig 11) | spec.md §maps; contracts/maps.schema.json |
+| Stack | `stack: next` (App Router); placement provisional umbrella `{hub}/games/wartales/`, localhost-first | spec.md; [DR-2026-08-24-wartales-roster] |
+
+Page math: full corpus × locales ≈ 11,473 × 9 ≈ **103 k** potential entity
+URLs at full availability, plus lists/guides/news/map/tool surfaces —
+sitemaps must therefore be sharded from day one (§4.3), not retrofitted.
+
+## 3. Canonical URL and locale layer (consumed from F4)
+
+This layer is F4's deliverable; PT16 only pins the rules the SEO machinery
+depends on and declares the single import point.
+
+1. **One import point.** Every SEO generator reads locales/routes through
+   F4's route registry module (`site/src/lib/routes.ts`, created by F4;
+   exact filename is F4's to confirm). PT16 code never hardcodes a locale
+   list or a route spelling. If F4 renames a segment, sitemaps/hreflang/
+   canonicals follow automatically — that is the dependency made mechanical.
+2. **Segment spellings (expected values, F4-freezes).** URL segments are the
+   pack locale codes verbatim: `/fr/`, `/de/`, `/es/`, `/pl/`, `/pt-BR/`,
+   `/ru/`, `/ko/`, `/zh/`. The **hreflang attribute value** is the BCP-47
+   form from the spec's code mapping (`pt-BR` stays `pt-BR`, `zh` becomes
+   `zh-Hans`); URL segment and hreflang value may differ for `zh` and that
+   is intended. `ja` appears nowhere until its authored-translation lane
+   ships (omit-until-translated).
+3. **Pivot rules.** No `/en/` URL ever exists; any `/{pivot}/*` path 301s to
+   the bare path (seo-standard §1). `x-default` hreflang points at the bare
+   path. Home canonical is the form that answers 200 — `/` for pivot,
+   `/de` not `/de/` for prefixed locales ([DR-2026-08-18-page-size]
+   canonical ruling, generalized).
+4. **One canonical URL per entity per locale**; readable slugs (spec.md:
+   game-id keys, slugged at normalize). A slug rename ships a 301 map —
+   never a 404 on an indexed URL (seo-standard §1).
+5. **No search route** ([DR-2026-08-22-search-is-not-a-page]): the header
+   field is F5's piece; `/search` is a 404 and appears in no capture list,
+   no sitemap, no robots.txt line.
+
+## 4. Sitemap strategy — per section, per locale, buildid `lastmod`
+
+Implements seo-standard §2 ("sitemap.xml per section per locale, `lastmod`
+driven by data versions — our extraction buildids, real freshness signals,
+not fake dates") and localization-architecture §5.4 ("locale_availability
+… single source for … per-locale sitemaps").
+
+### 4.1 Shape
+
+- `/sitemap.xml` is a **sitemapindex**. Children live at
+  `/sitemaps/{section}-{locale}(-{n}).xml` (pivot children omit `-locale`;
+  `-{n}` is the overflow shard).
+- Child sitemaps are plain `<urlset>` documents, protocol-limited to
+  50,000 URLs / 50 MB each — the generator shards before the limit, never
+  after a failure.
+- Every `<url>` carries `<loc>` + `<lastmod>`. No `changefreq`, no
+  `priority` (unverifiable guesses; the standard wants real freshness
+  signals only).
+
+### 4.2 Section registry
+
+The generator iterates a static registry (one table in
+`site/src/lib/seo/sitemap.ts`). Membership rule per section; a section with
+zero shipped routes emits no child sitemap at all — empty sections are
+omitted, never captioned ([DR-2026-08-22-copy-earns-its-place]):
+
+| Section | Route family (F4/PT spelling pending) | Membership | lastmod source |
+|---|---|---|---|
+| `pages` | `/`, `/methodology`, `/changelog`, legal/static | fixed list | site build time |
+| `taxonomies` | DB landing + per-kind landing | one per shipped kind | max(member entity lastmod) |
+| `lists` | paginated kind lists, real page numbers | page 1..N as shipped | max(member entity lastmod) |
+| `entities` | entity detail pages | **cartesian product of `locale_availability.jsonl` `availableLocales` × shipped locales, per id × kind** | per-row extraction-run instant (below) |
+| `map` | `/map` + region/place landings when shipped | routes that exist | `maps.json` buildid run instant |
+| `guides` | guide articles | published guides | article frontmatter date |
+| `news` | news articles + `/news/patch/{id}` diff pages | published articles | article publish / diff-run instant |
+| `lore` | lore-document pages | published documents | per-row extraction-run instant |
+| `quests` | quest pages | published quests | per-row extraction-run instant |
+| `tools` | calculator/builder/gallery landings | shipped tools | tool build time |
+
+Sections `guides`, `news`, `quests`, `lore`, `tools` activate as their
+pieces (PT07–PT13) land; the registry rows exist now, emitting nothing
+until then. `entities` is the only section whose membership is
+availability-gated per row: an entity unavailable in locale L has no L URL
+anywhere — no sitemap entry, no hreflang alternate, no link-row cell
+(localization-architecture §2 + §5.5, omit policy).
+
+### 4.3 `lastmod` semantics
+
+- Value = W3C datetime of the **extraction run that produced the row's
+  data version** (recorded per run in `extracted/validation-report.json`,
+  stage 6 of [spec-stages-datasets.mdx](./spec-stages-datasets.mdx)); the
+  associated `buildId` renders on the page itself as the user-facing
+  freshness evidence (FRAMEWORK §8, D2). The sitemap timestamp is a machine
+  plane fact; the page shows the buildid, not the clock.
+- Never hand-edited, never future-dated, never faked forward to look fresh
+  (seo-standard §2). A rerun on the same buildid rewrites the same
+  timestamps — byte-stable output is tested ([§13](#13-acceptance-criteria) AC-S6).
+- List/taxonomy lastmod = max of member entity lastmods, so a single patched
+  entity refreshes its list page's signal honestly.
+
+### 4.4 Generation and triggers
+
+- Generated **at site build time** by the Next.js app
+  (`app/sitemap.ts` + `app/sitemaps/[shard]/route.ts`) reading
+  `extracted/relinks/locale_availability.jsonl`, `extracted/data/_meta`
+  conventions, and the validation report through one loader module
+  (`site/src/lib/seo/source.ts`). Extraction cadence and deploy cadence
+  stay decoupled; ISR/on-demand revalidation follows F4's shell decisions.
+- Deterministic: same inputs → byte-identical output (sorted iteration,
+  seeded ordering — the same discipline as the locale-availability
+  generator). This is what makes AC-S6 testable and IndexNow diffs
+  trustworthy ([§10](#10-indexnow-ping-on-publish)).
+- Pagination URLs are listed as real URLs (crawlable `<a href>` underneath
+  — seo-standard §2); a past-the-end page number is 404, not page one
+  ([DR-2026-08-18-page-size]).
+
+## 5. robots.txt and noindex policy
+
+Implements seo-standard §2 robots discipline and §2's AI-crawler stance.
+Mechanism note that prevents the classic defect: **robots.txt cannot
+declare noindex** — a disallowed crawler never reads the noindex. The pair
+is: `noindex` lives **on the page** (meta robots / `X-Robots-Tag` header);
+robots.txt `Disallow` is reserved for non-page paths and true infinite
+crawl traps.
+
+### 5.1 AI-crawler allowance set (deliberate, explicit, greppable)
+
+Explicit `User-agent` groups with `Allow: /` for the full named set —
+search/answer fetchers **and**, as the standard's deliberate training
+stance, the training crawlers:
+
+`bingbot`, `googlebot`, `OAI-SearchBot`, `ChatGPT-User`, `PerplexityBot`,
+`Perplexity-User`, `ClaudeBot`, `Claude-User`, `Claude-SearchBot`,
+`Google-Extended`, `GPTBot`, `CCBot`, `Applebot-Extended`,
+then `User-agent: *` with the path disallows below. Absence would also
+mean allow — the explicit groups exist so the stance is auditable by grep
+and survives a future flip to selective blocking without archaeology.
+
+**Edge caveat, carried as a launch checklist item:** CDN/WAF bot protection
+silently overrides robots.txt (Cloudflare blocks AI crawlers by default on
+new zones — seo-standard §2). After every CDN change, verify at the edge
+against the production origin (AC-R6, PROD-gated).
+
+### 5.2 Path rules (production robots.txt)
+
+- `Disallow: /api/` and any non-page payload routes the F2/F4 shells add —
+  machine data plane is linked, not crawled as HTML.
+- `Disallow` for parameter-spam traps only (`Disallow: /*?*sort=`-class) —
+  and only for parameters whose canonical is already declared; facet
+  combinations stay **crawlable and noindexed** (below), not disallowed.
+- No `/search` line exists (there is no route).
+- `Sitemap:` directive = absolute production-origin sitemap URL from site
+  config.
+- Staging never appears in production robots.txt; staging protects itself
+  with a site-wide `X-Robots-Tag: noindex, nofollow` response header
+  (header, not robots.txt, so the directive is actually readable) — AC-R4.
+
+### 5.3 noindex rules
+
+| Surface | Directive | Why |
+|---|---|---|
+| Facet/filter combinations of list pages (`?quality=tier2&element=fire`) | meta `noindex,follow` + `rel=canonical` → base list | seo-standard §2 "noindex filter/facet combinations"; thin-combo floor §5 |
+| Parameter variants generally | canonical to the clean URL | seo-standard §2 |
+| Tooltip sub-routes (`/db/{kind}/{id}/tooltip`) | `X-Robots-Tag: noindex` (payload is a fragment, not a page) | FRAMEWORK §2.7 tooltip route; duplicate-content hygiene |
+| Map URL-state variants (`?z&x&y&focus=`) | canonical → `/map`; state params never indexed separately | map state is a URL for sharing, not a page universe |
+| UGC personal views (user profiles, tracker states, unpublished drafts) | `noindex` until they carry public content | uniqueness floor, seo-standard §5 |
+| Concept/placeholder rows, if any ever ship | `noindex,nofollow` + excluded from every sitemap | [DR-2026-08-20-guildwars-build] guardrail pattern |
+| Static JSON API endpoints | `X-Robots-Tag: noindex` | SERP surface = pages; the data plane is cited via llms.txt + stable URLs, not SERPs |
+| 404 / error pages | natural absence + `noindex` belt-and-braces | PT17 owns the branded states |
+
+Thin-content floor interaction (seo-standard §5): any future
+entity×entity combo page class ships **noindexed until it has unique
+content, or not at all** — the registry in §4.2 simply has no such section
+today, which is the honest state.
+
+## 6. JSON-LD emitters per page type
+
+Implements seo-standard §3 + FRAMEWORK §2.10. Purpose is machine
+comprehension, not snippet bait: `HowTo` rich results are retired and
+`FAQPage` restricted (2023) — we ship understanding, expecting nothing
+(seo-standard §3).
+
+### 6.1 Emitter architecture
+
+- One module `site/src/lib/seo/jsonld.ts` exporting per-type builders;
+  each builder receives the **already-rendered content object** for the
+  page and returns a JSON-LD node or `null`. Builders throw in dev /
+  return `null` silently in prod when fed content missing a required
+  field — **markup follows content, never precedes it** (the §9 rule,
+  enforced mechanically: no emitter may synthesize a claim the page does
+  not render).
+- Pages serialize nodes into `<script type="application/ld+json">` in the
+  server component (served HTML — FRAMEWORK §2.14 curl-grep verifiable).
+- **Identity parity is structural**: names/descriptions come from the same
+  loaded entity record that renders the H1 and that F2's JSON API will
+  serve — one data plane, two renders, and `llms.txt` reads the same
+  records ([§9](#9-llmstxt-content-contract)). Assistants reconciling
+  sources must find zero drift (seo-standard §9 one-identity rule).
+
+### 6.2 Per-page-type inventory
+
+| Page type | JSON-LD | Notes |
+|---|---|---|
+| Every page (root layout) | `VideoGame` (sitewide reference node) + `Organization` + `WebSite` | see 6.3 |
+| Entity detail (all kinds) | concrete `Thing` subclass where honest, else `Thing` + `additionalProperty` stats | see 6.4 |
+| Kind list pages | `ItemList` of the rows actually in served HTML (first rendered page worth), `itemListElement` → url+name+position | markup follows the rendered table |
+| Taxonomy/kind landing | `CollectionPage`/`ItemList` + `Dataset` when the kind exposes a downloadable export | data-page rule |
+| Guides (PT10) | `HowTo` **iff** the article renders a real step sequence; else `Article` | conditional by content |
+| Guide/FAQ blocks | `FAQPage` **only where an honest Q&A block renders** | §9: markup follows content |
+| News + patch-diff pages (PT11) | `NewsArticle` (headline, datePublished, dateModified, image) | publication date = the article's own fact, permitted by [DR-2026-08-22-numbers-stand-alone] |
+| Tool pages (PT07–PT09) | `SoftwareApplication` with `applicationCategory`, offers omitted (nothing is sold) | conditional when tools ship |
+| Map page (PT05) | `WebPage` + `BreadcrumbList`; `Dataset` referencing marker payload | markers are data |
+| Everywhere except home | `BreadcrumbList` mirroring the visible trail exactly | seo-standard §1: visible + structured |
+
+### 6.3 Sitewide graph
+
+- `VideoGame`: `name: "Wartales"`, publisher `Shiro Games` (Organization
+  node), `datePublished: 2023-04-12` (1.0 store release, spec anchors),
+  `inLanguage`: the nine BCP-47 tags (`en, fr, de, es, pl, pt-BR, ru, ko,
+  zh-Hans`), `identifier`: `steam:1527950`, `url`: store page (public game
+  identity — not repo provenance), `sameAs`: store page + §8 registry
+  surfaces **read from the developer-distribution registry file; entries
+  absent today emit no `sameAs` rather than invented URLs**. `playMode`
+  reflects `SinglePlayer` + `CoOp` (spec game-modes).
+- `WebSite` carries `potentialAction` omitted (no search route to target —
+  [DR-2026-08-22-search-is-not-a-page]) and sits with `publisher` →
+  Organization. Organization `name`/`url` come from site config; the
+  network identity values fill in when the owner's domain call (question
+  queue Q1) lands — config slot, not invention.
+
+### 6.4 Entity mapping rule
+
+Subclass `Thing` only where the subclass's semantics are true:
+
+| Kind(s) | Node | Rationale |
+|---|---|---|
+| `location-place`, `region`, `poi-marker` | `Place` | real geographic semantics (maps.json bounds) |
+| `lore-document` | `Article`/`CreativeWork` | textual work |
+| `quest` | `Thing` (+ `subjectOf` → JSON URL) | no honest schema.org quest type |
+| `item`, `skill`, `status-trait`, `class`, `companion`, `unit-enemy`, `recipe`, `building-camp`, `animal-mount`, `faction-kingdom`, `fief`, `npc-vendor`, `battle-scene` | `Thing` + `additionalProperty` `PropertyValue[]` | `Product`/commerce types are the banned retail transfer (seo-standard §9); `Thing` + typed stats is truthful |
+| `achievement` | `AchievementAction`-adjacent → `Thing` | honest fallback until evidence supports more |
+
+Every entity node carries: `name` (locale record), `description`
+(quotable answer block text — FRAMEWORK §2.8 same builder feeds meta
+description), `image` (OG slot chain, §8), `identifier` (game id),
+`isPartOf` → the VideoGame node, `subjectOf` → the stable JSON URL derived
+from the page URL (seo-standard §9 stable-data-URL rule; the payload shape
+is F2's contract — link emitted only when F2's manifest marks the route
+live).
+
+`BreadcrumbList` items equal the DOM breadcrumb (count, order, names,
+hrefs) — compared by test (AC-J2), because divergent breadcrumbs are the
+cheapest way to fail machine comprehension.
+
+## 7. Titles, meta descriptions, hreflang
+
+Implements seo-standard §3 (unique title + description templated with
+entity-specific tokens, never sitewide boilerplate), FRAMEWORK §2.10
+(titles lead with the query phrase), localization-architecture §3.
+
+- Templates are **localized per locale** and composed from the locale's
+  own game strings: `<entity display name>` + kind label + one
+  entity-specific stat token (e.g. DE: `„Admiral" — Klasse in Wartales:
+  Werte, Rekrutierung & Fundorte`). English template leads with the query
+  phrase shape users type (`Admiral — Wartales Class: Stats, Recruitment &
+  Where to Find`).
+- Meta description = the quotable answer block (2–4 data-generated
+  sentences, FRAMEWORK §2.8) — same builder, zero drift between what the
+  page opens with and what the SERP shows.
+- Uniqueness is **asserted at build**: within a locale, no two shipped
+  pages share a title; collisions fail the build with the offending ids
+  (localization-architecture §3 "reviewed for uniqueness", mechanized).
+- Non-pivot titles are composed from that locale's templates and strings —
+  never raw English reused (localization-architecture §3).
+- hreflang cluster per page: one `rel=alternate` per
+  `availableLocales` entry for that entity (attribute value = BCP-47 form,
+  §3.2) + `x-default` → bare-path pivot page. Membership exactly equals
+  the cross-locale link row and the sitemap membership — three renders of
+  one availability fact (localization-architecture §2, §5.4).
+
+## 8. OG / Twitter cards from extracted art
+
+Implements seo-standard §3 ("OG/Twitter cards with per-entity rendered
+images — we own the extracted art"). Today we own **icons**
+(`output/cdn/v{buildid}/{kind}/{id}.webp`, 96 px nominal); per-entity
+rendered stat-card images are a **later piece**. PT16 therefore defines the
+slot and the fallback chain now, so the later generator drops in without
+touching page code.
+
+### 8.1 Slot contract (for the later rendered-cards piece)
+
+- URL: `/cdn/v{buildid}/og/{kind}/{id}.webp` (versioned CDN prefix per
+  FRAMEWORK §2.5; `og/` subtree beside `{kind}/`).
+- Geometry: 1200×630, safe margins for cross-platform crops, lossless-or-
+  high-quality WebP; deterministic composition from the entity's own icon
+  + name + key stats in the pack's token system (F1) — no stock art, no
+  invented visuals (D6: missing art renders as the named explicit-missing
+  state; `misses.jsonl` ids get the placeholder card, never a fabricated
+  portrait).
+- Presence contract: the OG resolver probes the emitted OG manifest
+  (produced alongside the CDN set); it never guesses.
+
+### 8.2 Resolution chain (implemented now)
+
+1. Rendered card from the manifest (empty until the later piece lands);
+2. kind fallback card (static, extracted-art-based, one per kind);
+3. sitewide default card (extracted key art crop from the UIA pool —
+   `design/sources/INDEX.mdx` imagery; committed under
+   `site/public/assets/og/default.png`).
+Icons themselves are **never** used as `og:image` (96 px < the 200 px
+minimum platforms enforce); they feed JSON-LD `image` and page body
+instead. `twitter:card` = `summary_large_image`; Twitter tags mirror OG
+values — one source, no divergent copy.
+
+### 8.3 Required tags, every shipped page
+
+`og:title` (= `<title>`), `og:description` (= meta description),
+`og:url` (= canonical), `og:type` (`website`; `article` on guides/news),
+`og:image` + `og:image:width` + `og:image:height` + `og:image:alt`
+(descriptive alt from the entity name — anti-slop applies), `og:locale`
+(BCP-47) + `og:locale:alternate` for each available locale.
+
+## 9. llms.txt content contract
+
+Implements seo-standard §9 machine-data-plane launch gate (register D5,
+gate G26: `/llms.txt` plus unauthenticated static JSON API, verified
+reachable and non-empty on the production origin). `/llms.txt` addresses
+machine consumers — the public-copy register ban does not reach it; its
+precision is the point ([DR-2026-08-18] boundary). `llms-full.txt` is
+post-launch bundle — out of scope ([§12](#12-out-of-scope)).
+
+Generated at build (`site/src/app/llms.txt/route.ts`) from the same loaded
+records as pages and JSON-LD. Structure:
+
+1. **H1** — site title from site config (provisional `Wartales Database`;
+   final brand is the owner's Q1 call — the slot is config, not prose).
+2. **Blockquote** — what the site is, one paragraph: a database of
+   Wartales entities, mechanics and maps extracted from game client build
+   `{buildid}`, with per-locale pages in 9 languages; coverage stated
+   honestly (which kinds ship, which are partial).
+3. **`## What the numbers mean`** — the citability core, worded so an
+   assistant can quote it verbatim:
+   - every value comes from client build `{buildid}` (patch label = Steam
+     build id);
+   - each number carries its derivation class where applicable
+     (`hard` = direct client data, `logic` = reconstructed from decompiled
+     logic, measured caps noted as approximations pending formula
+     reconstruction — the M5 price-cap case);
+   - absent ≠ zero: fields the client does not expose are omitted, never
+     filled;
+   - live session figures (Steam-connected sessions) live on a separate
+     ephemeral plane and are not part of the static entity JSON.
+4. **`## JSON data`** — the entry-point links, generated from F2's
+   published-contracts manifest so URLs cannot drift: per-kind list
+   indexes, the entity JSON URL derivation rule ("replace nothing — the
+   JSON for a page lives at the page URL + `.json`", F2's shape decision),
+   tooltip payloads, map/markers JSON. Links are emitted **only for
+   manifests that exist** — an unbuilt F2 route is not linked (non-empty
+   gate honesty).
+5. **`## Maps`** — `maps.json` + marker payload pointers.
+6. **`## News & changes`** — patch-diff summaries/RSS when PT11/PT18 ship.
+7. **`## Methodology`** — link to `/methodology` (route owned by a content
+   piece; dependency noted in §11 — llms.txt may link it only once it
+   resolves, per the gate's non-empty rule).
+8. **Citability footer** — provenance stated in D2's user-facing class
+   only: buildId, coverage scope, extraction recency as an ISO instant
+   (machine plane). Repo-only classes (source identity, acquisition paths,
+   license tags, extractor identity) are banned here like everywhere
+   user-visible (AC-L2 sweeps a denylist).
+
+## 10. IndexNow ping on publish
+
+Implements seo-standard §2 ("IndexNow on every publish/update — Bing/Copilot
+ecosystem indexes from it; ChatGPT search leans on the Bing index").
+
+- **Key**: one 32-hex-char key generated once, committed as
+  `site/public/{key}.txt` containing the key (public verification token by
+  design — not a credential; the banned-credential list is unaffected).
+  Config stores the key string beside the origin.
+- **Trigger**: a deploy-pipeline step (`site/scripts/ping-indexnow.mjs`)
+  runs **after production deploy only**. Guards: production origin env +
+  key present; localhost/dev/CI builds never ping (tested — AC-I3).
+- **URL set**: diff of the previous vs current sitemap artifacts (both are
+  byte-stable, §4.4): new URLs + lastmod-advanced URLs, capped at the
+  protocol's 10,000-URL batch; larger diffs chunk into sequential requests.
+  First-ever publish = all shipped URLs, chunked.
+- **Endpoint**: `https://api.indexnow.org/indexnow` (aggregates the
+  partner engines) with `host`, `key`, `urlList`.
+- **Failure policy**: log + non-blocking (a failed ping never fails a
+  deploy); retry on the next publish's diff naturally re-includes stale
+  URLs. No silent success claims — the step prints the submitted count.
+- **Patch-day flow**: extraction rerun (new buildid) → site rebuild →
+  deploy → ping diff. This closes the loop that makes `lastmod` a real
+  freshness signal rather than decoration.
+
+## 11. Dependencies and sequencing
+
+| Dependency | What PT16 consumes | Status |
+|---|---|---|
+| **F4 shell routes** (`docs/spec-f4-app-shell.mdx` pending) | route registry module, locale segment spellings, layout mount points for JSON-LD/meta tags, breadcrumb anatomy (DOM trail that BreadcrumbList must mirror), canonical/redirect behavior | F4 brief exists, spec not landed — PT16 code imports the registry; nothing hardcodes |
+| **F2 API shape** (`contracts/` + `docs/spec-f2-contracts.mdx` pending) | JSON entry-point URL list for llms.txt §JSON data, `subjectOf` targets, the page-URL→JSON-URL derivation rule | F2 brief exists, spec not landed — llms.txt emits links only for manifest-present routes |
+| **Emit stage** (`spec-stages-datasets.mdx` stages 4–6) | `locale_availability.jsonl`, per-run instants in `validation-report.json`, `_meta` buildid | landed/spec'd |
+| **CDN set** (`output/cdn/v{buildid}/`) | entity images for JSON-LD; OG manifest slot | landed for item/skill/class @ v20318128 |
+| **PT05/PT07–PT13** | sections `map`/`tools`/`guides`/`news`/`quests`/`lore` activate as routes ship | registry rows exist now, emit nothing |
+| **PT17 error states** | 404 page (noindex) | independent; PT16 adds only the header |
+| **PT18 RSS/Atom** | news feed links in llms.txt | link appears when feed resolves |
+| Owner items | final site brand (Q1) fills llms.txt H1/Organization slots; production origin + CDN/WAF verify (AC-R6) at launch | flagged, not blocked locally |
+
+Build order per the pieces sequencing law: F4 → F5 → **PT16 skeleton**
+(this spec) → PT03/PT04 DB core (which inherit the meta/JSON-LD components
+rather than reinventing them).
+
+## 12. Out of scope
+
+- The static JSON API payloads themselves (F2's contracts + later stage-7
+  emission wiring — F2's brief flags it the same way).
+- Per-entity rendered OG image generator (later piece; slot defined §8.1).
+- `llms-full.txt`, `@gamedb/embed`, Discord bot, `@gamedb/mcp` (post-launch
+  bundle, FRAMEWORK §8).
+- RSS/Atom feeds (PT18), Google News sitemap variant (lands with PT11 news
+  cadence — noted here so nobody "discovers" it late: news sitemap +
+  `NewsArticle` publication metadata are the §9 content-feed expectation).
+- Monetization surfaces (ads.txt et al.) — owner call, site-sections §28.
+- Search (no route exists — F5 header field).
+
+## 13. Acceptance criteria
+
+Server under test: production-mode build served at `http://localhost:3000`
+(`npm run build && npm start` inside `site/`). Each criterion names its
+command and pass condition. BLOCKED-ON marks the dependency that must land
+first; the criterion itself never loosens. Sampled criteria fix N=100
+(seed = buildid) for speed, with the full-corpus variant behind the same
+script's `--full` flag.
+
+**Sitemaps**
+
+- **AC-S1** `curl -s localhost:3000/sitemap.xml` parses as a
+  `<sitemapindex>` whose child count equals the shipped-section ×
+  shipped-locale matrix computed from the section registry — asserted by
+  `node --test`-style script comparing XML against the registry.
+- **AC-S2** every child `<loc>` answers HTTP 200 with
+  `content-type: application/xml` (`curl -sI` loop).
+- **AC-S3** entity membership: for N sampled ids across kinds, the set of
+  sitemap URLs for that id equals exactly
+  `locale_availability.jsonl.availableLocales ∩ shipped-locales` joined
+  with the entity route pattern — script-asserted, zero extra, zero
+  missing.
+- **AC-S4** every `<url>` element carries a `<lastmod>` matching
+  `^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(Z|[+-]\d{2}:\d{2})$`, and sampled
+  entity lastmods equal the validation-report run instant for their
+  buildid (script).
+- **AC-S5** `curl -s localhost:3000/sitemaps/entities-en.xml | grep -c
+  '/en/'` → 0 (and the same grep across all fetched children → 0).
+- **AC-S6** byte stability: regenerate twice from unchanged inputs;
+  `git diff --no-index` on the two artifact trees is empty.
+- **AC-S7** no sitemap lists a noindexed surface: union of all children ∩
+  facet-variant/tooltip/profile patterns = ∅ (script).
+
+**robots / noindex**
+
+- **AC-R1** `curl -s localhost:3000/robots.txt` contains an explicit
+  `User-agent:` group for each of the thirteen named crawlers followed by
+  `Allow: /` (grep per token, exit 0 for all).
+- **AC-R2** robots.txt `Sitemap:` line equals the configured
+  production-origin sitemap URL; `curl -sI` on it → 200.
+- **AC-R3** facet noindex: `curl -sI
+  'localhost:3000/db/item?quality=tier2'` shows `X-Robots-Tag: noindex`
+  (or the served HTML meta equivalent via `curl -s | grep 'noindex'`),
+  and the same URL's payload declares `rel=canonical` to the base list.
+  BLOCKED-ON(F4 list routes).
+- **AC-R4** staging posture: with the staging env flag set, every probed
+  route answers `X-Robots-Tag: noindex, nofollow` (`curl -sI` on `/`,
+  one entity, one list). BLOCKED-ON(F4 env plumbing).
+- **AC-R5** `curl -s -o /dev/null -w '%{http_code}'
+  localhost:3000/search` → `404`, and robots.txt contains no `search`
+  token.
+- **AC-R6** (PROD, launch checklist) against the production origin:
+  `curl -s -A 'GPTBot' -o /dev/null -w '%{http_code}' https://<origin>/`
+  → 200, repeated for `PerplexityBot`, `ClaudeBot`, `CCBot` — the
+  edge/WAF override check after every CDN change.
+
+**JSON-LD**
+
+- **AC-J1** entity page: `curl -s <entity-url> | python
+  tools/parse_jsonld.py -` extracts all `application/ld+json` blocks,
+  parses each as JSON, and finds exactly one `VideoGame`, one
+  `BreadcrumbList`, one entity node of the mapped type. BLOCKED-ON(F4
+  entity routes; component testable standalone before that).
+- **AC-J2** breadcrumb parity: parsed `BreadcrumbList` itemCount/order/
+  names/urls equal the DOM breadcrumb anchors extracted from the same
+  HTML (script compare, exit non-zero on drift).
+- **AC-J3** conditional markup: fixture guide WITH steps yields `HowTo`;
+  fixture guide WITHOUT steps yields `Article` and no `HowTo` — vitest on
+  the builder, mirrored by curl on the two fixture routes. BLOCKED-ON(PT10).
+- **AC-J4** news page yields `NewsArticle` with `datePublished`; kind
+  landing yields `Dataset` whose `version` equals the current buildid
+  string. BLOCKED-ON(PT11 / F2 manifest).
+- **AC-J5** identity parity: for N sampled entities, `name` in JSON-LD ==
+  H1 text == F2 JSON API `name` == the name string in `llms.txt`'s kind
+  index sample (four-source diff script, zero mismatches). Partially
+  BLOCKED-ON(F2).
+- **AC-J6** `curl -s <page>` on any page lacking a rendered FAQ/Q&A block
+  contains no `FAQPage` token (negative guard for markup-precedes-content).
+- **AC-J7** every emitted JSON-LD block parses as strict JSON (all probed
+  pages; `python -c json.loads` loop, exit 0).
+
+**Titles / hreflang / canonical**
+
+- **AC-T1** build-time uniqueness: the emitted `(locale, title)` set has
+  zero duplicate titles within each locale (vitest over the generator
+  output; collision fails CI with offending ids).
+- **AC-T2** locale authenticity: for N sampled de/fr entity pages, the
+  title differs from the en title for the same entity whenever the
+  locale's template differs (they always do — templates are distinct
+  strings) — script compare. BLOCKED-ON(F4).
+- **AC-T3** hreflang cluster: `curl -s <de-entity-url> | grep
+  'hreflang'` yields exactly `availableLocales` entries (BCP-47 forms) +
+  one `x-default` pointing at the bare-path URL; no `/en/` alternate
+  anywhere. BLOCKED-ON(F4).
+- **AC-T4** pivot redirect: `curl -sI localhost:3000/en/db/item/x` →
+  `301` with `Location:` stripping `/en`. BLOCKED-ON(F4 middleware).
+
+**OG / Twitter**
+
+- **AC-O1** every probed page's HTML contains `og:title`, `og:description`,
+  `og:url`, `og:type`, `og:image`, `og:image:width`, `og:image:height`,
+  `og:image:alt`, `twitter:card` — grep loop exit 0; `og:url` equals the
+  canonical URL from AC-T3's probe.
+- **AC-O2** `og:image` value resolves HTTP 200 (`curl -sI`) at every
+  buildid version it references, and equals the §8.2 chain's expected
+  entry (default card today — asserted literally).
+- **AC-O3** `og:locale` equals the page locale; alternates equal the
+  availability set (same script as AC-T3).
+
+**llms.txt**
+
+- **AC-L1** `curl -s localhost:3000/llms.txt` → 200, body starts `# `,
+  contains the literal current buildid, ≥1 `##` section per contract
+  block present, and a methodology link **only if** `/methodology`
+  currently answers 200 (conditional asserted by script).
+- **AC-L2** denylist sweep: body contains none of `license`, `extracted/`,
+  `.pak`, `res.pak`, `harvest`, `scraper`, `crawler-ua`, nor any repo
+  filesystem path (case-insensitive grep, exit 1 expected).
+- **AC-L3** every JSON entry point linked in llms.txt answers 200 with
+  non-empty body and `application/json` (`curl -sI` loop over extracted
+  links) — vacuously green until F2 routes exist, then load-bearing.
+  Partially BLOCKED-ON(F2).
+- **AC-L4** FRAMEWORK §8 gate rehearsal: llms.txt reachable AND non-empty
+  AND ≥1 linked JSON entry point non-empty — the exact production-origin
+  check scripted so launch day replays it verbatim.
+
+**IndexNow**
+
+- **AC-I1** `curl -s localhost:3000/{key}.txt` returns exactly the key
+  string (36-byte body, newline tolerated).
+- **AC-I2** chunking: the ping script unit-fed 25,001 URLs produces 3
+  requests with ≤10,000 urls each (vitest, no network).
+- **AC-I3** safety guard: with origin=localhost or key absent, the script
+  performs zero network calls and exits 0 with a printed skip reason
+  (vitest with fetch mocked to throw).
+- **AC-I4** dry-run against production build prints the full payload
+  (host, key, urlList count = sitemap-diff count) without sending.
+
+## 14. Files touched
+
+New files (none of these exist today; `site/` currently holds F1 tokens +
+public assets only):
+
+```
+site/src/lib/seo/source.ts            # single loader: availability, _meta buildid, run instants
+site/src/lib/seo/config.ts            # origin, brand slot, key refs (reads F4/env)
+site/src/lib/seo/sitemap.ts           # section registry + sharding builders
+site/src/app/sitemap.ts               # sitemapindex route
+site/src/app/sitemaps/[shard]/route.ts# child urlsets
+site/src/app/robots.ts                # robots.txt incl. AI-crawler groups
+site/src/lib/seo/noindex.ts           # meta/X-Robots-Tag helpers (facets, tooltips, staging)
+site/src/lib/seo/jsonld.ts            # per-type builders (VideoGame/Org/WebSite/Thing/ItemList/HowTo/FAQPage/NewsArticle/Dataset/BreadcrumbList/SoftwareApplication)
+site/src/components/seo/jsonld-script.tsx  # server component serializer
+site/src/lib/seo/meta.ts              # localized title/description templates + uniqueness checker
+site/src/lib/seo/hreflang.ts          # cluster + x-default builder
+site/src/lib/seo/og.ts                # slot chain resolver + tag emitter
+site/src/app/llms.txt/route.ts        # llms.txt generator (contract §9)
+site/src/lib/seo/llms-txt.ts          # its builder + denylist self-check
+site/public/assets/og/default.png     # extracted-art default card (UIA pool crop)
+site/public/{key}.txt                 # IndexNow key file (generated once at setup)
+site/scripts/ping-indexnow.mjs        # deploy-step ping (diff → chunked POST, dry-run mode)
+site/src/lib/seo/seo.test.ts          # AC unit layer: uniqueness, chunking, guards, builders
+tools/parse_jsonld.py                 # AC helper: extract+validate JSON-LD from served HTML
+```
+
+Edits to existing files: none required by this spec; F4 owns the layout
+mount points PT16's components attach to, and `docs/pieces.mdx` PT16 row
+already describes this piece. `EXTRACTION-LOG.md` gains nothing — the
+emit-stage outputs this layer consumes are specced in
+[spec-stages-datasets.mdx](./spec-stages-datasets.mdx).
+
+No files are committed by the Documentator (brief: never commit).
