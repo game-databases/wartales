@@ -1,0 +1,40 @@
+# Brief — Arbiter: F5 header search spec r1
+
+Fresh Arbiter agent; never spawn subagents; never commit; Wartales pack
+only. Deliverable: `docs/arbiter-f5-search.mdx`. Judge only — edit
+nothing outside your deliverable.
+
+Inputs, read IN FULL:
+1. `docs/review-spec-f5-search.mdx` — the 12 findings (B1/B2,
+   M1–M3, m1–m7) that drove the revision.
+2. `docs/spec-f5-search.mdx` AS REVISED — `## Revision r1` ledger +
+   `(r1)`-tagged AC bodies (AC-1/AC-4/AC-5) + `## r1 conflicts`.
+3. Authorities: `_foundation/decision-register.md`
+   [DR-2026-08-22-search-is-not-a-page] IN FULL; FRAMEWORK.md §2.9;
+   `docs/pieces.mdx` F5 row.
+4. Frozen authorities conformed to: `docs/spec-f4-app-shell.mdx`
+   (r1-amended §5 slot contract), `docs/spec-f2-contracts.mdx` §4 id
+   law + §6 URL law.
+5. Disk truth spot-checks: re-run the §2 availability recount snippet
+   yourself against `extracted/relinks/locale_availability.jsonl`;
+   re-execute the M3 normalization pipeline over the frozen pl test
+   cases (`Włóczęga→wloczega`) to confirm the step-7 fold works as
+   written.
+
+Per finding id, rule **RESOLVED / WEAKENED / UNRESOLVED** with anchors.
+WEAKENED = addressed formally but dilutes a DR clause or leaves an AC
+unfalsifiable.
+
+**Adjudication duty:** rule on the `## r1 conflicts` item (F4's
+pre-F5-only empty-slot smoke leg): decide whether it is (a) a real
+cross-spec errata needing a one-line amendment in F4's smoke list at
+builder time — in which case state the exact clause and mark it as an
+errata for the orchestrator to route — or (b) transient sequencing that
+needs no text change. Your ruling binds.
+
+Sweep revision neighborhoods for NEW defects; amended ACs stay
+executable; the header state machine still mechanizes every DR clause.
+
+Verdict at top: **APPROVE-FOR-BUILD** (build itself stays gated on the
+pack's rule-8 gate) or **NEEDS_REVISION** with enumerated residuals.
+End with count summary.

@@ -1,8 +1,12 @@
 # Wartales — F5 header search spec (piece F5)
 
-Status: DRAFT for Reviewer → Arbiter → CodeWriter+TestWriter · authored
+Status: IN REVISION r1 for Arbiter → CodeWriter+TestWriter · authored
 2026-08-26 by the Documentator from brief
-[`docs/briefs/documentator-f5-search.mdx`](./briefs/documentator-f5-search.mdx).
+[`docs/briefs/documentator-f5-search.mdx`](./briefs/documentator-f5-search.mdx);
+revised r1 2026-08-26 — all twelve findings of
+[`review-spec-f5-search.mdx`](./review-spec-f5-search.mdx) resolved, see
+[Revision r1](#revision-r1); cross-spec dependencies in
+[r1 conflicts](#r1-conflicts).
 Inputs read in full: root `AGENTS.md`,
 `_foundation/decision-register.md` (binding entry:
 [DR-2026-08-22-search-is-not-a-page]),
@@ -100,10 +104,19 @@ Other bindings consumed here:
 ## 2. Ground truth and vocabulary
 
 - **Locales** (frozen in spec.md, client-verified): `en, fr, de, es, pl,
-  pt-BR, ru, ko, zh` — exactly nine. File names and artifact keys use
-  **client codes** (so `pt-BR`, `zh`; BCP-47 presentation mapping is a
-  concern of the URL layer, which F4 owns). `ja` is community-lane,
-  `omit-until-translated` — **never** in the artifact.
+  pt-BR, ru, ko, zh` — exactly nine. Three vocabularies stay distinct
+  everywhere in this piece (r1):
+  - **client code** — the extraction/data-plane identity: overlay reads,
+    artifact file names, artifact keys, `manifest.locales` (`pt-BR`,
+    `zh` verbatim);
+  - **URL segment** — F4's routing id (F4 §2 table, lowercase; recorded
+    decision r1 there): `pt-br`, never `pt-BR`; pivot `en` carries no
+    segment at all. Used ONLY to compose `href`
+    ([§3.3](#33-the-href-route-table-declared-seam));
+  - **BCP-47** — `<html lang>`/hreflang only (F4-owned; unused here).
+  An emitted href never contains a client code where the segment
+  differs. `ja` is community-lane, `omit-until-translated` — **never**
+  in the artifact.
 - **Kinds**: the canonical inventory is `MANAGED_KINDS` in wkk — 40 kinds,
   asserted so in the module. Kind-vs-sheet trap stands: kind `recipe`
   (sheet `craft`), kind `class` (sheet `unitClass`). Facet values in this
@@ -121,6 +134,10 @@ Other bindings consumed here:
   list is extended in the emitter and the frozen numbers below are
   re-derived in the same commit. Until then the emitter refuses any kind
   whose overlays are absent (exit 2), so silent partial waves cannot ship.
+  TypeScript never re-declares this list: the manifest publishes it
+  (`kinds`) and the matcher surfaces it as `KIND_ORDER`
+  ([§4.1](#41-module-rules)); the honesty chain is mechanical end to end
+  ([§9](#9-test-spec-for-testwriter) suites 4–5).
 - **Membership source**: avail, schema
   `{kind, id, availableLocales[], namedLocales[], fields:{<locale>:{name:bool,...}}}`
   (locale-key-convention §3). A row exists for locale `L` iff
@@ -129,16 +146,46 @@ Other bindings consumed here:
   `{ "<entityId>": { "name"?: str, "description"?: str } }`
   (locale-key-convention §3). Names may carry Heaps rich-text markup — the
   matcher strips it before normalizing ([§4.3](#4-3-name-normalization)).
-- **Frozen numbers** (locale-key-convention §5/§7, buildid 20318128):
-  availability rows total **3,779** (item 2,125 / skill 1,373 / class 281);
-  drift entities with no bridge leaf in *any* locale total **458** (item
-  318 / skill 137 / class 3); cell-presence is **perfectly parallel across
-  all nine locales**. Consequences this spec pins:
+- **Frozen numbers** (recounted from disk at r1, buildid 20318128;
+  locale-key-convention §5/§7 agrees): the searchable universe is the
+  `item`/`skill`/`class` subset of avail — avail itself carries 33 kinds
+  (14,456 rows); the subset measured 2026-08-26:
+  - universe **3,779** rows (item 2,125 / skill 1,373 / class 281);
+  - **458** with no bridge leaf in *any* locale (item 318 / skill 137 /
+    class 3) — `availableLocales` empty;
+  - **102** with ≥1 resolved field but no name in any locale (item 4 /
+    skill 98 / class 0) — a bridge leaf survives, a name never does, so
+    they can never contribute a row under the membership rule above;
+  - **3,219** with `namedLocales` non-empty (item 1,803 / skill 1,138 /
+    class 278) — identical membership in all nine locales, zero
+    partial-coverage rows; `fields[L].name` ↔ `namedLocales` flag parity:
+    0 mismatches in both directions ×9.
+
+  The arithmetic closes: 458 + 102 + 3,219 = 3,779. Consequences this
+  spec pins — exact values, no bands:
+
+  - a row exists for locale `L` iff `L ∈ namedLocales`, so each of the
+    nine files carries exactly **3,219 rows**;
   - the class facet contributes exactly **278 rows per locale**;
-  - the per-locale row total is identical in all nine files and is
-    bounded **278 ≤ N ≤ 3,321** (= 3,779 − 458);
-  - the id-set is byte-identical across locales (parallel presence ⇒ same
-    named set).
+  - the id-set is byte-identical across locales (perfectly parallel
+    presence).
+
+Recount behind every number above (pack root; executed at r1):
+
+```python
+import json, collections
+rows = [json.loads(l) for l in
+        open("extracted/relinks/locale_availability.jsonl", encoding="utf-8")]
+sub = [r for r in rows if r["kind"] in ("item", "skill", "class")]
+print(len(sub), collections.Counter(r["kind"] for r in sub))                   # 3779 …2125/1373/281
+print(sum(not r["availableLocales"] for r in sub))                             # 458
+print(sum(bool(r["availableLocales"]) and not r["namedLocales"] for r in sub)) # 102
+print(sum(bool(r["namedLocales"]) for r in sub))                               # 3219
+```
+
+These anchors freeze with buildid 20318128. A corpus regen re-runs the
+recount and re-freezes this block plus the emitted manifest in the same
+commit — the SEARCHABLE_KINDS growth law applied to numbers.
 
 ## 3. Contract — the search-index pipeline artifact
 
@@ -185,8 +232,11 @@ site/public/data/search/pl.json          pt-BR.json
 site/public/data/search/ru.json          ko.json  zh.json
 ```
 
-Per-locale file — compact JSON (sorted keys, `ensure_ascii=False`, UTF-8,
-LF):
+Per-locale file — compact JSON with FIXED key order as illustrated (row
+objects `kind,id,name,href`; top level `schema,locale,buildId,rows`),
+`ensure_ascii=False`, UTF-8, LF — never `sort_keys`, whose
+`href,id,kind,name` output would contradict the illustration and the
+published schema ([§3.4](#34-determinism)) (r1):
 
 ```json
 {
@@ -217,9 +267,15 @@ TypeScript, is the whole guarantee.
   "buildId":  "20318128",
   "locales":  ["en","fr","de","es","pl","pt-BR","ru","ko","zh"],
   "kinds":    ["item","skill","class"],
-  "rowCount": { "en": 3247, "fr": 3247, "...": "identical in all nine" }
+  "rowCount": { "en": 3219, "fr": 3219, "de": 3219, "es": 3219,
+                "pl": 3219, "pt-BR": 3219, "ru": 3219, "ko": 3219,
+                "zh": 3219 }
 }
 ```
+
+`rowCount` values are the measured §2 anchor (3,219 named per locale),
+not an illustration — the emitter computes them and suite 4 asserts
+`rowCount[L] === rows.length === 3219`.
 
 No timestamps, no observation times — determinism is the contract; the
 buildId is the only freshness stamp (machine plane, D2-compatible).
@@ -227,15 +283,22 @@ buildId is the only freshness stamp (machine plane, D2-compatible).
 ### 3.3 The href route table (declared seam)
 
 `href` is composed **at emit time** from one declared table — links are
-data, not something the frontend derives:
+data, not something the frontend derives. `{seg}` is the **URL segment**
+taken from F4's routing table (F4 §2 id column — lowercase; client codes
+never leak into hrefs, [§2](#2-ground-truth-and-vocabulary)):
 
-| kind | pivot href | non-pivot href |
-|---|---|---|
-| item  | `/db/item/{id}`  | `/{locale}/db/item/{id}` |
-| skill | `/db/skill/{id}` | `/{locale}/db/skill/{id}` |
-| class | `/db/class/{id}` | `/{locale}/db/class/{id}` |
+| client code (artifact key) | URL segment | pivot href | non-pivot href |
+|---|---|---|---|
+| en | *(pivot — none)* | `/db/item/{id}` etc. | — |
+| de es fr ko pl ru zh | same as code | — | `/{seg}/db/{kind}/{id}` |
+| pt-BR | `pt-br` | — | `/pt-br/db/{kind}/{id}` |
 
-Locale prefixes per [DR-2026-08-20-locale-urls] (pivot bare). The `/db/…`
+Concretely: a Portuguese hit emits `href="/pt-br/db/item/X"` — composed
+from F4's segment (`pt-br`), which F4 routing serves (unknown segments
+404, F4 §3 rule 5). Composing from the client code would ship
+`/pt-BR/…` and dead-link every result in that index (r1 finding M1,
+closed by construction). The pivot composes bare per
+[DR-2026-08-20-locale-urls]. The `/db/…`
 shape follows the NWG structural reference (design-standard §2) and is
 **provisional pending PT02/PT03 IA freeze** — recorded as a contract hole
 ([§13](#13-contract-holes-found)); a route change is an emitter-table edit
@@ -245,7 +308,9 @@ plus a rerun, never a frontend change.
 
 Two consecutive runs produce byte-identical files (sha256 over all ten).
 Rows sort by `(SEARCHABLE_KINDS index, id)`; objects serialize with fixed
-key order; no clock, no randomness. This is what makes the artifact
+key order — the §3.2 illustrated order; the published schema mirrors it,
+so emitter and contract cannot disagree (r1); no clock, no randomness.
+This is what makes the artifact
 assertable and patch-diffable (E3 versioned truth rides the buildId).
 
 ## 4. Contract — the `searchRows` matcher
@@ -265,6 +330,10 @@ assertable and patch-diffable (E3 versioned truth rides the buildId).
 export interface SearchRow  { kind: string; id: string; name: string; href: string }
 export interface SearchHit  { row: SearchRow; tier: 1 | 2 | 3 }
 export const MIN_QUERY_CHARS = 2;   // DR clause 4 — the owner's number
+export const KIND_ORDER = ["item", "skill", "class"] as const;
+// tie-break + grouping order. NOT an independent literal: suite 4 asserts
+// deep-equality with manifest.kinds each run, and the Python side asserts
+// manifest.kinds == SEARCHABLE_KINDS ⊆ MANAGED_KINDS (suite 5).
 export function searchRows(rows: readonly SearchRow[], query: string): SearchHit[];
 ```
 
@@ -285,7 +354,8 @@ Let `q = normalizeName(query)` and `n = normalizeName(row.name)`:
   zh matching work, since normalization leaves hanzi intact).
 
 Total order over hits: `tier asc`, then `n.length asc` (shorter name =
-more specific), then `row.kind` in `SEARCHABLE_KINDS` order, then
+more specific), then `row.kind` in `KIND_ORDER` order (= the emitter's
+`SEARCHABLE_KINDS`, published as `manifest.kinds`), then
 `row.id asc` lexicographic. Shuffling the input array cannot change the
 output order — asserted by test.
 
@@ -294,33 +364,54 @@ output order — asserted by test.
 `normalizeName(s: string): string`, defined once in `normalize.ts`:
 
 ```ts
-s.replace(/<[^>]*>/g, " ")      // 1. Heaps rich-text tags → space
- .normalize("NFKD")             // 2. canonical + compatibility decompose
- .replace(/\p{M}/gu, "")        // 3. drop combining marks
- .toLowerCase()                 // 4. case-fold equivalent for our scripts
- .replace(/\s+/g, " ").trim()   // 5. collapse whitespace
+s.replace(/<[^>]*>/g, " ")           // 1. Heaps rich-text tags (<b>, <img …/>) → space
+ .replace(/\[[^\]]*\]/g, " ")        // 2. bracket macros ([NAME], [VALUE(…)], [ASSIGN]) → space
+ .replace(/::[A-Za-z0-9_]+::/g, " ") // 3. ::color:: spans (::value::, ::count::) → space
+ .normalize("NFKD")                  // 4. canonical + compatibility decompose
+ .replace(/\p{M}/gu, "")             // 5. drop combining marks
+ .toLowerCase()                      // 6. case-fold equivalent for our scripts
+ .replace(/ł/g, "l")                 // 7. explicit fold — U+0142 has NO Unicode decomposition
+ .replace(/\s+/g, " ").trim()        // 8. collapse whitespace
 ```
 
-Why this exact pipeline covers the brief's zh/ko/ru demands:
+Why this exact pipeline covers the brief's zh/ko/ru/pl demands — every
+claim below executed in Python `unicodedata` (same semantics as JS
+`String.normalize`) at r1:
 
-- **ru** — NFKD splits `ё` (U+0451) into `е` + U+0308, so step 3 folds
+- **pl** — `ł` (U+0142) has neither a canonical nor a compatibility
+  decomposition, so steps 4–5 leave it intact (`NFKD("Włóczęga")` +
+  mark-strip yielded `włoczega` — the pre-r1 text asserted a `ł→l` fold
+  the pipeline cannot perform); step 7 folds it explicitly:
+  `Włóczęga → wloczega`, `Łódź → lodz`. Polish matching is not degraded.
+- **ru** — NFKD splits `ё` (U+0451) into `е` + U+0308, so step 5 folds
   `ё → е`; accented/cased Cyrillic folds the same way. Query `Ёж`
   matches `еж`.
-- **fr/de/es/pl/pt-BR** — diacritics fold (`é→e`, `ł→l`, `ß` excepted,
-  see holes); case folds.
+- **fr/de/es/pt-BR** — diacritics fold through NFKD + mark-strip
+  (`Épée → epee`); case folds. `ß` does NOT fold (recorded gap,
+  [H-5](#13-contract-holes-found)); Turkish `İ` incidentally folds to
+  `i` and stays out of scope (no `tr` locale).
 - **ko** — NFKD decomposes syllables to conjoining jamo (category Lo, so
-  step 3 never eats them); both sides normalize identically, so a
+  step 5 never eats them); both sides normalize identically, so a
   partially-typed jamo query (`ㅎㅏ`) already matches `한…` mid-word —
   desirable for a field that answers as you type
   ([DR-2026-08-22-inputs-answer-as-you-type]).
-- **zh** — hanzi pass through NFKD/NFD unchanged (step 2 folds full-width
-  variants); matching is plain substring, no segmentation needed at this
+- **zh** — hanzi pass through NFKD/NFD unchanged (step 4 folds full-width
+  variants, `ＸＹ → xy`); matching is plain substring, no segmentation needed at this
   corpus size.
-- Step 1 defends against markup leaking into names; replacing with a
-  space (not `""`) keeps words from fusing.
+- Steps 1–3 defend against game markup leaking into matching. Disk
+  census over the searchable names ×9 locales (r1): 396 of 28,971 names
+  carry `<tag>` markup (the oil-concentrate family,
+  `<item>OilBrave</item> Concentrate`), 9 carry `[NAME]` macros
+  (`AllyCorpse` — de `Leiche von [NAME]`), 0 carry `::color::` spans
+  (descriptions carry 6,120; stripped anyway so the matcher stays
+  reusable). Step 2 runs after step 1 so markup-wrapped macros die too;
+  replacing with a space (not `""`) keeps words from fusing.
 
 Known accepted gaps (recorded, not silently suffered): `ß` does not fold
-to `ss`; Turkish `İ` is out of scope (no `tr` locale).
+to `ss`; macro stripping can leave harmless trailing punctuation
+(`AllyCorpse` ru name → `тело ()`) — the residue trails the word, so
+word-edge prefix matching is unaffected; Turkish `İ` out of scope
+(no `tr` locale).
 
 ### 4.4 Both sides, one answer
 
@@ -363,11 +454,29 @@ threshold). Map-search reuse ([§12](#12-out-of-scope)) inherits
   machine (`"use client"`).
 - `site/src/components/header/SearchResultsView.tsx` — the in-place
   results surface.
-- The swap target is **any element carrying `data-search-swap-root`**.
-  This is the F4 seam: the app shell puts that attribute on its main
-  content wrapper (one-line integration, recorded in
-  [§13](#13-contract-holes-found)). The field never imports shell code;
-  tests mount their own fixture root.
+- **Seam ownership (r1 — conforms to F4's landed r1 revision; both
+  attributes are F4-owned):**
+  - `data-shell-slot="search"` — F4's reserved mount in the header grid
+    (nav row's right region), rendered empty until this piece lands.
+    **F5 mounts into it**: the closed word control and the open input
+    render inside that element; the attribute survives F5's takeover
+    (F4's smoke greps for it). Integration is one composition edit:
+    F4's stub `site/src/components/shell/search-slot.tsx` renders the
+    field host instead of nothing ([§11](#11-files-touched)).
+  - `data-search-swap-root` — **F4 server-renders it** on the shell's
+    `<main>` content wrapper of every page (F4 §5 r1 inbound-seam
+    bullet). F5 consumes it and touches nothing else of F4: no
+    hidden-toggling from the shell's side, no search machinery in shell
+    code.
+- The swap target is the element carrying `data-search-swap-root`. On
+  the 2-char crossing the field sets `hidden` on it and renders the
+  results view into a container inserted immediately BEFORE that element
+  (removed on restore) — results occupy the layout space the hidden
+  content vacates. A missing swap root is a composition error (dev-mode
+  invariant violation); there is NO header fallback render mode —
+  surfacing results inside the header slot would contradict DR clause 3
+  outright. Tests mount their own fixture roots carrying both
+  attributes; the field never imports shell code.
 
 ### 5.2 States
 
@@ -384,6 +493,16 @@ names exactly two restore paths (cleared, Escape); inventing a third
 (on-outside-click) would fight the in-place model. Recorded so the
 reviewer does not "fix" it.
 
+Recorded deviation (r1): the trigger thresholds key on
+`len(normalize(q))`, not raw typed characters — the DR's "two characters
+typed" is paraphrased onto the matcher's own alphabet. Consequence: some
+two-keystroke inputs that normalize below two characters (whitespace,
+combining pairs) never trigger, and one IME commitment landing ≥2
+normalized characters does. Chosen because matching itself runs on
+normalized text — a raw-length gate would arm the matcher with queries
+it cannot meaningfully match. Recorded so the divergence from DR clauses
+3/4 is deliberate, not unnoticed (same discipline as the blur note).
+
 ### 5.3 DR-verbatim behavior contract
 
 Each clause with its enforcing mechanism:
@@ -394,15 +513,23 @@ Each clause with its enforcing mechanism:
    box.
 2. *"Open, it is an input that grows across the row the nav was using."*
    — activation swaps the word for a text input laid out across the nav
-   row (grid-column expansion of the same row; the nav items yield the
-   row to it). Focus moves into the input. Visual styling rides F1
-   tokens; the structural claim (same row, full-row input) is asserted.
+   row. Owner: **F5**, delivered without editing any F4-owned shell file —
+   the open state sets `data-search-open` on its mount element
+   ([§5.1](#51-composition)) and F5's own stylesheet expands that mount
+   across the nav row's columns while the nav items yield the row to it.
+   Focus moves into the input. Visual styling rides F1 tokens; the
+   structural claim (same row, full-row input) is asserted in the
+   component suite against a fixture, and re-asserted against the
+   composed shell at integration ([H-2](#13-contract-holes-found)
+   family) (r1).
 3. *"Results replace the page's own content in place once two characters
-   are typed"* — on the 2-char crossing, `data-search-swap-root` gains
-   the `hidden` attribute and the results view renders in the layout slot
-   the content vacates (top-of-page framing: the reader sees results
-   from the top, scroll reset is acceptable ONLY because the previous
-   content is hidden — see next clause for what survives).
+   are typed"* — once the normalized query crosses two characters
+   (recorded deviation, [§5.2](#52-states)), `data-search-swap-root`
+   (F4-placed, [§5.1](#51-composition)) gains the `hidden` attribute and
+   the results view renders in the layout slot the content vacates
+   (top-of-page framing: the reader sees results from the top, scroll
+   reset is acceptable ONLY because the previous content is hidden — see
+   next clause for what survives).
 4. *"hidden, never unmounted, so scroll position and state survive the
    detour"* — the content subtree stays in the DOM (`document.contains`
    holds; React never unmounts it). Its scroll containers keep scrollTop;
@@ -416,7 +543,8 @@ Each clause with its enforcing mechanism:
 
 ### 5.4 Results view
 
-- Grouped by kind in `SEARCHABLE_KINDS` order; each group header is the
+- Grouped by kind in `KIND_ORDER` order (the manifest's `kinds`); each
+  group header is the
   localized kind label + its hit count as a bare number (chip-word rules:
   a counted number carries no word beyond its label —
   [DR-2026-08-21-drop-chip-words-and-updated-column]).
@@ -512,24 +640,44 @@ to the en strings rather than mixing prose. Placeholder is empty by
 design (an instructional placeholder is banned copy). Game-kind facet
 labels are chrome (site taxonomy), not game strings.
 
+Merge mechanics (r1): when these keys enter `site/messages/<id>.json`
+×9 they pass F4's gates mechanically — every `search.*` key lands in
+`site/messages/_stub-keys.json` until translated (stubbed values stay
+byte-identical across all nine files), `{count}` in `countTemplate`
+participates in F4's `{placeholder}`-parity gate as a real placeholder,
+and the merge commit DELETES this piece's interim props/injected-
+dictionary resolver — next-intl becomes the only chrome mechanism;
+two i18n mechanisms never ship together in a merged build
+([H-4](#13-contract-holes-found)).
+
 ## 9. Test spec for TestWriter
 
 Vitest (already the site runner, `site/package.json`). New
 `site/vitest.config.ts` with two projects:
 
 - **node** — matcher units, artifact assertions, route-absence sweep.
-- **jsdom** (+ `@testing-library/react`, `react`, `react-dom`,
-  `jsdom`, `@vitejs/plugin-react` added to devDependencies) — the
-  component suite.
+- **jsdom** (+ `@testing-library/react`, `jsdom`,
+  `@vitejs/plugin-react` added to devDependencies) — the
+  component suite. `react`/`react-dom` are NOT re-declared here: F4
+  installs them as `dependencies` first (F4 §1), and re-adding them
+  under devDependencies would create duplicate entries and version-skew
+  risk (r1).
 
-New dependencies are the only `package.json` edits besides nothing else;
+The three additive devDependencies are the only `package.json` edits
+(`@types/react`/`@types/react-dom` already arrive with F4);
 `npm test` stays `vitest run`.
 
 Suites:
 
-1. `normalize.test.ts` — table-driven: `ё→е` folding; fr accents
-   (`Épée→epee`); pl `ł`; markup strip (`<b>X</b>` → ` x `); jamo
-   decomposition (`한국` ↔ `ㅎㅏㄴㄱㅜㄱ` equivalence); hanzi immutability
+1. `normalize.test.ts` — table-driven, every case frozen to what the
+   §4.3 pipeline actually yields (executed at r1): `ё→е` folding
+   (`Ёж → еж`); fr accents (`Épée → epee`); pl explicit fold
+   (`Włóczęga → wloczega`, `Łódź → lodz`); markup strip
+   (`<b>X</b> → x`, `<item>OilBrave</item> Concentrate` →
+   `oilbrave concentrate`); bracket-macro strip (`Leiche von [NAME]` →
+   `leiche von`, `[Guard]X → x`); color-span strip
+   (`<bad>::value::</bad> X → x`); jamo decomposition
+   (`한국` ↔ `ㅎㅏㄴㄱㅜㄱ` equivalence); hanzi immutability
    (`长剑` stable); full-width fold (`ＸＹ→xy`); whitespace collapse;
    idempotence (`f(f(s)) === f(s)`).
 2. `searchRows.test.ts` — **runs in BOTH projects** (same file, executed
@@ -557,43 +705,60 @@ Suites:
    - manifest `rowCount[L] === rows.length` for all L; `buildId` present;
      `kinds` == `SEARCHABLE_KINDS`;
    - identical sorted `(kind,id)` list across all nine files;
-   - every `kind ∈ SEARCHABLE_KINDS`, and `SEARCHABLE_KINDS` is checked
-     element-wise against the 40-kind mirror transcribed verbatim from
-     wkk (transcription kept honest by the Python-side assertion in (5));
+   - every `kind ∈ SEARCHABLE_KINDS`; there is NO transcribed kind
+     mirror — the TS constant `KIND_ORDER` is asserted deep-equal to
+     `manifest.kinds` read from the artifact, closing mechanically what
+     the Python side opens in (5);
    - row keys exactly `{kind,id,name,href}`; `name` non-empty; `href`
      starts `/`, contains no `/search`, matches the route table for its
-     locale/kind;
+     locale/kind — segment vocabulary enforced: pivot `en` bare,
+     `pt-BR`-keyed file carries `/pt-br/…` hrefs (never `/pt-BR/…`),
+     other locales `/{code}/…`;
    - class rows per locale == **278** (frozen anchor, §2); per-locale
-     total within `[278, 3321]` and equal across locales;
+     total == **3,219** exact (frozen anchor — no band, so even one row
+     of membership drift fails; re-derived only via §2's recount-and-
+     refreeze law) and equal across locales;
    - membership spot-bijection: sample rows verified against avail
      (`L ∈ namedLocales`).
 5. `pipeline/tests/test_search_index.py` — synthetic mini avail + mini
    overlays in tmp: happy path byte-determinism (two runs, sha256 equal);
    flag-without-value → exit 2; value-without-flag → exit 2; unknown
    locale → exit 2; kind outside `SEARCHABLE_KINDS` refused (exit 2) —
-   and this suite imports `wave_kinds.MANAGED_KINDS` directly, keeping
-   the transcription in (4) honest.
+   and this suite imports `wave_kinds.MANAGED_KINDS` directly and
+   asserts the emitter's `SEARCHABLE_KINDS ⊆ MANAGED_KINDS` plus
+   `manifest.kinds == SEARCHABLE_KINDS`: the honesty chain
+   wkk → emitter list → manifest.kinds → TS `KIND_ORDER` is mechanical
+   at every hop, no transcription anywhere (r1).
 
 ## 10. Acceptance criteria
 
 Executable unless phrased otherwise; every command runs from the pack
 root.
 
-- **AC-1** — `pwsh ./run_all.ps1 emit` completes exit 0 and produces
+- **AC-1** (r1) — `pwsh ./run_all.ps1 emit` completes exit 0 and produces
   `site/public/data/search/{en,fr,de,es,pl,pt-BR,ru,ko,zh}.json` plus
-  `manifest.json`; the pre-existing two emit steps are unchanged
-  (`git diff` touches only the appended step + registry comment).
+  `manifest.json`; the pre-existing two emit steps are unchanged. Diff
+  envelope, stated per scope so it is falsifiable: inside `run_all.ps1`
+  the diff is EXACTLY the appended third step line plus the StageInfo
+  `'emit'` description; across the whole tree the commit touches exactly
+  `run_all.ps1`, `EXTRACTION-LOG.md` (registry entry),
+  `pipeline/tools/search_index_emit.py`, and the ten emitted JSON files
+  — nothing else (`site/package-lock.json` untouched by this commit).
 - **AC-2** — a second immediate `emit` run leaves all ten files
   byte-identical (recorded sha256 pair in the run log).
 - **AC-3** — bijection holds: for every locale L and every avail row with
   kind ∈ SEARCHABLE_KINDS, `L ∈ namedLocales ⇔` exactly one row in
   `L.json`; and every row of `L.json` satisfies `L ∈ namedLocales`.
   (Full scan, not sampled.)
-- **AC-4** — the nine files carry one identical sorted `(kind,id)` list;
-  class contributes exactly 278 rows per locale; per-locale total is
-  within `[278, 3321]`.
-- **AC-5** — row/manifest shape exactness: row keys `{kind,id,name,href}`;
-  `name` non-empty; `href` per the §3.3 table for its locale; no `href`
+- **AC-4** (r1) — the nine files carry one identical sorted `(kind,id)` list;
+  class contributes exactly 278 rows per locale; per-locale total equals
+  **3,219** exactly (frozen anchor §2 — the band is dropped: even one row
+  of silent membership drift fails; totals re-derive only through §2's
+  recount-and-refreeze law).
+- **AC-5** (r1) — row/manifest shape exactness: row keys `{kind,id,name,href}`;
+  `name` non-empty; `href` per the §3.3 table for its locale with the
+  segment vocabulary enforced (`pt-br` lowercase from F4's segment law,
+  pivot bare, never a client code where the segment differs); no `href`
   contains `/search`; manifest fields per §3.2; `vitest run` (node
   project) green including `search-artifact.test.ts`.
 - **AC-6** — `pwsh ./run_all.ps1 --dry-run emit` prints the emitter as
@@ -653,10 +818,17 @@ New:
 
 Edited:
 
-- `pipeline/run_all.ps1` (emit stage: append step 3 + StageInfo desc)
+- `run_all.ps1` — **pack root** (r1: the stage registry lives at the
+  pack root — `pipeline/run_all.ps1` does not exist, and §1/§3.1/AC-6
+  already cite `../run_all.ps1` / `./run_all.ps1`)
+  (emit stage: append step 3 + StageInfo desc)
 - `EXTRACTION-LOG.md` (stage registry entry for the emitter)
-- `site/package.json` (devDependencies: `react`, `react-dom`,
-  `@testing-library/react`, `jsdom`, `@vitejs/plugin-react`)
+- `site/package.json` (devDependencies, ADDITIVE ONLY:
+  `@testing-library/react`, `jsdom`, `@vitejs/plugin-react` —
+  react/react-dom arrive as F4 `dependencies`, never re-declared (r1))
+- `site/src/components/shell/search-slot.tsx` (r1: F4-created stub whose
+  null body is replaced by the field host — the one composition edit of
+  the [§5.1](#51-composition) mount takeover)
 
 Untouched by design: all existing pipeline tools, `extracted/**`,
 tokens/styles, `run_all.sh` (pure forwarder).
@@ -671,7 +843,8 @@ tokens/styles, `run_all.sh` (pure forwarder).
 - The map-page search reuse — the matcher is written to be reusable, but
   no map code ships here.
 - Locale chrome translations beyond en (F4's matrix), URL-prefix
-  machinery, the shell itself.
+  machinery, the shell itself (beyond the one `search-slot.tsx`
+  composition edit of [§5.1](#51-composition)).
 - The served-404 check (`GET /search`) — executable only once an app
   exists; tracked as integration criterion H-2 below.
 - Any UGC/analytics on the field (no query logging anywhere in this
@@ -689,14 +862,23 @@ tokens/styles, `run_all.sh` (pure forwarder).
   only when F4's router and PT16's crawl manifest exist. Both checks are
   pre-written in `search-route-absence.test.ts`'s sweep list — they
   activate as their trees appear.
-- **H-3 — `data-search-swap-root` placement.** F4 must put the attribute
-  on its main-content wrapper; until then the component degrades to a
-  no-op swap (results render in the header's own fallback slot). One-line
-  integration, but it crosses the piece boundary and must not be
-  forgotten when F4 lands.
-- **H-4 — chrome key merge.** §8's namespace merges into F4's chrome
-  i18n file; until the merge the field self-hosts the keys. Key names are
-  the negotiation surface.
+- **H-3 — seam RESOLVED in both specs (r1); one residual edge.**
+  Placement is settled: F4 §5 (r1) owns BOTH attributes — the reserved
+  `data-shell-slot="search"` mount (nav row's right region, empty until
+  F5) and `data-search-swap-root`, server-rendered on the shell's
+  `<main>` of every page (F4 AC-11 asserts both). F5 consumes them
+  ([§5.1](#51-composition)); the old header-fallback idea is deleted — a
+  missing swap root is a composition error, never a degraded render.
+  Residual edge recorded in [r1 conflicts](#r1-conflicts): F4's smoke
+  emptiness leg is pre-F5-only.
+- **H-4 — chrome key merge, mechanics pinned (r1).** §8's namespace
+  merges into F4's `site/messages/<id>.json` ×9; until the merge the
+  field self-hosts the keys via the props/injected-dictionary resolver.
+  Merge-time obligations (F4's gates apply mechanically): all `search.*`
+  keys enter `_stub-keys.json` until translated, byte-identical ×9 while
+  stubbed; `{count}` participates in placeholder-parity; the interim
+  resolver is deleted in the merge commit — next-intl becomes the only
+  chrome mechanism. Key names remain the negotiation surface.
 - **H-5 — `ß`/`ss` and future orthographic folds.** Recorded gap in
   §4.3; if German players report misses, the fix extends `normalizeName`
   (one place, both sides inherit it) — never a per-surface workaround.
@@ -704,3 +886,54 @@ tokens/styles, `run_all.sh` (pure forwarder).
   the same commit as R9's wave-2 overlays and PT02's routes for those
   kinds; the emitter's refusal gate (exit 2) is what forces the
   reconciliation rather than trusting it.
+
+## r1 conflicts
+
+Cross-spec edges this revision depends on or leaves open. F4's r1
+revision landed CONCURRENTLY with this one: its search-seam amendment
+text (F4 §5 r1 bullets, F4 AC-11, F4 §7.6 smoke) was present on disk and
+is conformed to above — F4 itself was never edited from here.
+
+1. **SATISFIED — swap root.** F4 server-renders `data-search-swap-root`
+   on the shell's `<main>` of every page and owns the reserved
+   `data-shell-slot="search"` mount. Nothing further is owed to F5;
+   ownership table lives in [§5.1](#51-composition).
+2. **OPEN — F4's empty-slot assertion is pre-F5-only.** F4 §7.6 smoke
+   and F4 AC-11 assert `data-shell-slot="search"` present AND EMPTY.
+   True at F4; false the day F5 mounts the field into it.
+   Reconciliation is owed on the F4 side (next F4 revision, or F5's
+   integration commit if they land in one batch): once F5 fills the
+   mount, that leg becomes "contains exactly the search-field control".
+   F5 cannot fix it — `site/scripts/smoke.mjs` is F4-created and
+   F4-owned.
+3. **Segment law dependency.** §3.3 composes hrefs from F4 §2's id
+   column (lowercase segments; client codes stay data-plane-only). If
+   the orchestrator overrides F4's recorded `pt-br` casing decision,
+   exactly one §3.3 route-table row flips — emitter edit + rerun, per
+   H-1's law.
+
+## Revision r1
+
+Finding-by-finding ledger for
+[`review-spec-f5-search.mdx`](./review-spec-f5-search.mdx)
+(2026-08-26; 2 BLOCKER / 3 MAJOR / 7 MINOR — all twelve resolved with
+disk evidence, none argued away).
+
+| id | severity | resolution | sections touched |
+|---|---|---|---|
+| B1 | BLOCKER | Ceiling re-derived from my own avail recount (458 no-leaf + 102 nameless-anywhere + 3,219 named = 3,779); per-locale total pinned exact 3,219; invented `"en": 3247` manifest example replaced with measured nine × 3,219; AC band dropped for exact equality | §2, §3.2, §9 suite 4, AC-4 |
+| B2 | BLOCKER | Seam conformed to landed F4 r1: both attributes F4-owned; field mounts into `data-shell-slot="search"`, consumes F4-placed `data-search-swap-root`; header-fallback deleted (missing root = composition error); grow-across-the-row owned by F5 via runtime attribute + F5 stylesheet | §5.1, §5.3.2, §5.3.3, §11, H-3, r1 conflicts |
+| M1 | MAJOR | Href segment vocabulary pinned: compose from F4's lowercase ids (`pt-br`), pivot bare, client codes data-plane-only; route table gained the code→segment column | §2, §3.3, §9 suite 4, AC-5 |
+| M2 | MAJOR | Files-touched path corrected to pack-root `run_all.ps1` (`pipeline/run_all.ps1` does not exist) | §11 |
+| M3 | MAJOR | Pipeline executed over the frozen pl cases: U+0142 has no decomposition, so explicit step-7 `ł→l` fold added (`Włóczęga → wloczega` verified); suite-1 cases re-frozen to true outputs; matching-quality bar kept | §4.3, §9 suite 1 |
+| m1 | MINOR | Strip extended: bracket macros + `::color::` spans (census: 396 tag-bearing names, 9 `[NAME]` names ×9 locales, 0 color-span names); trailing-residue gap ledgered | §4.3, §9 suite 1 |
+| m2 | MINOR | Normalized-length trigger recorded as a deliberate DR-clause-3/4 deviation | §5.2, §5.3.3 |
+| m3 | MINOR | react/react-dom not re-declared (F4 installs them as dependencies); additive devDeps named exactly | §9 preamble, §11 |
+| m4 | MINOR | Transcribed 40-kind mirror deleted; mechanical honesty chain wkk → emitter → manifest.kinds → KIND_ORDER asserted at every hop | §2, §4.1, §4.2, §5.4, §9 suites 4–5 |
+| m5 | MINOR | Chrome merge mechanics pinned: `_stub-keys.json` listing, `{count}` placeholder parity, byte-identical stubbed values ×9, interim resolver deleted at merge | §8, H-4 |
+| m6 | MINOR | AC-1 diff envelope stated per scope: per-file inside `run_all.ps1`, exact file set across the tree | AC-1 |
+| m7 | MINOR | Serialization pinned to the illustrated fixed key order; `sort_keys` explicitly excluded; schema mirrors it | §3.2, §3.4 |
+
+AC count after revision: **16** — numbering unchanged; AC-1, AC-4, AC-5
+bodies revised in place and tagged `(r1)`; every AC remains executable
+by its named suite/artifact.
