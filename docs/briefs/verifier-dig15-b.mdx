@@ -1,0 +1,47 @@
+# Brief — Verifier B (adversarial audit): Dig 15 relink matrix upgrade
+
+Fresh Verifier agent; never spawn subagents; never commit; Wartales pack
+only. Deliverable: `docs/verify-dig15-b.mdx`. Scratch writes ONLY under
+`output/_verify-dig15b/`. Read-only everywhere else — do NOT modify
+`extracted/relinks/**`, tools, or docs.
+
+Your job is to ATTACK the Dig 15 result, not confirm it. Subject: same
+claim set as `docs/briefs/verifier-dig15-a.mdx` (read it for the
+artifact list). Evidence sources available to you:
+`extracted/decompiled/hl-src/**` (structured text), `extracted/decompiled/
+hl/*.dis.hx`, canonical `extracted/data/*.jsonl`, CDB export XMLs,
+`extracted/relinks/matrix.json` + RELATIONS.md.
+
+Attacks:
+
+1. **No-carrier audit (the big class: 761 rows)** — sample 18
+   `ledgered:no-carrier` rows across ≥8 relation families. For each,
+   search hl-src/hl-decompile + CDB exports for ANY carrier the dig
+   might have missed (field-name hits, constant-name joins, HBSON prefab
+   fields). Finding even ONE missed carrier on a row classed no-carrier
+   = MAJOR; three or more = the class is unsound = BLOCKER.
+2. **Derived-evidence attack (37 rows)** — sample 10 of the 37 newly
+   derived edges; try to break each evidence locator (wrong file:line,
+   quote out of context, consumer≠producer confusion, direction
+   inverted vs the ordered-pair convention).
+3. **Unadjudicated honesty (262 rows)** — confirm these are name-hit
+   candidates genuinely requiring adjudication, i.e. the ledger states
+   WHY unadjudicated and does not silently treat them as edges. Check
+   none of them leak into the 4,365 counted edges.
+4. **UI coverage map** — `ui_link_coverage.jsonl`: pick 6 surfaces and
+   verify the claimed coverage status against the actual site-section
+   reality (pieces.mdx + maps.schema.json); attack the single
+   "documented gap" — is the gap real and its unblock path concrete?
+5. **Overclaim check** — `extracted/PROOF.md` R10 says "closed at
+   evidence layer": is that phrasing justified given 39 modeled + 37
+   derived + ledger classes, or does it overstate? Compare against
+   DR relink bars 1–2 definitions in RELATIONS.md.
+6. **Sibling hygiene** — confirm the dig wrote only its designated
+   surfaces (`_logic/`, `ui_link_coverage.jsonl`, dig-log entry, PROOF
+   R10 row, 3 tools, output/_dig-relink-matrix/) — flag anything else
+   it touched.
+
+Every finding: severity BLOCKER/MAJOR/MINOR + artifact anchor + the
+probe that demonstrates it. Verdict at top: SOUND / UNSOUND with count
+summary. An audit that finds nothing must show the probes it ran —
+empty attacks are not evidence of soundness.

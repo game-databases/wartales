@@ -1,0 +1,41 @@
+# Brief — Verifier A (mechanical): Dig 15 relink matrix upgrade
+
+Fresh Verifier agent; never spawn subagents; never commit; Wartales pack
+only. Deliverable: `docs/verify-dig15-a.mdx`. Scratch writes ONLY under
+`output/_verify-dig15a/`. Treat everything else read-only — especially
+`extracted/relinks/**` (canonical + `_logic`) which you must NOT modify.
+
+Subject: the Dig 15 claim set in `docs/data-dig-log.mdx` (entry "Dig 15")
++ `extracted/PROOF.md` R10 row + deliverables
+`extracted/relinks/_logic/*` (41 families + `_ledger.jsonl`),
+`extracted/relinks/ui_link_coverage.jsonl`,
+`pipeline/tools/dig15_logic_edges.py`, `dig15_sample_verify.py`,
+`dig15_ui_coverage.py`, proofs under `output/_dig-relink-matrix/`.
+
+Mechanically re-prove, with commands + outputs quoted in your deliverable:
+
+1. **Determinism** — re-run the deriver in dry-run mode twice; identical
+   stdout both times; totals match the claimed 41 files / 4,365 edges /
+   0 dangling. Any nondeterminism = FAIL.
+2. **Sampler** — re-run `dig15_sample_verify.py`; expect 41/41 PASS.
+3. **Count integrity** — transition-table classes sum to exactly 1,560;
+   `_ledger.jsonl` row count == 1,484; class histogram in the log entry
+   matches an independent `jq`/python tally of the ledger; per-family
+   edge counts in filenames/headers match actual JSONL line counts.
+4. **Dangling zero** — independently recompute: every target/source id
+   in `_logic/*.jsonl` resolves in the canonical datasets (join on id
+   columns yourself; do not trust the dig's own checker).
+5. **Spot re-derivation** — pick 6 edges across ≥4 families (include the
+   startChoice.props.pattern→unitPattern family); from each cited
+   evidence locator, re-derive the edge yourself (hl-src grep +
+   data.cdb/canonical join). One unreproducible edge = FAIL.
+6. **Canonical safety** — run `pipeline/tools/validate_all.py` (or its
+   relink stage) and confirm green; canonical `extracted/relinks/*.jsonl`
+   count still 53 files; report any mtime anomaly you cannot explain as
+   sibling-agent work (dig 14 is running concurrently — do not accuse
+   without checking its known surfaces).
+7. **Docs coherence** — every number in the Dig 15 log entry traceable
+   to an artifact you counted above; END sentinel present.
+
+Verdict line at top: PASS / FAIL with the failing item ids. Be exact;
+quote command outputs.
