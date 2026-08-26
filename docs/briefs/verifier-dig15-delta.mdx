@@ -1,0 +1,36 @@
+# Brief — Delta Verifier: Dig 15 post-fix tree
+
+Fresh Verifier agent; never spawn subagents; never commit; Wartales pack
+only. Deliverable: `docs/verify-dig15-delta.mdx`. Scratch ONLY under
+`output/_verify-dig15d/`; read-only everywhere else.
+
+Context: the pre-fix `_logic` tree already passed dual verification
+(`docs/verify-dig15-a.mdx` PASS, `-b.mdx` SOUND). Your subject is the
+DELTA produced by `docs/briefs/dig15-fixer-r1.mdx` per
+`docs/verify-dig15-b.mdx`: edges 4,365→7,184, families →107, 89 derived
+directions, new ledger classes, rewritten PROOF R10, regenerated
+sweep audit.
+
+Verify (quote commands + outputs):
+
+1. **M1 emissions (52 typed directions)** — for 10 sampled across ≥6
+   new families: confirm the data.cdb hidden-sub-sheet declaring column
+   chain in `_meta.cdbDeclarations` actually exists and types the edge;
+   re-derive the edge from its locator + one hl-src consumer grep.
+2. **M2 admissions** — the admission rule as written in the dig-log;
+   check `item.passiveSkill` ×283 landed (or is ledgered with equal
+   evidence); sample 2 folds + 1 self-pair family for direction
+   correctness.
+3. **Count integrity** — independently tally: 7,184 edges, 107 files,
+   1,432 ledger rows, class histogram vs log entry table, transition sum
+   1,560 = 39+89+1,432.
+4. **Sampler + determinism** — re-run sampler (expect 107/107 PASS);
+   deriver dry-run twice, stdout hash-identical.
+5. **Break attempt spot** — pick 8 NEW edges (not from the fixer's own
+   probe set if identifiable) and try to break their locators.
+6. **Canonical safety** — the 51 pre-existing pair files + matrix.json
+   unchanged (hash or mtime evidence); validate_all relink legs green.
+7. **PROOF R10 truthfulness** — open-debt numbers match your tallies;
+   no remaining "closed/no-debt" phrasing beyond what artifacts support.
+
+Verdict at top: PASS / FAIL with failing item ids.
