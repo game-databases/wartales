@@ -1,0 +1,23 @@
+# Brief — Documentator: F4 app shell spec
+
+Fresh Documentator agent; never spawn subagents; never commit; Wartales
+pack only. Write ONE spec: `docs/spec-f4-app-shell.mdx`.
+
+Read first: FRAMEWORK §2.20 (Next.js default profile + standard
+libraries) and §2.7/§2.15/§2.11; `_foundation/localization-architecture.md`
+in full; `_foundation/decision-register.md` [DR-2026-08-20-locale-urls],
+[DR-2026-08-24-wartales-roster] (provisional umbrella, localhost-first),
+shadcn directives (MiSide entry §3 pattern applies pack-wide);
+`site/src/styles/tokens.css` + `tokens.test.ts` (F1 canon);
+`design/shadcn-adoption.mdx` if present; `design/sources/INDEX.mdx`.
+
+Spec must define: Next.js App Router scaffold under `site/` (existing
+package.json/vitest preserved); locale routing EN bare + 8 prefixed
+locales with the exact middleware/segment strategy; chrome i18n
+namespace keyed files ×9 (content lands when dig 14 UI strings arrive —
+stub keys now, parity-checked); header/nav/footer anatomy per NWG shell
++ wikily launcher references (search FIELD is F5's piece — leave the
+slot); token wiring into Tailwind theme; fonts staging per README
+pattern. Acceptance criteria: dev server renders EN+de routes, locale
+switch links resolve, vitest green incl. existing tokens suite, curl-
+greetable HTML. Exact files-touched list.

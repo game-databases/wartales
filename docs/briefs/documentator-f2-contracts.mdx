@@ -1,0 +1,23 @@
+# Brief — Documentator: F2 published-contracts spec
+
+Fresh Documentator agent; never spawn subagents; never commit; Wartales
+pack only. Write ONE spec file: `docs/spec-f2-contracts.mdx`.
+
+Read first: FRAMEWORK.md §2.1–§2.3 + §2.10; `_foundation/seo-standard.md`
+§9 (machine data plane); canonical artifacts — `extracted/data/*.jsonl`
+(40 kinds + `_meta` convention), `extracted/relinks/matrix.json` +
+`RELATIONS.md` (§4.2-as-amended envelope), `extracted/relinks/
+locale_availability.jsonl`, `contracts/maps.schema.json`,
+`output/cdn/` icon export set layout, `pipeline/tools/validate_all.py`
+(gates you must not duplicate).
+
+Spec must define: per-kind JSON schema (base + locale overlay split per
+FRAMEWORK §2.2; stable ids per localization-architecture §5.1); the
+static JSON API URL shape derivable from page URLs (seo-standard §9
+stable-data-URL rule); list-index shapes; tooltip sub-route payload;
+marker payload shape for maps.json marks[]; buildId/coverage-scope
+user-facing provenance fields ONLY (repo-only classes banned);
+wave-1 locale scope note (availability regen lands with dig 14).
+Acceptance criteria verifiable by command/file assertion; exact
+files-touched list (schemas land under contracts/, emitter wiring is a
+later stage-7 piece — flag it, don't design it here).

@@ -1,0 +1,23 @@
+# Brief — Documentator: PT16 SEO/AEO infra spec
+
+Fresh Documentator agent; never spawn subagents; never commit; Wartales
+pack only. Write ONE spec: `docs/spec-pt16-seo.mdx`.
+
+Read first: `_foundation/seo-standard.md` IN FULL (§1–§9 binding);
+`_foundation/localization-architecture.md` §2–§3 (hreflang cluster,
+unique titles); FRAMEWORK §2.10 + §8 DoD items touching SEO/AEO;
+`contracts/maps.schema.json` + F2 brief (`docs/briefs/documentator-f2-
+contracts.mdx`) for the API-shape dependency; icon CDN path convention
+(`/cdn/v{buildid}/…`).
+
+Spec must define: sitemap strategy per section per locale with buildid
+`lastmod`; robots.txt policy incl. AI-crawler allowance set and
+noindex rules for facet combinations; JSON-LD emitters per page type
+(VideoGame sitewide, ItemList/Thing entities, HowTo guides, NewsArticle,
+Dataset for data pages, BreadcrumbList everywhere) — markup follows
+content, never precedes; OG/Twitter card generation from extracted art
+(per-entity rendered images = later piece, define the slot);
+`/llms.txt` content contract (what the site is, what numbers mean,
+JSON entry points, methodology pointer; citability wording per §9);
+IndexNow ping on publish. Acceptance criteria: curl-verifiable per rule;
+files-touched list. Note dependencies: F4 shell routes, F2 API shape.

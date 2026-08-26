@@ -1,0 +1,18 @@
+# Brief — Documentator: F5 header search spec
+
+Fresh Documentator agent; never spawn subagents; never commit; Wartales
+pack only. Write ONE spec: `docs/spec-f5-search.mdx`.
+
+Read first: `_foundation/decision-register.md` [DR-2026-08-22-search-is-
+not-a-page] (binding, every clause); FRAMEWORK §2.9; pieces.mdx F5 row;
+canonical kind inventory (`wave_kinds.py` MANAGED_KINDS) + locale set.
+
+Spec must define: the search index pipeline artifact (build step +
+output shape under site/, per-locale rows with kind facet, name
+normalization incl. zh/ko/ru matching); `searchRows` single matcher
+module runnable server+client; header field behavior contract verbatim
+from the DR (closed = word in nav, open = grows across the row, 2-char
+trigger, in-place swap preserving scroll/state, Escape/clear restore);
+no /search route anywhere (404 + absent from robots/sitemap); keyboard
++a11y basics. Acceptance criteria executable (vitest component test +
+index artifact assertion); files-touched list.
