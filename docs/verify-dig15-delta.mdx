@@ -1,0 +1,278 @@
+# Verify Dig 15 DELTA — post-fix tree (Delta Verifier)
+
+**VERDICT: PASS** — all seven brief items pass; zero failing item ids.
+
+Subject: the DELTA produced by the dig-15 fix round
+([briefs/dig15-fixer-r1.mdx](briefs/dig15-fixer-r1.mdx)) applying
+[verify-dig15-b.mdx](verify-dig15-b.mdx) M1–M4/m1–m4 and the
+[verify-dig15-a.mdx](verify-dig15-a.mdx) binding notes. Post-fix claims
+under test: **7,184 edges / 107 families / 89 derived directions / 52 new
+typed direction families / 1,432 ledger rows** and a rewritten PROOF R10.
+
+Verifier: fresh Delta Verifier agent, session date 2026-08-26, working only
+in `C:\_reps\game-databases\wartales`. No subagents; no commits. Writes:
+this file plus scratch under `output/_verify-dig15d/` only. Every number
+below was recomputed from disk by scripts written for this verify pass
+(scratch index at the end); no dig code was modified or imported for the
+counting checks.
+
+---
+
+## D1. Count integrity — independent tally — PASS
+
+(`output/_verify-dig15d/d1_tally.py`, `d1b_transition.py`; own JSONL reader,
+no dig code. Fold/self classification derived independently: self-chain =
+`X__X`, fold = direction modeled in canonical `matrix.json` incl. its 9
+canonical selfPairs.)
+
+    [1] _logic family files (excl _ledger): 107        ← claim 107
+    [1] total edges: 7184                              ← claim 7,184
+    [1] method histogram: cdb-payload-id-join 5942 · hscript-enum-ref:* 1242
+                                                        ← claims 5,942 + 1,242
+    [1] log-partition: derived-matrix 89 files/6014 edges · folds 9/139 ·
+        self-chains 9/1031                              ← claims 89/6,014 · 9/139 · 9/1,031
+    [1] _meta problems (kind mismatch / rowCount): NONE
+    [2] ledger rows: 1432                               ← claim 1,432
+        audio carve-out 33 · bitmask vocabulary 25 · code-side only 25 ·
+        inward-only chain 72 · leaf vocabulary 221 · no-carrier 771 ·
+        schema-empty 1 · terminal registry 96 · unadjudicated-name-hits 188
+                                                        ← identical to the log table
+    [3] SUM: 39 + 89 + 1432 = 1560                      ← transition sum exact
+    [3] ledger-vs-transition class histograms equal: True
+    [2] name-hits 188 = own-id-only 128 + payload-value 60   ← R10 split exact
+    [4] edges checked: 7184; unresolved vs DRAFT: 0; vs CANONICAL: 0;
+        duplicate (file,from,to): 0                     ← dangling 0 both planes
+
+The 9 fold files are battle__skill, confessions__trait, counter__icon,
+fiefPlace__condition, fiefPlace__counter, fiefPlace__item, item__itemType,
+region__region, status__attribute — region__region rides a canonical
+modeled selfPair (`matrix.json selfPairs` lists region), which is what makes
+both partitions come out 9 + 9 exactly as logged.
+
+## D2. M1 emissions — 10 sampled edges across 10 NEW families — PASS
+
+(`d2_m1_sample.py`, seed 1527950.) Exactly **52** families carry
+`admissionTags:["m1"]` on disk (= the claimed 52 new direction families).
+Sampled 10 edges across 10 distinct m1 families; for each:
+
+1. the `_meta.cdbDeclarations` chain matching the edge's carrier path was
+   resolved against `extracted/harvest/res/data.cdb` (386 sheets; hidden
+   sub-sheets are the `@`-chained ones): sheet exists, leaf column exists,
+   `typeStr` equals the claimed `6:<target>` exactly, and the target sheet
+   aliases to the family's toKind;
+2. the edge was re-derived from its cited draft locator on a fresh parse
+   (value present AT the path, == toId, ids resolve in draft AND canonical);
+3. an hl-src consumer grep over `extracted/decompiled/hl-src/src`.
+
+Result: **10/10 ALL PASS**. Quoted examples (full table in
+`output/_verify-dig15d/d2_m1_results.json`):
+
+| family | edge | declaration verified in data.cdb | consumer grep |
+|---|---|---|---|
+| startChoice-family peer trait__status | Allergic→Sting via `props.fromStatus` | `trait@props.fromStatus typeStr=6:status` MATCH | none found (see note) |
+| trait__kingdom | HaragLover→K_Harag via `props.kingdomCondition` | `trait@props.kingdomCondition typeStr=6:kingdom` MATCH | `st/Unit.hx.hx:12843 var v40 = v38.kingdomCondition;` |
+| fiefEvent__trait | Mandate_Farm→Cook via `params[].props.unitTrait` | `fiefEvent@params@props.unitTrait typeStr=6:trait` MATCH | `ui/win/fief/FiefMandateWindow.hx.hx:930 v16 = v12.unitTrait;` |
+| groupType__counter | Courtesans→NakedPeople via `props.tavern.song` | `groupType@props@tavern.song typeStr=6:counter` MATCH | `st/player/Tavern.hx.hx:7076 var v22 = v34.song;` |
+| fiefPlace__fiefAlignment | FiefPlace_ChurchLight→AlignmentMystery | `fiefPlace@props@alignments.alignment typeStr=6:fiefAlignment` MATCH | `st/player/fief/FiefEventManager.hx.hx:2982 arr = c.alignment;` |
+| status__bonus | BeastInfluence→InfluencePower | `status@props@bonuses.bonus typeStr=6:bonus` MATCH | `Console.hx.hx:4341 g#808<$Data>.bonus` |
+
+Every declaration chain checked types the edge exactly as claimed — the
+verify-dig15-b M1 defect ("ledger asserts no schema type while data.cdb
+declares one") is gone: `grep -c "no schema type"` over `_ledger.jsonl`
+returns **0**.
+
+Note (honest, non-blocking): `trait.props.fromStatus` shows **zero**
+hl-src consumer hits under field-access/literal grep. The admission rule is
+schema-based, and the log's consumer citations are made "where they exist",
+so this is recorded, not failed.
+
+## D3. M2 admissions — rule, passiveSkill, folds, self-pair — PASS
+
+- **Rule as written vs encoded.** The dig-log's four-clause rule (data.cdb
+  declares `6:<sheet>`; ≥1 populated resolves; positive polarity; managed
+  scaffold kinds) matches the declarative `FIX_ROUND_CARRIERS` table +
+  `NEGATED_CARRIER_PATHS` in `pipeline/tools/dig15_logic_edges.py`
+  (129 entries parsed back out of the tool source: fold 12 / m1 66 /
+  merge 36 / self 15) with census proof `output/_dig15-fix/p1_census.json`
+  (297 typed-ref entries; decisions ADMIT-new-family 66, ADMIT-merge 36,
+  ADMIT-modeled-fold 16, ADMIT-new-selfpair 15, EXCLUDE 144).
+- **`item.passiveSkill→skill` ×283 landed**: path histogram of
+  `item__skill.jsonl` measures `props.skill` 381 + **`props.passiveSkill`
+  283** = 664 rows. Consumer confirmed: `ui/dev/TeamManagement.hx.hx:1466
+  __attrib_2 = v46.passiveSkill;` (also st/Unit.hx.hx:18194,
+  st/player/Simulation.hx.hx:4622, ui/win/Dialog.hx.hx:7152).
+- **Other named merges**: `skill.tooltipStatus[].st→status` measured
+  133+1(levels)+1(destructiveStatus) = **135 new edges from 806 resolving
+  refs** (772+33+1) — exactly the log's arithmetic;
+  `item.tool.tavern.bonuses[].bonus` = **132** exactly.
+- **Negated polarity**: 0 emitted locators contain noHasTrait/
+  noPersonalities/noTargetsHasTrait; the four confessions→trait census rows
+  carry 1+18+12+10 = **41 resolving refs** — exactly the log's figure.
+- **Full independent re-derivation of ALL 129 fix-round carriers**
+  (`d3c_rederive.py`): every resolving `(fromId,toId)` pair present on disk
+  under its family — **MISSING PAIRS: NONE**. Per-carrier resolution counts
+  match the tool's own comments (e.g. passiveSkill 283/283, faction 227/227,
+  attractedFactions 237/237, itemCost.item 55/56 with the unresolved ref
+  kept in `_meta.unresolvedRefs`).
+- **2 folds + 1 self-pair direction correctness** (`d3_m2.py`):
+  `counter__icon` 8/8 ok (displayIcon ×8), `item__itemType` 11/11 ok
+  (refCustomization ×8 + requiredWeapon ×2 + displayType ×1 — the four M2
+  fold cases all present), `item__item` 480/480 ok (refItem ×326 +
+  refItems[] ×96 + refItemLoca ×49 + converts.item ×9). In every row the
+  carrier owner is `fromId`, the referenced value is `toId`, both resolve.
+
+## D4. Sampler + determinism — PASS
+
+- **Sampler re-run verbatim** (module loaded from its canonical path, only
+  its SCRATCH constant redirected into my scratch — `d4_run_sampler.py`):
+
+      exit= 0
+      files: 107  edges: 7184  dangling: 0
+      sample: 107  pass: 107
+      families sampled: ['cdb-payload-id-join', 'hscript-enum-ref']
+
+      5d7a3327f7ad7f42…  output/_verify-dig15d/verification.json   (my rerun)
+      5d7a3327f7ad7f42…  output/_dig-relink-matrix/verification.json (stored proof)
+      → byte-identical; the dig's proof artifact untouched.
+
+- **Deriver dry-run twice**:
+
+      python pipeline/tools/dig15_logic_edges.py --dry-run   # ×2
+      dry1.txt sha256 = 9af3c4b8fe4dd8a8d157fd560936155508d4af1a4c7f6f83c66357525b3d189d
+      dry2.txt sha256 = 9af3c4b8fe4dd8a8d157fd560936155508d4af1a4c7f6f83c66357525b3d189d
+      IDENTICAL_STDOUT (exit 0 both, stderr 0 bytes);
+      extracted/relinks/_logic tree sha256 before == after (no writes)
+
+      my dry1.txt == output/_dig15-fix/final_dry1.txt (same hash) — the
+      fixer's final state IS the state on disk now.
+
+## D5. Break attempts — 8 fresh NEW edges — PASS
+
+(`d5_break.py`, seed 20318128.) Candidates drawn only from m1-tagged
+families, excluding all **842** triples the fixer's own `p3_family_probe`
+sampled and my 10 D2 picks. Each edge had to survive: filename↔kinds,
+`_meta` coherence, locator parse, fresh-parse path resolution with
+value==toId, id membership in draft AND canonical, data.cdb declaration
+typing, plus a reverse-direction probe (toId's own row must NOT hold fromId
+at the same relative path). Two mutated negative controls must fail.
+
+    SURVIVES skill__icon            FirstAid -> CursorHeal          (props.cursor)
+    SURVIVES item__icon             WorkManual -> DlgRead           (props.converts.action)
+    SURVIVES item__groupType        GosenbergWine -> Nobles         (tavern.attractedFactions[].faction)
+    SURVIVES groupType__counter     PurifiersGuild -> BaseSong      (props.tavern.song)
+    SURVIVES fiefPlace__fiefAlignment  FiefPlace_ChurchTeuls -> AlignmentMystery
+    SURVIVES trait__class           TavernBear -> TrackerBears      (tavern.unitCategories[].category)
+    SURVIVES fiefPlace__effect      FiefPlace_Erudition -> Fief_TAlignmentIncrease_PerTFiefPopulation
+    SURVIVES fiefEvent__fiefAlignment  Fief_Audience13_01 -> AlignmentMystery
+    negative controls: mutated-path BROKEN (correct), mutated-value BROKEN (correct)
+    BREAK-ATTEMPT VERDICT: 8/8 SURVIVED, controls fail correctly
+
+Beyond the sample, an independent **full-corpus locator re-resolution**
+(`d7_full_locator.py`) re-derived ALL edges from their cited locators:
+
+    edges re-resolved: 7184/7184; failures: 0
+    method histogram: {'cdb-payload-id-join': 5942, 'hscript-enum-ref': 1242}
+
+(corroborating the fixer's `p2_edge_audit.json` claim of 7,184/7,184.)
+
+## D6. Canonical safety — PASS
+
+- Top-level canonical pair files: **51** (== `EXPECTED_PAIR_FILES` count),
+  **all mtimed 2026-08-25 09:59** (pre-dig); `matrix.json` mtime
+  2026-08-25 18:19. Nothing under `extracted/relinks/` moved by the fix
+  round (scoped `git status --porcelain extracted/relinks/` empty; the
+  tree is pack-gitignored, so mtime + hash are the evidence).
+- `matrix.json` sha256 begins `5efaba53b05bf2ff` … matching the full parity
+  marker pinned in [extracted/RELATIONS.md](../extracted/RELATIONS.md)
+  (`5efaba53b05bf2ffaf684e2da02e65a5f61084381c710bedd66258cbdf18247a`) —
+  the frozen catalog plane is byte-untouched.
+- **validate_all** (report/md redirected to scratch):
+
+      validation: FAIL (7/8 checks)
+        [ok] verifier-gates: exit 0, allChecksPassed=True
+        [ok] census-closure: 10207 + 1266 == 11473
+        [ok] census-per-kind: 0 deviations
+        [ok] relink-integrity: pairFiles=51; edges=19130; valid:false=0;
+             valid:null=72 (61+9+2); non-hard=0
+        [FAIL] availability-regenerated: exit 0, parsed=True
+        [ok] catalog-parity: pairCount=780; uncovered=0; markerMatch=True;
+             mdMatrixRows=780; cellMismatches=0
+        [ok] deferred-present (frozenMatch=True)
+        [ok] hbson-independent: banned=absent; nonManaged=3
+
+  Every dig-15-relevant leg is green (verifier-gates over both planes,
+  relink-integrity 51/19,130/0-false/72-null, catalog parity 780×780 with
+  marker match). The single FAIL remains dig-14's surface
+  (`locale_bridge_dig.py` carries an uncommitted working-tree rewrite; the
+  same attribution verify-dig15-a V6 and verify-dig15-b m4 recorded) — not
+  a dig-15 defect, still open for whoever closes dig 14.
+
+## D7. PROOF R10 truthfulness — PASS
+
+([extracted/PROOF.md](../extracted/PROOF.md) R10 row, checked clause by
+clause against my tallies.)
+
+| R10 statement | my measurement | verdict |
+|---|---|---|
+| 39 modeled · 89 derived · 1,432 ledgered across 9 classes | transition table sums 39+89+1432=1560; class histogram identical | ✓ |
+| 107 family files / 7,184 edges / 0 dangling | disk census + dangling sweep both planes | ✓ |
+| methods cdb-payload-id-join 5,942 + hscript-enum-ref 1,242 | edge-method tally | ✓ |
+| every admitted family carries `_meta.cdbDeclarations` | true for all **83** fix-round-tagged families; **24 r1-era families carry no cdbDeclarations** (r1-style probe metadata instead) — scope wording nit below | ✓ w/ nit |
+| ≥10 sampled edges re-derived per family | `p3_family_probe`: 107 families, 842 sampled = min(10, rowCount) each, pass==sampled everywhere, 0 failures | ✓ |
+| no-carrier 771 mechanically audited zero unpinned hit | re-ran `p4_sweep_audit_r3.py` with OUT redirected: `candidates=188 noCarrierContradictions=0 sweepOnly=0 ledgerOnly=0 verdict: CLEAN`, byte-identical to the stored regenerated `sweep_audit_r2.json` (sha 29b78a3d…) which now carries the REGENERATED/SUPERSEDES qualifier (verify-dig15-a note (a) closed) | ✓ |
+| name-hits 188 = 128 own-id-only + 60 payload-value | ledger note split measured 128/60 | ✓ |
+| bar 2: 20 surfaces / 31 relations — covered 19 · logic-covered 3 · covered-derived 4 · covered-deferred 4 · gap 1 | coverage jsonl histogram identical | ✓ |
+| `_meta.completeness`: ALL 140 ui/win sources, 14 mapped + 126 explicitly deferred, 7 relation-bearing candidates named | my recursive count of `.hx.hx` under `src/ui/win` = **140**; mappedWindows=14 + unmappedDeferred=126, disjoint; TradeRoute/GarnisonManager/Gambling/Stake/OilPanel/CampChest/WeaponDisplay all individually listed | ✓ |
+| token map 56 ordered-pair-upgrade / 33 R3 / 9 self-chain-outside-matrix / 9 folds | token_map_detail buckets 56+33+9 and remainder-by-set-difference = exactly the 9 self-chain families | ✓ |
+| open debt (a) 60 payload-value name-hit directions | matches ledger | ✓ |
+| open debt (b) deferred-kind outbound 73 typed paths / 13,429 resolving refs (+~330 element.script enum refs, quoted) | census: 80 typed paths, **7 with resolved==0** → **73 populated / 13,429 refs** exact | ✓ |
+| open debt (c) 126 deferred windows; (d) trade-price-matrix gap with honesty qualifiers | present as stated | ✓ |
+
+Overclaim scan: `"no open extraction debt"` / `"re-freeze only"` return **zero
+matches** in PROOF.md — the phrase verify-dig15-b M3 flagged is gone, and R10
+now enumerates open extraction debt with numbers. Ledger-wide, the false
+"no schema type" assertion (M1) is extinct (grep 0).
+
+### Minor observations (non-blocking, none a failing id)
+
+- **n1 — "+855 edges" merge figure is off by five against rows-on-disk.**
+  Merge-tagged carrier paths account for **850** emitted rows; the remaining
+  5 resolving refs (`mission.props.replace` ×2, `skill.props.copyScript` ×3)
+  dedupe into pairs ALREADY present from sibling carriers of the same family
+  (`parentMission`, `copyDesc` — verified present). Zero data loss; one
+  prose number imprecise. Every headline number (7,184 / 107 / 89·139·1031)
+  is exact.
+- **n2 — R10 "every admitted family carries `_meta.cdbDeclarations`"
+  reads broader than disk.** It holds for the 83 fix-round-admitted
+  families; the 24 r1-era families (incl. flagship `startChoice__unitPattern`)
+  carry the older `refsSeen/emitted` probe metadata. Their typing was
+  verified independently (verify-dig15-b B2 table; my D2 spot-check of
+  `startChoice@props.pattern 6:unitPattern`). Tighten the sentence at next
+  doc touch.
+- **n3 — heading residue.** The dig-log heading keeps "DR bars 1–2 closed
+  at evidence layer", the compression verify-dig15-b M3 objected to. The
+  body and R10 now enumerate the open debt honestly, so the phrase survives
+  only as a qualified heading, but it should be softened when the entry is
+  next edited.
+- **n4 — scratch label inconsistency.** `p1_census.json` marks the four
+  negated confessions→trait paths `decision:"ADMIT-modeled-fold"` while
+  `NEGATED_CARRIER_PATHS` then excludes them from emission (emitted count
+  correctly 0). The exclusion itself is documented in three places and the
+  counts reconcile; only the per-entry label disagrees with the outcome.
+- **n5 — commit hygiene carried over.** The post-fix artifacts live in the
+  working tree: `dig15_logic_edges.py` modified, `dig15_ui_coverage.py`
+  untracked, `docs/data-dig-log.mdx` modified, `extracted/relinks/_logic/`
+  pack-gitignored. Same shape verify-dig15-a V6 recorded for r1; the
+  landing commit should include the two tools when the owner commits.
+
+## Scratch index (all under `output/_verify-dig15d/`)
+
+`d1_tally.py`/`d1_tally.txt`, `d1b_transition.py`/`d1b.txt` — D1 counts ·
+`d2_m1_sample.py`/`d2_m1_results.json` — D2 M1 sampling ·
+`d3_m2.py`/`d3.txt`, `d3b_tags.py`, `d3c_rederive.py` — D3 admission checks
+and full 129-carrier re-derivation · `d4_run_sampler.py`,
+`verification.json`, `dry1.txt`/`dry2.txt`(+`.err`),
+`logic_hash_before/after.txt` — D4 · `d5_break.py` — D5 break attempts ·
+`validation-report.json`, `VALIDATION-REPORT.md` — D6 redirected outputs ·
+`d6_r10.py` — D7 inputs · `d7_full_locator.py` — full-corpus re-resolution ·
+`p4_redir.py`, `sweep_audit_r2_redone.json` — D7 sweep-audit rerun.

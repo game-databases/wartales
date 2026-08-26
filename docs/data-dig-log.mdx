@@ -1508,5 +1508,320 @@ This entry records deltas; verification numbers are final-emit facts.
 3. Locale overlays for place/group/element (Dig 7 queue item 1) still
    open.
 
+## 2026-08-26 — Dig 15: ordered-pair relink matrix upgrade — DR bars 1–2 closed at evidence layer (r2 fix round folded)
+
+**Agent:** fresh data-layer dig agent (brief
+[briefs/dig-relink-matrix.mdx](briefs/dig-relink-matrix.mdx)); fix round by
+the dig-15 fixer per [briefs/dig15-fixer-r1.mdx](briefs/dig15-fixer-r1.mdx)
+applying [verify-dig15-b.mdx](verify-dig15-b.mdx) M1–M4/m1–m4 +
+[verify-dig15-a.mdx](verify-dig15-a.mdx) binding notes. No subagents; no
+commits; stdlib Python only. Deliverables:
+[extracted/relinks/_logic/](../extracted/relinks/_logic/) (bar 1),
+[ui_link_coverage.jsonl](../extracted/relinks/ui_link_coverage.jsonl)
+(bar 2), tools [dig15_logic_edges.py](../pipeline/tools/dig15_logic_edges.py)
+/ [dig15_sample_verify.py](../pipeline/tools/dig15_sample_verify.py) /
+[dig15_ui_coverage.py](../pipeline/tools/dig15_ui_coverage.py), proofs in
+`output/_dig-relink-matrix/` + `output/_dig15-fix/`. All numbers below are
+the post-fix state.
+
+**Resumption of the interrupted run.** A prior dig-15 agent died on an API
+rate limit mid-flight. Its scratch (`output/_dig-relink-matrix/`) held a
+stale transition table, a sampler, and 22 emitted `_logic` files — but the
+generator already contained derivations that had never been executed
+(notably `startChoice.props.pattern → unitPattern`, whose family file was
+absent). Reconciliation found the actual defect: `derived_dirs` collapsed
+`(from,to)` tuples to their first element, so derived directions never
+entered the transition table AND were double-ledgered as "no-carrier"
+(e.g. `bonus→attribute` claimed structurally unrelated while carrying 37
+derived edges — a direct contradiction). One-line fix + regeneration;
+every prior emission reproduced byte-identically except the corrected
+accounting and the newly added families.
+
+**Bar 1 — every direction derived or concretely ledgered.**
+
+Per-direction status transitions over the full scaffold (780 unordered
+pairs × both directions = 1,560):
+
+| before | after | count |
+|---|---|---:|
+| partial 1,085 / missing 436 | → **derived-evidence** | **89** (37 r1 + 52 fix round) |
+| partial / missing | → ledgered:no-carrier | 771 |
+| partial / missing | → ledgered:unadjudicated-name-hits | 188 (128 own-id-only) |
+| partial / missing | → ledgered:leaf vocabulary | 221 |
+| partial / missing | → ledgered:terminal registry | 96 |
+| partial / missing | → ledgered:inward-only chain | 72 |
+| partial / missing | → ledgered:audio carve-out | 33 |
+| partial / missing | → ledgered:code-side only | 25 |
+| partial / missing | → ledgered:bitmask vocabulary | 25 |
+| partial / missing | → ledgered:schema-empty | 1 |
+| modeled | unchanged | 39 |
+
+Evidence layer: **107 `_logic` files, 7,184 edges, dangling 0**
+(methods: `cdb-payload-id-join` 5,942 + `hscript-enum-ref` 1,242).
+Breakdown: **6,014 edges on the 89 derived matrix directions**, 139 on
+9 modeled-direction fold files, 1,031 on 9 self-chain families
+(`skill__skill`/`bonus__bonus`/`mission__mission` + fix-round
+`item__item`/`groupType__groupType`/`trait__trait`/`status__status`/
+`fiefGoal__fiefGoal`/`fiefEvent__fiefEvent`). Edge shape:
+`cdb-payload-id-join`
+(`{fromId,toId,mechanism:"inferred",method,evidence}` where evidence is a
+re-checkable draft locator `<kind>.jsonl#<id>:<path>='<value>'`) and
+`hscript-enum-ref` (`logic`; skill.script token offsets). Carrier families
+were admitted only after probe verification of value resolution — e.g.
+`item.props.skill→skill` 381/381, `fiefEvent.consequences.effects[].ref→effect`
+245/245, `class.props.trait→trait` 22/22, `itemType.props.baseBonusDefault→item`
+20/20, `startChoice.props.pattern→unitPattern` 11/11 (corroborated by the
+`.pattern` consumer at [Group.hx.hx:3268](../extracted/decompiled/hl-src/src/st/Group.hx.hx));
+polymorphic paths (`effects[].target[]`, half resolving to counters) emit
+only the resolving half and keep the rest as `unresolvedRefs` in each
+file's `_meta`.
+
+**Family-admission rule** (stated per verify-dig15-b M2; encoded as the
+declarative `FIX_ROUND_CARRIERS` table in
+[dig15_logic_edges.py](../pipeline/tools/dig15_logic_edges.py) with census
+proof `output/_dig15-fix/p1_census.json`): a payload path P on managed kind
+X is admitted as an edge family onto managed kind Y iff (1) data.cdb
+declares P — top-level sheet or hidden sub-sheet `A@b@c` chain — with
+reference type `6:<sheet of Y>`; (2) ≥1 populated value at P resolves
+exactly into Y's id set (unresolved values recorded as `unresolvedRefs`,
+never dropped); (3) the carrier is positive — negated conditions
+(`noHasTrait`, `noPersonalities`, `noTargetsHasTrait`; 4 paths, 41
+resolving refs on confessions→trait) carry inverted polarity and are
+excluded with reasons, same evidence bar; (4) both X and Y are managed
+scaffold kinds. Applying the rule uniformly over the full hidden-sub-sheet
+census admitted **52 new direction families** (the 31 the auditor proved
+plus 21 more on deeper sub-sheet chains their walk did not reach),
+**36 additional typed join keys merged into 16 existing families** (+855
+edges — incl. `item.props.passiveSkill→skill` ×283,
+`skill.tooltipStatus[].st→status` 806 refs → +135 edges,
+`item.tool.tavern.bonuses[].bonus` ×132), **9 modeled-direction folds**
+(8 new fold-note files + `confessions__trait` extended; incl.
+`counter.displayIcon`, `status.attributePercent/attributeValue`,
+`item refCustomization/displayType` — the four cases M2 named), and the
+6 self-chain families above (`props.refItem` ×326 et al.). Every new
+family carries its declaring data.cdb column chain in
+`_meta.cdbDeclarations`, ≥10 sampled edges re-deriving independently
+(`output/_dig15-fix/p3_family_probe.json`: 107 families, 0 failures), and
+hand-read code consumers where they exist (e.g. Paths.hx.hx:543 compares
+`troopChoice.props.pathCounter` against counter ids;
+Status.hx.hx:371 reads `attributePercent`;
+TeamManagement.hx.hx:1466 reads `passiveSkill`;
+st/Region.hx.hx:1711 reads `sameDifficultyAs`) — full candidate greps in
+p3.
+
+Ledger honesty upgrade: the prior blanket text ("zero carriers across all
+four checks") did not survive a global exact-name sweep, which found
+directions with payload values coinciding with other kinds' ids. Those
+ledger as **unadjudicated-name-hits** (counts + top paths + example in the
+unblock text; never edges), and `no-carrier` is claimed only where the
+pin-aware sweep finds zero matches. Post-fix class texts no longer assert
+"no schema type" anywhere (verify-dig15-b M1): every remaining name-hit
+row genuinely has no data.cdb-declared reference type whose values resolve
+into the target kind (hidden-sub-sheet census applied), rows resting ONLY
+on the row's own `id` colliding with a target id are marked as such
+(verify-dig15-b m2 — 128 of 188; the other 60 quote real payload-value
+coincidences), and the no-carrier text cites the negative hidden-sub-sheet
+census instead of the old false "no schema-declared-but-unpopulated
+6-column" clause. Sweep limitation recorded (verify-dig15-b m3): the sweep
+is exact-name equality over unpinned string scalars; normalized-equality
+near-carriers it cannot see (amb/env/region `.biome` vocabularies vs
+region ids modulo case+underscore, e.g. `edoran2` vs `Edoran_2`) were
+adjudicated "collision, not carrier" for this build and stay invisible to
+every class by construction. Independent audit at final state
+(`output/_dig15-fix/p4_sweep_audit_r3.py`, regenerating the stale unpinned
+`sweep_audit_r2.json` with a supersede qualifier — verify-dig15-a note):
+hit-set == ledger name-hit set exactly (**188/188**, empty both
+directions); zero no-carrier contradictions; 1,273 residual name
+coincidences inside derived directions counted and reported by the deriver
+(cross-kind junk at untyped paths such as `conditions[].target[]` — never
+edges).
+
+Proofs: sampled verification **107/107 PASS** (seed 15 stratified, ≥1 per
+family, every sampled edge independently re-derived from its cited
+locator, plus the full-corpus dangling sweep —
+`output/_dig-relink-matrix/verification.json`); independent all-edge break
+attempt clean at post-fix state (7,184/7,184 locators re-resolved,
+0 duplicate pairs — `output/_dig15-fix/p2_edge_audit.json`). Per-direction
+transition table: `output/_dig-relink-matrix/transition_table.json`.
+Determinism: two dry-runs byte-identical
+(`output/_dig15-fix/dry1.txt` == `dry2.txt`).
+
+**Bar 2 — UI links analyzed.**
+[ui_link_coverage.jsonl](../extracted/relinks/ui_link_coverage.jsonl):
+20 surfaces / 31 presented relations — **covered 19** (canonical relink
+files satisfy them), **logic-covered 3** (decompiled formula layer, e.g.
+capture chance f#7774 behind the capture interaction, XpWin* constants
+behind the debrief panel), **covered-derived 4** (this dig's families:
+dismantle yield `itemType__loot`, craft station `item__activity`,
+troop patterns `startChoice__unitPattern`, mission region scope), 
+**covered-deferred 4** (companion traits/recruit economics/place cards/
+achievement graph — schema+data exist for deferred kinds in `_draft`),
+**gap 1** (the runtime town×trade-good price matrix has no static data
+counterpart; counterparts shipped = element@items containers + TradeGood*
+constants + price formulas; unblock stated, never invented). Every covered
+row cites a regex verified against the cited hl-src line numbers at emit
+time; texts.xml group corroboration checked against the master group dump
+(213 groups). **Completeness argument** (verify-dig15-b M4, fix round):
+the map no longer ships without one — `_meta.completeness` enumerates ALL
+**140** `.hx.hx` sources under `hl-src/src/ui/win` (recursively, incl.
+subdirs `e2/ fief/ notify/ pit/ tavern/ tavern/comp/ thebeast/`),
+classifying **14 as mapped** (cited by surfaces above) and the remaining
+**126 as explicitly deferred**, each named in the list, with the seven
+relation-bearing candidates called out individually (TradeRoute,
+GarnisonManager, Gambling, Stake, OilPanel, CampChest, WeaponDisplay) and
+a concrete unblock: a bar-2 extension dig mapping each deferred window's
+relations onto canonical + `_logic` families needs only analyst time —
+sources and datasets are shipped. The trade-price-matrix gap row now also
+carries the honesty qualifiers from audit D3/D4 (nearest-producer inputs
+are deferred-kind payload; stock refresh is genuine runtime state;
+TradeRoute adjacency noted).
+
+**`_logic/` ↔ scaffold token map (for the next spec re-freeze).** The
+catalog generator stays arbiter-frozen ([RELATIONS.md](../extracted/RELATIONS.md)
+untouched); the re-freeze wires the evidence layer onto the cells it
+already tokens: **56 files** resolve cells currently unblocked
+"ordered-pair upgrade dig"; **33 files** resolve "R3" cells (skill-subtree,
+bonus/confessions and fix-round families); **9 files** are self-chain/
+additional-key families outside the ordered matrix; **9 files** fold onto
+already-modeled directions (extra join keys such as `gains.trait[].inf`
+alongside modeled `data[].personality`, or fix-round carriers like
+`battle.props.globalSkills[].skill`). Promotion rule per file is in its
+`_meta.promotionExpectation` (`hard` for pure payload-id joins).
+
+**Fix-round boundary note (verify-dig15-b m1).** Deferred kinds
+(element/group/place/levelProps) sit outside the 40-kind scaffold by
+spec §3.5, so their outbound carrier mass is not bar-1 debt — but it is
+now stated instead of silent: the census counts **73 populated typed
+paths totalling 13,429 resolving refs** out of those four kinds
+(`element→class npc.unit` ×1,199, `group→groupType props.type` ×791,
+`element→region npc.region` ×516, …) plus ~330 resolving enum refs in
+`element.script`, all queued via queue addition (3). Attribution guard
+(m4): `locale_availability.jsonl` beside the canonical relink files is
+dig-14 output (`locale_bridge_dig.py`, R5 ruling), never dig-15 fallout.
+
+**Queue additions.** (1) Spec re-freeze: promote `_logic/` families +
+fold notes into canonical relinks and re-run the catalog generator.
+(2) Adjudicate the 60 remaining payload-value name-hit directions (188
+minus 128 own-id-only) via code-consumer proof — hidden sub-sheet typing
+is exhausted (fix round applied it); several collisions look real
+(`class→trait` aside). (3) Deferred-kind carrier dig: emit the
+element/group/place/levelProps outbound mass (73 paths / 13,429 refs)
+once R1 promotion lands. (4) Bar-2 extension dig: classify the 126
+deferred ui/win windows (start with TradeRoute/GarnisonManager).
+(5) Economy simulation from shipped constants to close the trade-price-
+matrix gap honestly.
+
+## 2026-08-26 — Dig 14: locale overlays wave-2 — every CDB text kind + the UI-string layer (R9 closed, R5 rule applied)
+
+**Agent:** fresh data-layer dig agent (brief
+[briefs/dig-locale-wave2.mdx](briefs/dig-locale-wave2.mdx)). No subagents;
+no commits; Python `C:\Python314\python.exe` stdlib only. Resumed an
+interrupted prior run that died on an API rate limit: its scratch
+(`output/_dig-locale-wave2/`) held only exploration probes (a per-draft
+textKey survey + peek scripts) and zero emissions — reconciled and reused
+the survey, nothing to roll back. Tracked tree was clean at pickup.
+
+**Tool extended:** [locale_bridge_dig.py](../pipeline/tools/locale_bridge_dig.py)
+(dig 2 tool kept; generalized). Kind set now **34 kinds**:
+
+1. **Mechanism A — ref-driven (27 kinds).** Every draft whose rows carry
+   structured textKey refs. Wave-2 grammar pinned: a ref's
+   `subSheet` segments map positionally onto the export's `<line{k}>`
+   wrappers (draft array index k ↔ line{k}, recursively — confessions
+   reaches `data[].choices[].texts[]`, depth 3). Overlays mirror the draft
+   shape with resolved strings at ref positions; unresolved cells and
+   emptied containers are pruned (omit-until-translated, no filler).
+2. **Mechanism B — id-join structural (7 kinds).** place / group /
+   element (datafile-backed; CDB holds no inline lines) plus battle /
+   fiefPlace / fiefAdministration / fiefMission (prose inside typeStr-17
+   struct columns, never marked localizable). Their drafts hold dev-pivot
+   French inline and carry NO refs; the export side holds the translated
+   leaves. Join key = row id ↔ export entry tag, proven total on the
+   export side (**0 export-only ids × 7 kinds × 9 locales**). Each kind's
+   prose-column vocabulary is pinned as full-path patterns
+   (`STRUCT_TEXT_PATTERNS`; derived from the complete shape enumeration of
+   `export_en.xml`) so a text cell stores its FULL raw span — inline
+   `<br/>`/`<img>` children stay verbatim in the string per
+   [locale-key-convention §2](locale-key-convention.mdx); everything else
+   is structure to recurse through.
+
+**R5 stamping rule applied (decided 2026-08-26):** rows sourced from a
+bridge file with no version/revision/date header are stamped
+`"stampedBy": "buildid-fallback"` with pack buildid **20318128** — never
+invented timestamps. Exactly two files are headerless: `export_fr.xml`
+(bare `<cdb>`) and the UI master `texts.xml` (bare `<texts>` — same fr
+vintage). Stamps are file-level constants, so the table lives in
+[locale_availability.meta.json](../extracted/relinks/locale_availability.meta.json)
+keyed by source file + locale (per-row duplication of 9 identical stamps
+across ~14k rows would be noise, and drift rows source from no file at
+all); a row's stamp resolves through the locales it lists.
+
+**UI-string layer (site-chrome namespace, separate from game content,
+localization-architecture §4):** master `texts.xml` IS the French dev-pivot
+(no `texts_fr.xml` exists); parsed with `texts_<l>.xml` ×8 into
+`extracted/locales/ui/<locale>.json` — keys are `id` for top-level `<t>`
+and `group/id` for grouped entries (`_id` attribute honored verbatim;
+accent-stripped ids like `dbutant` preserved). Group inventory +
+coverage in `ui/_inventory.json`: **40 groups + 4 top-level keys;
+889 strings per locale, fr 778 — the fr master genuinely lacks 111 keys
+every other locale has** (measured vintage delta, extra_vs_pivot 0
+everywhere).
+
+**Emitted artifacts**
+
+- `extracted/locales/<locale>/<kind>.json` × 9 × 34 kinds — **85,264
+  overlay entity rows** (9,474 entities with ≥1 string per locale; fr
+  9,472 — see filler below).
+- `extracted/relinks/locale_availability.jsonl` regenerated: **14,456
+  rows over 34 kinds** (was 3,779 over 3). Row schema extends wave-1:
+  `fields[locale]` maps the entity's OWN field-path templates
+  (`data[].choices[].tipText` style) to presence booleans; wave-1 rows
+  keep the exact frozen `{description, name}` shape.
+- `extracted/relinks/locale_availability.meta.json` (new, R5 table).
+- `extracted/locales/ui/` ×10 + `_inventory.json` (new).
+
+**Proofs (all reproducible via the tool; report in
+`output/_dig-locale-wave2/report.json`)**
+
+1. **Dual-extractor raw-span, exhaustive:** every emitted overlay string
+   re-extracted by an algorithmically independent scanner (quote-aware
+   `str.find` walk, explicit stack, no regex tokenizer, shared component
+   grammar): **198,899 / 198,899 matched — 0 mismatched, 0 absent**
+   across all 34 kinds × 9 locales (A 96,811 + B 102,088).
+2. **Dual-parser structure (en):** tree builder vs ElementTree over all
+   28 ref-driven sheets — row sets equal, leaf-path signatures equal,
+   **0 mismatches**; the 7 struct sheets are proven by extractor
+   agreement instead (their prose cells carry inline children a
+   childless-only ET signature cannot name).
+3. **UI dual-extractor:** **7,890 / 7,890** stored strings match the
+   scanner's independent `(group, t-id)` map across all 10 files.
+4. **Drift reconciliation, exact:** 14,456 entities = 9,474 bridged +
+   4,982 absent-everywhere ✓; per kind × locale,
+   ok+empty+missing == refs and missing == absent-entity-cells +
+   partial-cells (all true; e.g. item en: 318 absent entities → 323 refs
+   + 28 partial = 351 of 3,859 refs).
+5. **Filler census (instance level, extended set): exactly 2 instances
+   pack-wide** — `fiefCondition/CompleteFiefMission` and
+   `fiefCondition/GovernmentAssign` descriptions resolve in 8 locales and
+   are absent in fr only. The dig-2 "perfectly parallel" finding therefore
+   extends to all 34 kinds except this one measured fr-vintage delta.
+6. **Round-trip sample:** 148 entities (wave-1 sizes + 3 per new kind,
+   seed 20318128): 127 resolve in all nine; **all 21 failures are drift
+   entities failing in every locale** (e.g. `item/LegOfSmilodonRecipe`,
+   `input/Skill5`) — data gaps, not addressing failures.
+7. **Wave-1 non-regression, byte-exact:** the HEAD (dig-2) tool was run
+   from git beside the extended tool — all **27 item/skill/class overlay
+   files reproduce byte-identically**, and the 3,779 wave-1 availability
+   rows keep their frozen shape. Two regressions were caught and fixed by
+   this oracle during development (alias key `desc`→`description` lost in
+   overlays; skill `levels` refs leaking past the frozen field set).
+
+**Residual ledgered:** skill `levels` subSheet carries 80 refs (74
+resolve en) outside the frozen wave-1 field set — excluded above, left to
+an owner call before any schema change to frozen artifacts. Mechanism-B
+duplicate draft ids (element 102, group 1, place 2 extra occurrences) are
+prefab occurrences of one entity: availability/overlays dedupe by id,
+occurrence rows remain in the datasets.
+
 <!-- END OF wartales/docs/data-dig-log.mdx -->
 
