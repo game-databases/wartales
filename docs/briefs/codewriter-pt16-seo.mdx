@@ -1,0 +1,45 @@
+# Brief — CodeWriter: PT16 SEO/AEO infra (Batch 3)
+
+Fresh CodeWriter agent; never spawn subagents; never commit; Wartales
+pack only. Build `docs/spec-pt16-seo.mdx` EXACTLY — frozen
+BUILD-READY (arbiter APPROVE post-r1; pt-BR collision resolved via F4
+override + manifest pageSegments law; three N-directives ride this
+first pass per arbiter).
+
+Read IN FULL: the spec (35 ACs, S/R/J/T/O/L/I scheme); seo-standard
+§1–§9 (binding); FRAMEWORK §2.10; F4's landed routes-manifest +
+i18n/locales.ts (consume, never redefine); F2's §6 API URL law +
+api.manifest shape incl. pageSegments; EXTRACTION-LOG §5 icon CDN path
+convention; F1 token canon (never-touch); existing suites keep green.
+
+Build laws:
+- §14 files-touched exhaustive (~21 new paths under site/src/lib/seo/,
+  scripts, app handlers); zero edits to existing files EXCEPT where an
+  AC mandates a handler registration the spec names — if you find a
+  needed edit beyond that, STOP that item and report it instead.
+- Sitemaps: per-section registry × locale, sharded index, buildid-
+  driven lastmod (offset-naive run instant, string equality pinned),
+  byte-stable regeneration; app/sitemap.xml/route.ts custom handler
+  per r1 m-6.
+- robots.txt: explicit AI-crawler allowance set, facet noindex-vs-
+  Disallow mechanism split, staging header noindex.
+- JSON-LD emitters per kind→node mapping table; markup-follows-content
+  ordering structural; identity parity asserted.
+- Titles/hreflang templates with build-time uniqueness assert; zh→
+  zh-Hans cluster; x-default reciprocity.
+- OG slot `/cdn/v{buildid}/og/{kind}/{id}.webp` defined now with the
+  fallback chain live today (default.png staged-at-setup behind README
+  + gitignore line per M-F).
+- llms.txt contract per §9 citability wording, F2-manifest-driven JSON
+  links; IndexNow key file NOT committed secret material; localhost
+  never pings.
+- Fold arbiter N-1/N-2/N-3 directives into this pass (availability
+  ∅-vs-partial truth; MANAGED_KINDS pin in §4.2/AC-S3 surfaces; blocker-
+  label ownership corrections are doc-side — apply only what touches
+  code).
+- Verify: npm test green incl. all prior suites; tsc clean; sitemap
+  regeneration byte-stable twice; robots/sitemap/llms.txt curl-greetable
+  on dev server; quote outputs. df-check before heavy steps.
+
+Final message: files vs §14, verification outputs, deviations (report,
+never improvise).

@@ -1,0 +1,27 @@
+# Brief — TestWriter: PT16 SEO/AEO infra (Batch 3, BLIND)
+
+Fresh TestWriter agent; never spawn subagents; never commit; Wartales
+pack only. Write tests for `docs/spec-pt16-seo.mdx` §13's 35 ACs —
+BLIND: parallel CodeWriter in flight; do NOT read anything under
+`site/src/lib/seo/**`, `app/sitemap.xml/**`, or seo scripts even when
+they appear. MAY read: the spec, seo-standard §1–§9, F4's routes-
+manifest/i18n tables (consumed contracts), existing suites for style,
+package.json.
+
+Deliverables:
+1. Vitest suites per AC group: sitemap registry/sharding/lastmod/
+   byte-stability (S1–S7); robots allowance set + noindex-vs-Disallow
+   split (R1–R6); JSON-LD node mapping + required properties +
+   markup-follows-content ordering (J1–J7); title uniqueness +
+   hreflang cluster reciprocity incl. zh-Hans (T1–T4); OG slot path
+   convention + fallback chain (O1–O3); llms.txt citability rules +
+   denylist self-check + JSON links from F2 manifest (L1–L4); IndexNow
+   key handling + localhost-never-pings + diff-driven URL set (I1–I4).
+   Curl-legs guarded by the established env pattern so bare runs stay
+   green offline.
+2. Red-first mindset; poison empty-set loops; contract-level assertions
+   only (no implementation coupling).
+3. Existing suites untouched and green; df-check before heavy runs.
+
+Final message: suite/file list, case counts, AC coverage map (all 35),
+blindness confirmation.

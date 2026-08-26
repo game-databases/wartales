@@ -1,0 +1,35 @@
+# Brief — Fixer: F5 build round r2 (combined code+tests+errata)
+
+Fresh Fixer agent; never spawn subagents; never commit; Wartales pack
+only. Deliverables: fixed code/tests + `## Fix round r2` ledgers
+appended to BOTH review docs + `## Errata candidates` appended to
+`docs/spec-f5-search.mdx`.
+
+Inputs (binding): `docs/review-f5-code.mdx` (M-1, m-1..m-8, XF-A/XF-B
+rulings), `docs/review-f5-tests.mdx` (M-1..M-8 minors), both specs'
+frozen laws.
+
+Work items:
+1. **Code M-1**: failed artifact fetch renders plain-word absence state
+   ("index unavailable for this language" class of message), never fake
+   zeros; retry affordance while field open; live-region announces it;
+   add a suite leg proving a 404 artifact does NOT produce `0`.
+2. Code m-1..m-8 per anchors: schema href regex anchoring fixed;
+   duplicate (kind,id) rows rejected at emit; SearchResultsView unknown-
+   kind hits surfaced not dropped; className-based "grows" assertion →
+   structural check; AC-14 Tab leg + AC-16 resolver unit asserted;
+   tsconfig note stays ledgered (N2-class).
+3. Test minors M-1..M-8 per anchors: split the dual-divergence xfail
+   into two named strict-xfails; Gate-2 attribution test; AC-6 dry-run/
+   list leg (orchestrator-owned legs stay documented-not-tested);
+   React-ban sweep added; tier-2 word-edge fixture pinned; jsdom-include
+   deletion tripwire.
+4. Spec errata section: append XF-A/XF-B as errata candidates quoting
+   both reviewers' rulings + suggested narrower gates (namedLocales
+   bearing; locale-dir allowlist) — NO behavior change to the spec's
+   frozen ACs.
+5. Verify: npm test green incl. all prior suites; tsc clean; pytest
+   green incl. strict xfails still xfail; emitter determinism spot.
+   df-check before heavy steps.
+
+Final message: per-id resolution ≤8 words + tallies + min df seen.
