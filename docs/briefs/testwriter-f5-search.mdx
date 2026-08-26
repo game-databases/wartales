@@ -1,0 +1,28 @@
+# Brief — TestWriter: F5 header search (Batch 3, BLIND)
+
+Fresh TestWriter agent; never spawn subagents; never commit; Wartales
+pack only. Write tests for `docs/spec-f5-search.mdx` §9–§10 — BLIND:
+parallel CodeWriter in flight; do NOT read its files even when they
+appear (`site/src/lib/search/**`, `site/src/components/shell/header.tsx`
+edits, `pipeline/tools/*search*`). MAY read: the spec, DR-2026-08-22,
+F4's landed test files (style precedent), tokens canon, package.json,
+existing messages/*.json.
+
+Deliverables per spec §9 exactly:
+1. Five vitest suites across node + jsdom projects as §9 prescribes
+   (this MAY require the vitest projects config §9 specifies — add ONLY
+   that, nothing more), covering: index artifact shape/determinism/
+   recount-governance; searchRows matcher tiers incl. pl ł→l fold and
+   ko jamo PREFIX property (the executed codepoint law from r2 — full
+   equivalence is FALSE, do not assert it); dual-environment parity
+   battery; header field state machine (DR-verbatim transitions,
+   swap-root semantics, trigger threshold, cap, zero state);
+   route-absence sweeps (no /search route, robots/sitemap absence
+   hooks, pivot-prefix mapping of literal /en/search).
+2. Red-first mindset: every suite fails against absent/nonconformant
+   implementation; poison empty-set loops.
+3. Keep ALL existing suites untouched and green; df-check before heavy
+   runs (shared C:).
+
+Final message: suite/file list, case counts, AC coverage map
+(AC-1..AC-16), blindness confirmation.

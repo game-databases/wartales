@@ -278,6 +278,6 @@ through the full pipeline law (PrepareTask → blind build → double review
 | # | Question | Why it blocks | Workaround in flight |
 |---|---|---|---|
 | Q1 | Domain placement for Wartales (dedicated vs hybrid vs hub path)? Not on the 51-product roster yet. | D3 domain+trademark is an owner-only gate. | Localhost-first build proceeds regardless; provisional roster entry recorded in decision-register. |
-| Q2 | **C: drive emergency resolved 08-26**: 11 GB → 454 MB within ~25 min mid-morning (du on `Temp` times out — enormous cross-pack scratch); owner cleanup landed by ~07:30 → **36 GB free**. Orchestrator pull levers (npm/pip cache) contributed ~2 GB transiently. | Was breaking every concurrent NE8K build at <1 GB. | Per-wake free-space recheck stands; this pack keeps scratch in gitignored `output/` + temp-on-D:. Owner-side Temp hygiene remains open for the long term. |
+| Q2 | **C: drive — second emergency cycle 08-26**: midday drop to **9.5 MB free** broke a wartales commit mid-write; orchestrator freed ~600 MB (caches, `.next`, own `node_modules` — reinstallable) to land it; external cleanup restored ~51 GB by 14:17. Two full cycles in one day; cross-pack `Temp` refills faster than cleanups. | At <1 GB every concurrent NE8K build fails mid-write; git index.lock corruption becomes possible. | Builder launches are now df-gated (>5 GB to start an install-heavy pair); per-wake recheck stands; owner-side durable Temp hygiene still owed. |
 
 <!-- END OF PROGRESS — updated after every completed unit -->
