@@ -1,0 +1,54 @@
+# Brief — Arbiter: Rule-8 data-completeness gate (P2)
+
+Fresh Arbiter agent; never spawn subagents; never commit; Wartales pack
+only. Deliverable: `docs/arbiter-rule8-gate.mdx`. Judge only — edit
+nothing outside your deliverable.
+
+This is the pack's **data-before-frontend gate**. The question: is the
+extraction layer complete enough — all joins, derivations, and logic
+reconstruction finished or honestly ledgered — for site builds to
+consume contracts without deriving? Read the rule's authoritative
+statements first: `../promptForDB.md` (rule 8 / data-before-frontend),
+`FRAMEWORK.md` §2 + §6–§8, `_foundation/extraction-doctrine.md`
+(Principles zero/one/two), then the evidence:
+
+1. `extracted/PROOF.md` — residue ledger final state (R1–R10 rows,
+   open-debt enumerations).
+2. `docs/data-dig-log.mdx` — digs 14+15 entries incl. their open-debt
+   ledgers (unadjudicated name-hits, deferred UI surfaces, D-1 quirk).
+3. `EXTRACTION-LOG.md` — stage table (1–6 BUILT), frozen gates.
+4. `spec.md` — frozen entities + relations M1–M8/E1–E8: for EACH
+   relation, confirm a mechanism (hard/logic/inferred) exists in
+   RELATIONS.md/matrix.json + `_logic/` evidence, or is honestly
+   deferred with an unblock path.
+5. Verification verdicts: `docs/verify-dig15-{a,b,delta}.mdx`,
+   `docs/verify-dig14-{a,b,delta}.mdx`.
+6. `PROGRESS.mdx` execution plan (what Batch 3+ intends to build).
+
+Judge per axis:
+- **Join completeness** — every spec relation covered at canonical or
+  evidence layer with verified provenance; anything missing enumerated
+  by relation id.
+- **Logic completeness** — calculator-relevant formulas decoded and
+  cited (capture odds, trade gradient, XP, guard caps, terrain) vs any
+  still-opaque mechanic players would expect on day one.
+- **Locale completeness** — overlays ×9 + UI chrome layer state incl.
+  honest drift accounting; does any GATE-level gap remain (vs polish)?
+- **Honesty audit** — every "closed/done" claim backed by artifacts;
+  every open item visible in a ledger (no silent gaps). This gate must
+  NOT pass on overclaimed PROOF language.
+- **Residual-work routing** — for each open item rule: BLOCKS-FRONTEND /
+  RIDER (parallel, non-blocking, named owner piece) / P5-DoD-ITEM.
+  Include explicit rulings on: R10b canonical wiring of `_logic`
+  evidence into matrix.json/RELATIONS.md (blocks or parallel?); dig-14
+  D-1 regex quirk; OCallClosure typing follow-up; unadjudicated
+  name-hit adjudication queue; deferred UI-link surfaces.
+
+Verdict at top, exactly one of:
+- **GATE-OPEN** — frontend builds may start (Batch 3). List riders that
+  MUST run in parallel with named pieces, and P5 items.
+- **GATE-HOLD** — enumerate precisely what data work remains, each
+  with its unblock path; the gate re-runs after they land.
+
+End with the axis table + rider list. Be exacting: this decision
+unlocks the entire site build.
