@@ -4,7 +4,15 @@ Piece **F2** of [pieces.mdx](pieces.mdx#foundations): *"Published contracts:
 per-kind JSON schemas + JSON API shape pinning"* (data dep: P1 datasets).
 Status: DRAFT for the review chain (Reviewer → Arbiter → fix loop) per the
 pack pipeline law. This spec pins CONTRACTS only; it writes no tools and no
-site code. Fresh Documentator agent, 2026-08-26.
+site code. Fresh Documentator agent, 2026-08-26. **Revision r1** (Spec Fixer,
+2026-08-26): resolves all 13 findings of
+[review-spec-f2-contracts.mdx](review-spec-f2-contracts.mdx) — see
+[§Revision r1](#revision-r1) and [§r1 conflicts](#r1-conflicts). Volatile
+corpus counts are no longer frozen anywhere in this file; they are expressed
+as recount-at-build-time commands + assertions ([§2.1](#21-recount-protocol-r1)),
+because dig 14's formal verification round rewrote the locale plane while this
+spec was under review (a transient 14,246-row state and a file-less window
+were both observed during the r1 fix round itself).
 
 ## 0. Scope in one line
 
@@ -44,32 +52,110 @@ Read in full before reviewing this spec:
   · [RELATIONS.md](../extracted/RELATIONS.md) ·
   [PROGRESS.mdx](../PROGRESS.mdx#phase-board) (batch plan: F2 spec lands in
   batch 1; builds stay gated on the rule-8 arbiter).
+- Frozen sibling specs this revision conforms to, never edits:
+  [spec-f4-app-shell.mdx §2–§3](spec-f4-app-shell.mdx#2-locale-model--one-table-one-derivation)
+  (lowercase page-segment presentation ids; `locales.ts` the single bridge),
+  PT16 §3 (hreflang keeps BCP-47).
 
 ## 2. Ground truth this contract sits on (citations, not new gates)
 
-Every number below is already gated by stages 4–6
+Every fact below is already gated by stages 4–6
 ([validate_all.py](../pipeline/tools/validate_all.py) checks
 `verifier-gates`, `census-closure`, `census-per-kind`, `relink-integrity`,
 `availability-regenerated`, `catalog-parity`, `deferred-present`,
-`hbson-independent`). F2 restates them ONCE as consumed facts and forbids
-re-asserting them as F2 acceptance criteria.
+`hbson-independent`). After r1 this spec restates NO volatile number as a
+constant: each moving fact carries its owner gate plus a RECOUNT probe
+(command + assertion pair, [§2.1](#21-recount-protocol-r1)) that re-derives
+the value from the tree at build time. Values quoted below as "measured at
+r1" are evidence snapshots from the r1 fix round (post-dig-14 tree,
+buildid 20318128) — they justify the shapes, they are not the law.
 
-| Fact | Value | Owner gate / source |
+| Fact | Shape (law) | Owner gate / recount |
 |---|---|---|
-| Managed kinds | 40 (`wave_kinds.MANAGED_KINDS`) | datasets stage; `census-per-kind` |
-| Canonical dataset rows | Σ 10,207 (+1,266 constants in `extracted/logic/constants.jsonl` = 11,473 closure) | `census-closure` |
-| Relink catalog | 51 pair files · 19,130 edges · 19,058 true / 0 false / 72 null (61+9+2) · 780 unordered pairs · 39 modeled directions · 9 self-pairs | `relink-integrity`, `catalog-parity`; [RELATIONS.md](../extracted/RELATIONS.md) header |
-| Availability rows | 3,779 (item 2,125 · skill 1,373 · class 281) × 9 locales; per-row locale sets bimodal {∅, all 9}; filler grid 27 keys, all 0 | `availability-regenerated`; [locale-key-convention §7](locale-key-convention.mdx#7-coverage-summary-cells--9-locales) |
-| Official locales | `en` (pivot) + `fr de es pl pt-BR ru ko zh`; file names use client codes (`zh`, not `zh-Hans`) | [spec.md](../spec.md) `locales` · [locale-key-convention §1](locale-key-convention.mdx#1-the-bridge-files) |
-| Locale overlays on disk | `extracted/locales/<locale>/{item,skill,class}.json` — wave-1 kinds only, today | [locale-key-convention §3](locale-key-convention.mdx#3-emitted-artifacts) |
-| Icon export set | `output/cdn/v20318128/{kind}/{id}.webp` — 3,779 files (3,199 real art + 580 explicit-missing placeholders) | [icons-export.mdx](icons-export.mdx#coverage--export-counts) |
-| Maps registry | `extracted/data/maps.json`: buildid 20318128; crs `wartales-world` north-up, d=-1; global affine `px=wx·4, py=wy·4` (cellUnits 128); 13 regions; 6 layers; 15-type marker vocabulary; storagePlanes served vs dataPlaneOnly | [contracts/maps.schema.json](../contracts/maps.schema.json); spec.md `maps` (RESOLVED-D11) |
+| Managed kinds | 40, importable (`wave_kinds.MANAGED_KINDS`) — never retyped | datasets stage; `census-per-kind` |
+| Canonical dataset rows | one `extracted/data/<kind>.jsonl` (+ `_meta` line) per managed kind; Σ recount-governed (R-1; Σ 10,207 + 1,266 constants measured at r1) | `census-closure`; R-1 |
+| Relink catalog | byte-derived parity against the [RELATIONS.md](../extracted/RELATIONS.md) header sha — F2 restates no edge/pair totals (R-5 reads the header) | `relink-integrity`, `catalog-parity`; R-5 |
+| Availability rows | one row per entity × kind that declares ≥1 localizable column, over ALL promoted kinds (managed + deferred HBSON corpora) — recount-governed (R-2; 14,456 rows / 34 kinds measured at r1) | `availability-regenerated`; R-2 |
+| Per-row locale sets | trimodal {∅, all-9, all-9-minus-fr} — the 8-locale rows lack exactly `fr` (2 fiefCondition rows at r1); filler-class cells 0 for every kind × locale (R-2) | `availability-regenerated`; R-2 |
+| Official locales | `en` (pivot) + `fr de es pl pt-BR ru ko zh`; file names and DATA-plane segments use client codes (`zh`, not `zh-Hans`; `pt-BR`, not `pt-br`) — frozen pack fact, [spec.md](../spec.md) `locales` | [spec.md](../spec.md) · [locale-key-convention §1](locale-key-convention.mdx#1-the-bridge-files) |
+| Locale overlays on disk | `extracted/locales/<clientCode>/<kind>.json` for every kind with ≥1 availability row × 9 locales (306 pairs at r1); chrome `ui/` and draft planes sit beside and are OUT of scope | `availability-regenerated`; R-3 |
+| textKey bridge coverage | header field of [RELATIONS.md](../extracted/RELATIONS.md) ("27/27 emitted sheets in the en bridge (35 sheets), drift-absent 0" at r1) — consumed, never restated here | `relink-integrity`; R-5 |
+| Icon export set | `output/cdn/v<buildId>/{kind}/{id}.webp`; wave-1 trio today (3,779 webp at r1) + repo QA companions that must never ship ([§10](#10-icon-cdn-references)) | [icons-export.mdx](icons-export.mdx#coverage--export-counts); AC11 |
+| Maps registry | `extracted/data/maps.json`: crs `wartales-world` north-up, d=-1; global affine `px=wx·4, py=wy·4` (cellUnits 128); 13 regions; 6 layers; 15-type marker vocabulary; storagePlanes served vs dataPlaneOnly; root build-id carrier is the REGISTRY-NATIVE lowercase integer `buildid` | [contracts/maps.schema.json](../contracts/maps.schema.json); spec.md `maps` (RESOLVED-D11) |
 | buildId | 20318128 (TargetBuildID 21238928 queued → reruns produce the first patch diff) | [spec.md](../spec.md) `automation` |
 
-Known asymmetry, preserved deliberately: canonical `_meta.buildId` is a
-STRING (`"20318128"`), the registry/published plane uses INTEGER
-(`20318128`, per [maps.schema.json](../contracts/maps.schema.json)). Do not
-"fix" either side; the emitter converts once at the boundary.
+### 2.1 Recount protocol (r1)
+
+Law: **every count this spec consumes is re-derived from the tree at build
+time and asserted, never hardcoded.** The probes are evidence commands, not
+new gates — a probe failing means the owning stage's gate failed first, and
+F2 acceptance must not run over a tree mid-regeneration. Measured during the
+r1 fix round: the locale plane was deleted and rewritten UNDER this revision
+(one 14,246-row transient, then an absent-file window, then the settled
+14,456-row state) — the concrete failure mode this protocol exists for.
+
+```sh
+PYTHONIOENCODING=utf-8 python - <<'PY'
+# R-1 canonical census shape (owner: census-closure)
+import json, pathlib, sys
+sys.path.insert(0, "pipeline/tools"); import wave_kinds
+total = 0
+for k in sorted(wave_kinds.MANAGED_KINDS):
+    n = len(pathlib.Path("extracted/data", k + ".jsonl").read_text(encoding="utf-8").splitlines()) - 1
+    assert n > 0, k                      # every managed kind has rows
+    total += n
+consts = len(pathlib.Path("extracted/logic/constants.jsonl").read_text(encoding="utf-8").splitlines())
+assert consts >= 2                     # 1 meta line + >=1 row
+print("R-1 ok:", total, "canonical rows +", consts, "constant lines")
+
+# R-2 availability shape (owner: availability-regenerated)
+import collections
+LOCS = ["en","fr","de","es","pl","pt-BR","ru","ko","zh"]   # frozen client codes (spec.md)
+rows = [json.loads(l) for l in pathlib.Path("extracted/relinks/locale_availability.jsonl").read_text(encoding="utf-8").splitlines() if l.strip()]
+assert rows, "locale_availability.jsonl missing/empty - regen in flight"
+by_kind = collections.Counter(r["kind"] for r in rows)
+hist = collections.Counter(len(r["availableLocales"]) for r in rows)
+assert set(hist) <= {0, 8, 9}, hist                       # trimodal law
+for r in rows:
+    if len(r["availableLocales"]) == 8:                   # the 8-case lacks exactly fr
+        assert set(LOCS) - set(r["availableLocales"]) == {"fr"}, r
+filler = sum(1 for r in rows if "en" in (r["fields"] or {})
+             for loc in LOCS if loc != "en" and loc not in r["fields"])
+assert filler == 0, filler                                # omit-until-translated bites whole entities only
+missing = sorted(set(wave_kinds.MANAGED_KINDS) - set(by_kind))
+for k in missing:                                         # absence is STRUCTURAL, not a dig gap:
+    meta = json.loads(pathlib.Path("extracted/data", k + ".jsonl").read_text(encoding="utf-8").splitlines()[0])["_meta"]
+    assert not any(c.get("kind") == "localizable" for c in meta.get("columns", [])), k
+print("R-2 ok:", len(rows), "rows /", len(by_kind), "kinds;", len(missing), "managed kinds structurally text-free")
+
+# R-3 overlay inventory (owner: availability-regenerated)
+pairs = {(p.parent.name, p.stem) for p in pathlib.Path("extracted/locales").glob("*/*.json")
+         if p.parent.name in LOCS}
+per_loc = {loc: {k for l, k in pairs if l == loc} for loc in LOCS}
+assert len({frozenset(v) for v in per_loc.values()}) == 1, "asymmetric overlay plane"
+print("R-3 ok:", len(pairs), "overlay pairs")
+
+# R-5 relink header parity (owner: catalog-parity reads the sha; F2 reads the header fields)
+head = pathlib.Path("extracted/RELATIONS.md").read_text(encoding="utf-8")[:2000]
+for field in ("totals:", "directions:", "textKey coverage:"):
+    assert field in head, field
+print("R-5 ok: RELATIONS.md header carries totals/directions/textKey coverage")
+PY
+```
+
+Known asymmetries, preserved deliberately (do not "fix" either side; the
+emitter converts once at the boundary):
+
+- Canonical `_meta.buildId` is a STRING (`"20318128"`); registry/published
+  map plane uses the INTEGER `20318128`.
+- (r1) The build-id CARRIER NAME splits by plane: API documents the spec
+  emits fresh (lists, entities, tooltips, db.json) carry camelCase
+  `buildId` ([§11](#11-provenance-field-law-two-classes-one-whitelist));
+  the served map projection inherits the REGISTRY-NATIVE lowercase
+  `buildid` verbatim, because map.published is defined as the allow-list
+  projection of the registry and [§13](#13-out-of-scope-and-the-stage-7-boundary)
+  verifies it byte-for-byte against that projection. Exactly ONE spelling
+  per document root — never both ([AC5](#ac5-provenance-whitelist-is-structural)(a)).
 
 ## 3. Planes and ownership boundaries
 
@@ -84,7 +170,7 @@ so no later piece edits across the line:
    `extracted/data/maps.json`.
 2. **Contract plane** (F2 owns): JSON Schema draft-07 documents +
    one machine manifest under `contracts/` ([§14](#14-files-touched)).
-   Schemas assert STRUCTURE (shape, types, enums, required, patterns) —
+   Schemas assert STRUCTURE (shape, types, enums, patterns) —
    never row counts, cell fidelity, or edge validity, which remain
    cdb_verify/validate_all territory.
 3. **Published data plane** (stage 7 will own bytes; F2 pins shapes):
@@ -95,29 +181,47 @@ so no later piece edits across the line:
    [FRAMEWORK §2.17](../../FRAMEWORK.md#217-overlay-satellite-per-project-option-overwolf-default).
    One data plane, two renders: the API never disagrees with the page.
 
-Two contract-plane documents model REPO-plane artifacts on purpose so F2
+Three contract-plane documents model REPO-plane artifacts on purpose so F2
 acceptance is provable before any emitter exists: `overlay.schema.json`
-(today's `extracted/locales/**`) and `availability.schema.json` (today's
-`locale_availability.jsonl` rows). Repo-plane documents may carry repo
-vocabulary; published-side documents may not ([§11](#11-provenance-field-law-two-classes-one-whitelist)).
+(today's `extracted/locales/**`), `availability.schema.json` (today's
+`locale_availability.jsonl` rows), and the committed registry schema
+`maps.schema.json`. Repo-plane documents may carry repo vocabulary;
+published-side documents may not ([§11](#11-provenance-field-law-two-classes-one-whitelist)
+draws the line per DOCUMENT CLASS, and
+[AC5](#ac5-provenance-whitelist-is-structural) enforces it per class —
+the committed registry schema legitimately names `source`, `provenance`,
+`publicationPlane`, because the registry owns those fields).
 
 ## 4. Stable identity and the kind universe
 
 - **Entity id** = the canonical dataset `id`, VERBATIM (case-preserving,
   never slugified) — the immutable join key of
   [localization-architecture §5](../../_foundation/localization-architecture.md#5-data-layer-obligations--what-every-pack-must-ship)
-  item 1. Observed charset `[A-Za-z0-9_]` (dev pivot ids are accent-stripped
-  French, recon §4). A prettier display slug MAY be added later as an extra
-  field/redirect source; it never replaces the id, and any rename ships a
-  301 map ([seo-standard §1](../../_foundation/seo-standard.md#1-url--information-architecture)).
+  item 1. (r1) Observed id charsets, MEASURED across every row of all 40
+  kinds (R-4 re-derives at build time): native ids are ASCII
+  `[A-Za-z0-9_]+`; the corpus-wide union adds the hyphen through exactly
+  two SYNTHETIC families (below), giving the universal pattern
+  `[A-Za-z0-9_-]+`. Both patterns are frozen in
+  `common.schema.json#$defs` (`entityId` native, `entityIdAny` universal);
+  URL segments and pointer patterns derive from them
+  ([§5.1](#51-files), [§9](#9-map-marker-payload-shape-for-mapsjson-marks),
+  [§10](#10-icon-cdn-references)). A prettier display slug MAY be added
+  later as an extra field/redirect source; it never replaces the id, and
+  any rename ships a 301 map
+  ([seo-standard §1](../../_foundation/seo-standard.md#1-url--information-architecture)).
 - **Synthetic-id caveat**: `frescos`, `env`, `recipe` (sheet `craft`) have
-  no native id column — their ids are the zero-padded row ordinals pinned by
-  `_meta.keyRule`
+  no native id column — their ids are pinned by `_meta.keyRule`
   ([spec-stages-datasets §3.2](spec-stages-datasets.mdx#32-canonical-layout--_meta-line-schema-unchanged-from-drafts)).
-  These are stable WITHIN a buildid; cross-build diffing keys them on
-  content, not ordinal (E3 versioned-truth work, R5/R10 digs). Published
-  payloads carry them unchanged; consumers must not treat them as
-  game-native.
+  (r1) Measured family patterns: `env` = `^env-[0-9]{4}$` (87/87 rows,
+  `env-0000`…`env-0086`), `recipe` = `^recipe-[0-9]{4}$` (667/667 rows,
+  `recipe-0000`…`recipe-0666`) — zero-padded row ordinals, HYPHENATED;
+  `frescos` = the row's unique `place` ref (`A1Ruins`…), conforming to the
+  native charset. These are stable WITHIN a buildid; cross-build diffing
+  keys them on content, not ordinal (E3 versioned-truth work, R5/R10 digs).
+  Published payloads carry them unchanged; consumers must not treat them as
+  game-native. Any route/pointer/pattern that validates ids MUST accept the
+  hyphen families — a pattern that rejects `recipe-0000` rejects 667 real
+  recipes.
 - **Kind universe of record** = the 40 managed kinds (importable, never
   retyped): `activity amb attribute battle bonus class condition confessions
   counter credits effect env fiefAdministration fiefAlignment fiefCondition
@@ -133,11 +237,21 @@ vocabulary; published-side documents may not ([§11](#11-provenance-field-law-tw
   reshaping — the contracts here. Marker rows MAY already point at deferred
   kind names ([§9](#9-map-marker-payload-shape-for-mapsjson-marks)); such
   links resolve when promotion lands and stay honestly dangling before.
-- **Locale segments** = the 8 non-pivot CLIENT codes, exact strings:
-  `de es fr ko pl pt-BR ru zh`; pivot `en` is bare
-  ([DR-2026-08-20-locale-urls]). BCP-47 presentation mapping (`zh`→`zh-Hans`)
-  is a PT16 rendering concern and never enters URLs, file names, or
-  payloads.
+  (r1) Their TEXT already rides the locale plane: `place`/`group`/
+  `element` availability rows and overlays exist today (R-2/R-3), so the
+  overlay/availability contracts are kind-generic over managed ∪
+  {`place`, `group`, `element`} NOW.
+- (r1) **Locale segments are TWO planes with ONE bridge** (conforms to
+  [spec-f4-app-shell.mdx §2](spec-f4-app-shell.mdx#2-locale-model--one-table-one-derivation)'s
+  recorded r1 decision; see [§r1 conflicts](#r1-conflicts)):
+  - DATA plane (file names, `/data/**` segments, payload locale values):
+    CLIENT CODES verbatim — `de es fr ko pl pt-BR ru zh`; pivot `en` bare.
+  - PAGE plane (URL prefix segments): PRESENTATION IDS per F4 §2 —
+    lowercase, `pt-br` — paired 1:1 with the client codes; pivot `en`
+    never appears as a segment ([DR-2026-08-20-locale-urls]).
+  - BCP-47 presentation mapping (`zh`→`zh-Hans`, hreflang/`<html lang>`)
+    is a PT16 rendering concern and enters neither plane; `locales.ts` is
+    the single id↔client-code bridge between the planes.
 
 ## 5. Per-kind JSON schema contract (base + locale overlay)
 
@@ -149,37 +263,57 @@ text fields; a locale file never mixes languages
 ### 5.1 Files
 
 - `contracts/common.schema.json` — shared `$defs`: `provenanceEnvelope`
-  (`buildId` integer + `coverage` object — the ONLY provenance carriers,
-  [§11](#11-provenance-field-law-two-classes-one-whitelist)), `coverage`
-  variants (entity/index/map), `cdnIconPath`, `entityPointer`, `worldCoord`,
-  locale-code enum, id pattern.
+  (`buildId` integer + `coverage` object — the ONLY provenance carriers on
+  API documents, [§11](#11-provenance-field-law-two-classes-one-whitelist)),
+  `provenanceEnvelopeRegistry` (registry-native `buildid` integer +
+  `coverage` — the served map projection variant, [§2.1](#21-recount-protocol-r1)),
+  `coverage` variants (entity/index/map), `cdnIconPath`
+  ([§10](#10-icon-cdn-references)), `entityPointer` (`{kind,id}` with `id`
+  = `entityIdAny` — hyphen-bearing synthetic ids legal),
+  `worldCoord`, locale-code enum (client codes), `entityId`
+  (`^[A-Za-z0-9_]+$`) and `entityIdAny` (`^[A-Za-z0-9_-]+$`) id patterns
+  with the two synthetic family refinements documented at
+  [§4](#4-stable-identity-and-the-kind-universe).
 - `contracts/kinds/<kind>.schema.json` ×40 — one per managed kind, each
   carrying three `$defs`:
   - `canonicalRow` — the canonical dataset row AS IT EXISTS TODAY
     (structure only; typed through the [§5.2](#52-cell-type-mapping-canonical--published)
     table). Exists so acceptance is provable against the live corpus before
-    any emitter exists.
+    any emitter exists. This def models a REPO-plane row and MAY carry repo
+    vocabulary (`textKey` bridges) — it is exempt from the published-side
+    bans of [§11](#11-provenance-field-law-two-classes-one-whitelist),
+    which [AC5](#ac5-provenance-whitelist-is-structural) scopes to
+    `baseRecord`/`listEntry` accordingly.
   - `baseRecord` — the published record: `allOf` →
-    `common.schema.json#/$defs/provenanceEnvelope`, plus `id` and every
-    non-localizable column verbatim, enums RESOLVED to case-name strings,
-    icon descriptor replaced by the CDN path. Optional localized text fields
-    (`name`, `description`, other localizable columns as strings) are legal
-    HERE and present only in locale files — one def serves the pivot base
-    file and the per-locale resolved view. No `textKey` objects, no `_meta`
-    internals, closed `additionalProperties`.
-  - `listEntry` — the row projection consumed by kind list indexes ([§7](#7-list-index-shapes)).
+    `common.schema.json#/$defs/provenanceEnvelope`, plus `id` (matching
+    the kind's id pattern: native, or the family pattern for
+    `env`/`recipe`) and every non-localizable column verbatim, enums
+    RESOLVED to case-name strings, icon descriptor replaced by the CDN
+    path. Optional localized text fields (`name`, `description`, other
+    localizable columns as strings) are legal HERE and present only in
+    locale files — one def serves the pivot base file and the per-locale
+    resolved view. No `textKey` objects, no `_meta` internals, closed
+    `additionalProperties`.
+  - `listEntry` — the row projection consumed by kind list indexes
+    ([§7](#7-list-index-shapes)).
 - `contracts/overlay.schema.json` — pins TODAY'S repo-plane overlay
   artifacts: an object keyed by entity id, values
   `{name?, description?, <otherLocalizableColumn>?}`, all-string values.
   Pins the `desc`→`description` alias and the omit-until-translated omission
   rule ([locale-key-convention §2, §6](locale-key-convention.mdx#6-filler-policy-application)).
-  Kind-generic; wave-1 files are its first instances; dig 14 extends
-  instances, never this shape.
+  Kind-generic; (r1) instances span every kind with ≥1 availability row —
+  managed kinds AND the deferred corpora, whose localizable columns differ
+  (e.g. `world.name` on places); dig waves extend instances, never this
+  shape.
 - `contracts/availability.schema.json` — pins TODAY'S availability row:
   `{kind, id, availableLocales[], namedLocales[], fields:{<locale>:{...}}}`
   ([locale-key-convention §3](locale-key-convention.mdx#3-emitted-artifacts)).
   Shape only; the row-count/locale-set law stays in
-  `availability-regenerated`.
+  `availability-regenerated`. (r1) `kind` is NOT a closed enum of the
+  managed 40: the plane legitimately carries the deferred HBSON corpora
+  (`place group element` at r1). Membership is asserted, not enumerated:
+  [AC4](#ac4-overlay-and-availability-shapes-match-the-emitted-artifacts)
+  requires observed kinds ⊆ managed ∪ the reserved promoted-later names.
 
 ### 5.2 Cell-type mapping (canonical → published)
 
@@ -214,16 +348,25 @@ The load-bearing rule of
 an agent can act on this database iff it can fetch an entity's JSON at a
 STABLE URL DERIVED FROM ITS PAGE URL and get the same facts the page renders.
 
-**Derivation rule (bijective, mechanical):** take the page path, strip the
-optional leading locale segment, prepend `data/`, append `.json`.
+**(r1) Derivation rule (bijective, mechanical, two-segment-set):** take the
+page path; strip the optional leading PAGE-plane presentation id; map it to
+its paired DATA-plane client code (F4 §2 table, one bridge); prepend
+`data/`; append `.json`.
 
-| surface | pivot page (EN, bare) | locale page | data URL |
+| surface | pivot page (EN, bare) | locale page (presentation id) | data URL (client code) |
 |---|---|---|---|
-| kind list | `/{kind}` | `/{L}/{kind}` | `/data/{kind}.json` · `/data/{L}/{kind}.json` |
-| entity | `/{kind}/{id}` | `/{L}/{kind}/{id}` | `/data/{kind}/{id}.json` (base) · `/data/{L}/{kind}/{id}.json` (base + that locale's resolved text; filler policy applied by omission) |
-| tooltip sub-route | `/{kind}/{id}/tooltip` | `/{L}/{kind}/{id}/tooltip` | `/data/{kind}/{id}/tooltip.json` · `/data/{L}/{kind}/{id}/tooltip.json` |
-| DB landing + taxonomy | `/db` (PT02) | `/{L}/db` | `/data/db.json` (locale-free tree; labels resolve from overlays/chrome) |
-| map registry | `/map` (PT05) | `/{L}/map` | `/data/map.json` (published PROJECTION of the registry — [§9](#9-map-marker-payload-shape-for-mapsjson-marks)) |
+| kind list | `/{kind}` | `/{P}/{kind}` | `/data/{kind}.json` · `/data/{C}/{kind}.json` |
+| entity | `/{kind}/{id}` | `/{P}/{kind}/{id}` | `/data/{kind}/{id}.json` (base) · `/data/{C}/{kind}/{id}.json` (base + that locale's resolved text; filler policy applied by omission) |
+| tooltip sub-route | `/{kind}/{id}/tooltip` | `/{P}/{kind}/{id}/tooltip` | `/data/{kind}/{id}/tooltip.json` · `/data/{C}/{kind}/{id}/tooltip.json` |
+| DB landing + taxonomy | `/db` (PT02) | `/{P}/db` | `/data/db.json` (locale-free tree; labels resolve from overlays/chrome) |
+| map registry | `/map` (PT05) | `/{P}/map` | `/data/map.json` (published PROJECTION of the registry — [§9](#9-map-marker-payload-shape-for-mapsjson-marks)) |
+
+with `{P}` ranging over the presentation ids (`de es fr ko pl pt-br ru zh`)
+and `{C}` over the paired client codes (`de es fr ko pl pt-BR ru zh`). The
+case-divergent pair is load-bearing: page `/pt-br/item/Gold` derives
+`/data/pt-BR/item/Gold.json` — never `/data/pt-br/…`
+([AC7](#ac7-url-namespace-disjointness-and-derivation-bijection) asserts the
+divergent pair explicitly).
 
 - Page-tree shape is pinned WITHOUT a `/db` prefix on entity routes (shorter
   canonical, kind-first hierarchy per
@@ -233,38 +376,54 @@ optional leading locale segment, prepend `data/`, append `.json`.
   forever ([FRAMEWORK §2.7](../../FRAMEWORK.md#27-url-architecture-is-the-product));
   adopting a prefix later is a rename with a 301 map, paid once.
 - An entity unavailable in locale L (absent from `availableLocales`, per the
-  bimodal availability law) has no L page AND no L data file — a true 404,
+  trimodal availability law) has no L page AND no L data file — a true 404,
   never pivot prose ([filler policy](locale-key-convention.mdx#6-filler-policy-application)).
 - **Site root composition**: paths here are root-relative. Today
   (localhost / standalone) the root is `/`; under the provisional umbrella
   placement it is `{hub}/games/wartales` — segments unchanged either way;
   domain placement stays owner-gated (Q1, [DR-2026-08-24-wartales-roster]).
-- **Namespace disjointness (gated)**: the kind set, the locale set
-  `{de,es,fr,ko,pl,pt-BR,ru,zh}`, and the reserved first segments
-  `{data, cdn, db, map}` are pairwise disjoint — asserted mechanically in
-  [AC7](#ac7-url-namespace-disjointness-and-derivation-bijection).
+- **Namespace disjointness (gated)**: the kind set, the reserved FIRST
+  segments `{data, cdn, db, map}`, and the reserved TERMINAL segment
+  `tooltip` are pairwise disjoint, and EACH locale segment plane (page
+  presentation ids; data client codes) is disjoint from all three — asserted
+  mechanically in
+  [AC7](#ac7-url-namespace-disjointness-and-derivation-bijection). (r1)
+  The two locale planes OVERLAP BY DESIGN — they are per-locale pairs
+  (`pt-br`↔`pt-BR`; identical spellings for the other seven) — so AC7
+  asserts their PAIRING (same length, lowercase-normalized correspondence,
+  pivot-free) instead of disjointness between them. `tooltip` is reserved as
+  a terminal segment because the tooltip sub-route occupies
+  `/{kind}/{id}/tooltip`; the manifest carries BOTH reservation classes
+  (`reservedPrefixes`, `reservedSuffixes`).
 - No querystring locales; no pagination parameters on list indexes (each
-  kind's index is one static file; largest is item at 2,125 rows — a
+  kind's index is one static file; largest is item — a
   tens-of-kilobytes artifact). The page-size-50 ruling
   ([DR-2026-08-18-page-size]) governs rendered listing pages, not data
   artifacts.
 - `contracts/api.manifest.json` — the machine-readable form of this
-  section: `{version:1, locales:{pivot:"en", prefixed:[…8…]},
-  reservedPrefixes:[…], kinds:[…40…], surfaces:{list, entity, tooltip,
-  taxonomy, map}, localeCoverage:{mode:"wave-1", kinds:["class","item",
-  "skill"]}, derivationRule:"…"}`. Consumers and tests derive URLs from it;
-  nobody retypes the table.
+  section (r1 shape): `{version:1, locales:{pivot:"en", pagePrefixes:[…8…],
+  dataCodes:[…8…]}, reservedPrefixes:[…], reservedSuffixes:["tooltip"],
+  kinds:[…40…], surfaces:{list, entity, tooltip, taxonomy, map},
+  localeCoverage:{mode:"emitted", kinds:[…recount…]}, derivationRule:"…"}`.
+  `pagePrefixes`/`dataCodes` are positionally paired, single-valued per
+  locale, pivot-excluded; `localeCoverage.kinds` is RECOUNTED from the
+  availability plane at build time ([AC8](#ac8-manifest-is-the-single-typed-source)),
+  never copied. Consumers and tests derive URLs from the manifest; nobody
+  retypes the table.
 
 ## 7. List-index shapes
 
-`/data/{kind}.json` (and per-locale twins) — one envelope + flat rows:
+`/data/{kind}.json` (and per-locale twins) — one envelope + flat rows
+(r1 example: every value below is real, read from buildid 20318128 on
+2026-08-26; the recount probes own the live numbers, these illustrate
+SHAPE):
 
 ```json
 { "buildId": 20318128,
   "coverage": { "kind": "item", "locale": "en",
-                "count": 1807, "namedCount": 1807 },
-  "rows": [ { "id": "Gold", "name": "Gold",
-              "icon": "/cdn/v20318128/icon/Gold.webp" } ] }
+                "count": 2125, "namedCount": 1803 },
+  "rows": [ { "id": "Gold", "name": "Krowns",
+              "icon": "/cdn/v20318128/item/Gold.webp" } ] }
 ```
 
 - Required per row: `id`; `icon` (`cdnIconPath` or null — null is the named
@@ -274,51 +433,63 @@ optional leading locale segment, prepend `data/`, append `.json`.
 - Optional per row: the kind's declared facet fields (rarity as case-name
   string, typeId, tier, …) — exactly the fields each kind schema's
   `listEntry` enumerates; lists never carry full base records.
-- `coverage.count` states how many rows the file holds; `namedCount` how many
-  carry a name in this locale. Both are coverage-scope facts (publishable
-  class); no freshness stamps, no health words
-  ([DR-2026-08-22-numbers-stand-alone]).
+- `coverage.count` states how many rows the FILE holds — for a pivot index,
+  every canonical row of the kind (item: 2,125 at r1); for a per-locale
+  twin, the rows available in that locale (item `de`: 1,807 at r1).
+  `namedCount` = rows carrying a resolved name in this locale (both derived
+  from `namedLocales`/`fields` in the availability plane). Both are
+  coverage-scope facts (publishable class); no freshness stamps, no health
+  words ([DR-2026-08-22-numbers-stand-alone]).
 - Row order: canonical id order (deterministic, diff-stable); consumers sort.
 - Wave-1 honesty: list indexes exist for ALL 40 kinds from day one
   (every managed kind has canonical rows), but per-locale list twins exist
-  only where overlays do — see [§12](#12-wave-1-locale-scope-note-availability-regen-lands-with-dig-14).
+  only where overlays do — see
+  [§12](#12-locale-coverage-scope-recount-governed).
 
 Taxonomy index `/data/db.json` feeds the PT02 kind→type→subtype menu:
 `{buildId, kinds:[{kind,count}], itemTypeTree:{roots:[…], children:{id:[…]}}}`
-— derived from the `itemType__itemType` parentType edges (72, many:1,
-[RELATIONS.md](../extracted/RELATIONS.md#modeled-pair-index)) and per-kind
-availability counts. Structure pinned by the schema's example.
+— derived from the `itemType__itemType` parentType edges (many:1,
+edge totals live in the [RELATIONS.md](../extracted/RELATIONS.md#modeled-pair-index)
+header, R-5) and per-kind availability counts. Structure pinned by the
+schema's example.
 
 ## 8. Tooltip sub-route payload
 
 `/data/{L}/{kind}/{id}/tooltip.json` — the wowhead-model card feed
 ([site-sections §21](../../_foundation/site-sections.md#c-distribution--integration)),
-consumed by hover jobs (PT04b), the embed lane, and third parties:
+consumed by hover jobs (PT04b), the embed lane, and third parties.
+(r1 example: real skill, real neighbors, real localized strings, read from
+buildid 20318128 — `availableLocales` satisfies the trimodal law because it
+is the row's actual set):
 
 ```json
 { "buildId": 20318128,
-  "coverage": { "locale": "de", "availableLocales": ["en","de","fr"],
-                "namedLocales": ["en","de","fr"] },
-  "kind": "skill", "id": "Charge",
-  "name": "Ansturm", "description": "…",
-  "icon": "/cdn/v20318128/skill/Charge.webp",
-  "stats": { "apCost": 3, "cooldown": 1 },
-  "links": [ { "kind": "status", "id": "BleedingTarget", "name": "Blutung" } ],
-  "url": "/de/skill/Charge" }
+  "coverage": { "locale": "de",
+                "availableLocales": ["en","fr","de","es","pl","pt-BR","ru","ko","zh"],
+                "namedLocales": ["en","fr","de","es","pl","pt-BR","ru","ko","zh"] },
+  "kind": "skill", "id": "FenrisCharge",
+  "name": "Nichts wie weg hier!",
+  "description": "Zieht sich zurück und greift in gerader Linie an. Fügt allen Einheiten auf dem Weg [DMG] zu.",
+  "icon": "/cdn/v20318128/skill/FenrisCharge.webp",
+  "stats": { "minDmg": 10, "range": { "flags": 9, "baseDistance": 6 } },
+  "links": [ { "kind": "class", "id": "FenrisFleeing", "name": "Fenris Dredd" } ],
+  "url": "/de/skill/FenrisCharge" }
 ```
 
 - `name`/`description` resolved in the file's locale; either may be omitted
-  (bimodal availability + per-column drift populations are real,
+  (trimodal availability + per-column drift populations are real,
   [locale-key-convention §5](locale-key-convention.mdx#5-drift-ledger--cdb-rows-with-no-bridge-leaf-anywhere)).
 - `stats` = the kind's quotable subset — the SAME builder that fills the
   page's quotable answer block fills this object; divergence between tooltip
-  and page is a defect (one data plane, two renders). Per-kind stat selection
-  stays a permissive `object` in wave 1 and tightens per kind when PT04a
-  lands — flagged, not designed, here.
+  and page is a defect (one data plane, two renders). Values pass through
+  verbatim from the canonical row (the example carries FenrisCharge's real
+  `minDmg`/`range`). Per-kind stat selection stays a permissive `object` in
+  wave 1 and tightens per kind when PT04a lands — flagged, not designed, here.
 - `links[]` = top inverted-relation neighbors with resolved names; sourced
   from the relink plane, capped (≤12) for payload size.
 - `url` = the canonical PAGE url for this locale (round-trips the
-  [§6](#6-static-json-api-url-architecture) derivation).
+  [§6](#6-static-json-api-url-architecture) derivation; presentation id in
+  the page leg, client code in the data leg).
 - The HTML twin `/{L}/{kind}/{id}/tooltip` renders the identical facts for
   humans/embedders; both come from one payload.
 
@@ -340,7 +511,8 @@ projection of the registry:
   `coordinateTransform` blocks (`px=wx·4, py=wy·4`), so one transform stays
   authoritative. Optional: `regionId`, `entity {kind,id}` (the two-way
   entity link; `kind` draws from the 40 managed kinds PLUS the five reserved
-  promoted-later names `place group element levelProps achievement`),
+  promoted-later names `place group element levelProps achievement`; `id`
+  matches `entityIdAny` — synthetic hyphen ids legal),
   `icon` (`cdnIconPath` or null), `label` (per-locale map whose values MUST
   come from the game's own localization; else null — marker prose otherwise
   lives in the linked entity's text and chrome i18n, never inline).
@@ -355,7 +527,14 @@ projection of the registry:
   data-plane-only, catalogue-first per [DR-2026-08-18-media-scope]. Layers
   gain optional `marks[]` rows validated against `markers.schema.json`;
   allowed top-level keys: `buildid crs coordinateTransform layers regions
-  battleTactical`.
+  battleTactical` — root build-id carrier is the REGISTRY-NATIVE lowercase
+  integer `buildid` ([§2.1](#21-recount-protocol-r1) asymmetry law; this
+  document composes `provenanceEnvelopeRegistry`, not the camelCase
+  envelope, and carries exactly ONE spelling).
+  The imagery clause is ENFORCED, not assumed:
+  [AC10](#ac10-published-map-projection-is-total-over-todays-registry)
+  captures each layer's `publicationPlane` before stripping and fails if
+  any non-served layer survives the projection carrying imagery.
 - `contracts/maps.schema.json` (registry schema, committed) is NOT edited by
   F2; the additive `marks[]` revision to it rides whichever stage first
   emits marks, together with the map stage owner.
@@ -368,18 +547,34 @@ projection of the registry:
 
 ## 10. Icon CDN references
 
-- Pattern (`common.schema.json $defs.cdnIconPath`):
-  `^/cdn/v(?<buildId>[0-9]+)/(?<kind>[a-z][A-Za-z]*)/(?<id>[A-Za-z0-9_]+)\.webp$`
+- Pattern (`common.schema.json $defs.cdnIconPath`), (r1):
+  `^/cdn/v(?<buildId>[0-9]+)/(?<kind>[a-z][A-Za-z]*)/(?<id>[A-Za-z0-9_-]+)\.webp$`
   — the FRAMEWORK §2.5 versioned-CDN shape
   ([FRAMEWORK §2.5](../../FRAMEWORK.md#25-icons-are-the-games-own-art)),
   matching the existing export set `output/cdn/v20318128/{kind}/{id}.webp`
   ([icons-export.mdx](icons-export.mdx#icons-export--coverage-report-buildid-20318128)).
+  Named-group syntax is ECMA-262 (legal for JSON Schema `pattern`);
+  Python consumers compile it through the mechanical conversion in
+  [AC11](#ac11-icon-path-pattern-matches-the-shipped-export-set) — never by
+  hand-editing the pattern.
+  (r1) The id segment accepts the FULL corpus charset `[A-Za-z0-9_-]+`
+  ([§4](#4-stable-identity-and-the-kind-universe)): today's exported trio
+  (class/item/skill) happens to contain no hyphens, but the moment icon
+  export covers `recipe`/`env` (667+87 hyphen-bearing synthetic ids), the
+  contract must not break. Wave-1 totality is asserted per exported kind:
+  exported id set == canonical id set
+  ([AC11](#ac11-icon-path-pattern-matches-the-shipped-export-set)).
 - Every entity id of the exported kinds has exactly one file — the 580
   explicit-missing entities ship the named placeholder art, so a published
   `icon` path always resolves; `icon: null` means "no art reference at all"
   and renders as the designed empty well. Reason codes (`no-icon-ref`,
   `resolved-empty-cell`) stay in the repo plane (`misses.jsonl`) —
-  extraction QA vocabulary, not consumer facts.
+  extraction QA vocabulary, not consumer facts. (r1) PHYSICALLY, those QA
+  companions (`misses.jsonl`, `resolution-proof.jsonl`, `_tool.json`) sit
+  INSIDE `output/cdn/v20318128/` beside the webp trees today; they are
+  repo-plane files that must never ship — the served set is
+  `{kind}/{id}.webp` only, enforced by the stage-7 publish filter
+  ([§13](#13-out-of-scope-and-the-stage-7-boundary) item 6).
 - Variants the game distinguishes stay distinct crops (tile spans preserved);
   raw atlas descriptors never publish ([§5.2](#52-cell-type-mapping-canonical--published)).
 
@@ -387,54 +582,92 @@ projection of the registry:
 
 Per [DR-2026-08-15] D2, [AGENTS.md](../../AGENTS.md) rule 3, and
 [seo-standard §9](../../_foundation/seo-standard.md#9-answer-engines-aeogeo--be-the-cited-answer-not-just-the-ranked-page)
-citability clause — the API inherits the page's ban, not the repo's habits:
+citability clause — the API inherits the page's ban, not the repo's habits.
 
-- **Whitelist — the ONLY provenance fields in any published document:**
-  - `buildId` (integer, required at every document root);
+(r1) Scope precision: the law binds PUBLISHED documents. Within the contract
+plane it is enforced against the PUBLISHED-side definitions only — every
+kind's `baseRecord`/`listEntry` plus `list`, `tooltip`, `markers`,
+`map.published`, `common` — NOT against `canonicalRow` (which models a
+repo-plane row and legitimately carries `textKey`) nor against the
+repo-plane documents of [§3](#3-planes-and-ownership-boundaries)
+(`overlay`, `availability`, `maps.schema.json`).
+
+- **Whitelist — the ONLY provenance carriers in any published document:**
+  - the build-id carrier, EXACTLY ONE SPELLING per document root
+    ([§2.1](#21-recount-protocol-r1)):
+    - `buildId` (integer) — required at the root of every API document
+      (lists, entities, tooltips, db.json);
+    - `buildid` (integer, registry-native) — required at the root of the
+      served map projection only, and `buildId` FORBIDDEN there;
   - `coverage` (object, required wherever the document scopes data:
     `availableLocales`/`namedLocales` on entity-bearing documents — the
     cross-locale link row + hreflang drivers
     ([localization-architecture §2](../../_foundation/localization-architecture.md#2-cross-locale-link-contract));
     `kind`/`locale`/`count`/`namedCount` on indexes; `pins` on marker types).
-- **Banned from every published document** (repo-only class + pipeline
-  vocabulary): `_meta` and everything it carries (`sourceSheet`,
-  `container`, `tool`, `emitted`, `columns`, `enums`, `keyRule`,
-  `localeTextRoute`); `textKey` bridge objects (locale files publish
-  RESOLVED strings); icon atlas descriptors; harvest/pak paths (`res.pak`,
-  `assets.pak`, `content.pak`, `map.pak`, `extracted/`, `.cdb`); dig/gate
-  vocabulary (`gate`, `coordinateGate`, `publicationPlane`, `provenance`,
-  edge `mechanism`/`valid` bookkeeping); source identity, license tags,
-  acquisition paths, commits, extractor identity, sha/adler hashes.
-- Observation instants: deliberately NOT published in wave 1 — nothing
-  renders them, and [DR-2026-08-22-numbers-stand-alone] keeps stamps off
-  user surfaces; the machine plane may add them later without breaking this
-  contract (additive).
+- **Banned from every published document**, in three enforcement classes
+  ([AC5](#ac5-provenance-whitelist-is-structural) implements each):
+  1. **Repo bookkeeping keys** (banned as accepted KEYS on published-side
+     defs): `_meta` and everything it carries (`sourceSheet`, `container`,
+     `emitted`, `columns`, `enums`, `keyRule`, `localeTextRoute`); `textKey`
+     bridge objects (locale files publish RESOLVED strings); dig/gate and
+     registry-bookkeeping vocabulary (`gate`, `coordinateGate`,
+     `publicationPlane`, `provenance`, edge `mechanism`/`valid`,
+     `source`, `sourceRef`, `coordinateRows`).
+     Collision carve-out, derived from the corpus at build time: a name that
+     is a REAL canonical column of that kind passes through verbatim —
+     `tool` is a genuine column of `item` (type-17 props) and `recipe`
+     (type-6 FK), so it is banned nowhere as a word and accepted exactly
+     where `_meta.columns` declares it. No other member of this class
+     collides with any canonical column name (verified across all 40 kinds'
+     `_meta.columns` at r1).
+  2. **Acquisition/source-identity VALUES** (banned as substrings anywhere
+     in a published-side schema): harvest/pak paths (`res.pak`,
+     `assets.pak`, `content.pak`, `map.pak`, `extracted/`, `harvest/`),
+     `.cdb`, hashes (`sha256`, `adler`), license tags, commits, extractor
+     identity.
+  3. **Observation instants**: deliberately NOT published in wave 1 —
+     nothing renders them, and [DR-2026-08-22-numbers-stand-alone] keeps
+     stamps off user surfaces; the machine plane may add them later without
+     breaking this contract (additive).
 - Enforcement is structural: published-side schemas close their objects and
-  compose `provenanceEnvelope`; [AC5](#ac5-provenance-whitelist-is-structural)
-  greps the contract plane for banned tokens.
+  compose the matching envelope variant;
+  [AC5](#ac5-provenance-whitelist-is-structural) walks ACCEPTED keys
+  (`properties`/`patternProperties`/`required` slots — naming a token inside
+  a `description` or a banning `not`/`enum` construct is not accepting it)
+  and scans published-side files for the class-2 substrings.
 
-## 12. Wave-1 locale scope note (availability regen lands with dig 14)
+## 12. Locale coverage scope (recount-governed)
 
-Today the locale planes cover the wave-1 kinds only — overlays
-`extracted/locales/<locale>/{item,skill,class}.json` and 3,779 availability
-rows — because that is what stages 4–6 promote; the remaining 37 managed
-kinds carry `localeTextRoute` in their `_meta` but no emitted overlays yet.
-Dig 14 (batch 1, R9 locale wave-2 + R5 fr stamping rule,
-[PROGRESS batch plan](../PROGRESS.mdx#execution-plan--subagent-launch-batches-owner-directive-2026-08-26))
-regenerates overlays + `locale_availability.jsonl` across the managed
-universe. Consequences pinned NOW so dig 14 cannot reshape the contracts:
+(Rewritten r1; supersedes the wave-1 pin — dig 14 LANDED during this spec's
+review round: overlays + availability now span every kind with localizable
+text, managed and deferred alike.)
+
+The locale planes cover EVERY kind that declares ≥1 localizable column —
+34 kinds at r1 (31 managed + `place`/`group`/`element`); the other 9 managed
+kinds are absent STRUCTURALLY (their sheets declare zero localizable
+columns — asserted by R-2), so their absence is a shape fact, not a pending
+dig. Counts move with the locale waves; the LAW does not:
 
 - The overlay/availability schemas ([§5.1](#51-files)) are KIND-GENERIC —
-  dig 14 extends INSTANCES, never shapes. No contract file changes when it
-  lands.
-- Until then, per-locale entity/list/tooltip data URLs exist only for the
-  wave-1 kinds; requesting `/data/de/recipe/<id>.json` is a 404 BY CONTRACT
-  (honest absence), not a bug. The manifest records this as
-  `localeCoverage: {mode:"wave-1", kinds:["class","item","skill"]}`.
+  locale waves extend INSTANCES, never shapes. No contract file changes when
+  a wave lands.
+- Per-locale entity/list/tooltip data URLs exist exactly for the kinds in
+  the manifest's `localeCoverage.kinds` — recounted from the availability
+  plane at build time
+  ([AC8](#ac8-manifest-is-the-single-typed-source)), never pinned. Requesting
+  `/data/de/recipe/<id>.json` is a 404 BY CONTRACT (honest absence — recipe
+  declares no localizable column), not a bug; requesting a covered kind's
+  uncovered locale view is a 404 by the trimodal availability law.
+- The manifest records this as `localeCoverage: {mode:"emitted",
+  kinds:[…recount…]}`; the former literal
+  `{mode:"wave-1", kinds:["class","item","skill"]}` described the plane
+  before dig 14 and is retired (see [§r1 conflicts](#r1-conflicts)).
 - The fr vintage anomaly (bare `<cdb>` root, no stamps —
   [locale-key-convention §1](locale-key-convention.mdx#1-the-bridge-files))
   is an extraction-plane fact; published payloads never expose per-locale
-  revision stamps, so it costs the published plane nothing.
+  revision stamps, so it costs the published plane nothing. Its one visible
+  echo is lawful: the 8-locale availability rows missing exactly `fr`
+  (R-2) — those entities get 7 cross-locale links, not 8, and no fr page.
 
 ## 13. Out of scope and the stage-7 boundary
 
@@ -459,8 +692,12 @@ VERIFICATIONS IT OWNS (curl/file assertions against the SERVED tree):
 3. 404 semantics: drift entities and locale-unavailable views are 404, never
    pivot-filled; `/{pivot}/*` locale-prefixed pivot URLs 301 to bare paths.
 4. Registry→projection byte-check: published `map.json` equals the
-   allow-list projection of the current `extracted/data/maps.json`.
+   allow-list projection of the current `extracted/data/maps.json`
+   (including the registry-native `buildid` carrier, unconverted).
 5. Icon parity: every published `icon` path resolves 200 in `/cdn/**`.
+6. (r1) CDN publish filter: the served `/cdn/v*/` trees contain ONLY
+   `{kind}/{id}.webp` — the repo QA companions found beside them today
+   (`misses.jsonl`, `resolution-proof.jsonl`, `_tool.json`) never ship.
 
 Also out of F2 scope: search index artifact (F5), relations/inverted-index
 ENDPOINTS (shape rides PT04b's spec — the canonical relink plane already
@@ -474,14 +711,14 @@ judges the list for completeness):
 
 | file | action | content |
 |---|---|---|
-| `contracts/common.schema.json` | new | shared `$defs` (provenanceEnvelope, coverage variants, cdnIconPath, entityPointer, worldCoord, locale enum, id pattern) |
+| `contracts/common.schema.json` | new | shared `$defs` (provenanceEnvelope, provenanceEnvelopeRegistry, coverage variants, cdnIconPath, entityPointer, worldCoord, locale enum, entityId/entityIdAny patterns) |
 | `contracts/kinds/<kind>.schema.json` ×40 | new | `$defs: canonicalRow, baseRecord, listEntry` per managed kind |
 | `contracts/overlay.schema.json` | new | repo-plane overlay artifact shape (kind-generic) |
-| `contracts/availability.schema.json` | new | repo-plane availability row shape |
+| `contracts/availability.schema.json` | new | repo-plane availability row shape (open kind membership) |
 | `contracts/list.schema.json` | new | index envelopes + rows + `/data/db.json` taxonomy index |
 | `contracts/tooltip.schema.json` | new | tooltip payload (envelope + per-kind extension point) |
 | `contracts/markers.schema.json` | new | mark rows (15-type frozen enum, reserved entity kinds) |
-| `contracts/map.published.schema.json` | new | served projection of the maps registry (repo-only fields banned) |
+| `contracts/map.published.schema.json` | new | served projection of the maps registry (repo-only fields banned; registry-native `buildid`) |
 | `contracts/api.manifest.json` | new | machine URL/namespace/coverage-scope manifest |
 | `docs/spec-f2-contracts.mdx` | this file | the contract itself |
 
@@ -492,11 +729,16 @@ rides the first marks-emitting stage), `pipeline/**`, `output/**`, `site/**`.
 ## 15. Acceptance criteria
 
 Each verifiable by command exit code or file assertion on NE8K, run from the
-pack root with Python 3.14 (`jsonschema` present, measured 4.26.0). AC1–AC11
-are executable TODAY against the contract plane + canonical corpus once the
-F2 build lands its files; AC12–AC13 bind the build piece; the stage-7
-register in [§13](#13-out-of-scope-and-the-stage-7-boundary) is explicitly
-NOT part of F2 acceptance.
+pack root with Python 3.14 (`jsonschema` present, measured 4.26.0; cross-file
+`$ref`s resolve through a `referencing.Registry`, never the deprecated
+`RefResolver`). AC1–AC11 are executable TODAY against the contract plane +
+canonical corpus once the F2 build lands its files; AC12–AC13 bind the
+build piece; the stage-7 register in
+[§13](#13-out-of-scope-and-the-stage-7-boundary) is explicitly NOT part of
+F2 acceptance. ACs must run over a SETTLED tree: a probe that finds the
+locale plane mid-regeneration fails loudly (empty-input guards below), by
+design. Revised AC bodies carry an explicit `(r1)` marker; headings are
+unchanged so every inbound anchor keeps resolving.
 
 ### AC1: Contract inventory is complete and parses
 
@@ -531,23 +773,25 @@ PY
 
 ### AC3: Kind schemas accept the live canonical corpus (structure only)
 
-Every data line of all 40 `extracted/data/<kind>.jsonl` validates against
+(r1) Every data line of all 40 `extracted/data/<kind>.jsonl` validates against
 its schema's `$defs.canonicalRow`. Boundary: SHAPE only — counts/fidelity
 stay with `census-per-kind`/cdb_verify; a row failing HERE is a schema
-defect, not a data defect.
+defect, not a data defect. Cross-file `$ref`s resolve through
+`referencing.Registry` (non-deprecated).
 
 ```sh
 PYTHONIOENCODING=utf-8 python - <<'PY'
-import json, sys, pathlib, jsonschema
+import json, sys, pathlib, jsonschema, referencing, referencing.jsonschema
 sys.path.insert(0, "pipeline/tools"); import wave_kinds
 store = {p.name: json.loads(p.read_text(encoding="utf-8"))
          for p in pathlib.Path("contracts").rglob("*.schema.json")}
-resolver = jsonschema.RefResolver(base_uri="", referrer=None, store=store)
+reg = referencing.Registry().with_resources(
+    [(name, referencing.Resource(contents=sch, specification=referencing.jsonschema.DRAFT7))
+     for name, sch in store.items()])
 total = 0
 for k in sorted(wave_kinds.MANAGED_KINDS):
-    sch = store[k + ".schema.json"]
-    v = jsonschema.Draft7Validator(sch["$defs"]["canonicalRow"], resolver=resolver)
-    lines = pathlib.Path(f"extracted/data/{k}.jsonl").read_text(encoding="utf-8").splitlines()[1:]
+    v = jsonschema.Draft7Validator(store[k + ".schema.json"]["$defs"]["canonicalRow"], registry=reg)
+    lines = pathlib.Path("extracted/data", k + ".jsonl").read_text(encoding="utf-8").splitlines()[1:]
     errs = []
     for i, ln in enumerate(lines, 2):
         e = next(v.iter_errors(json.loads(ln)), None)
@@ -560,151 +804,268 @@ PY
 
 ### AC4: Overlay and availability shapes match the emitted artifacts
 
-All 27 `extracted/locales/<locale>/{item,skill,class}.json` validate against
-`overlay.schema.json`; every row of
-`extracted/relinks/locale_availability.jsonl` validates against
+(r1) Recount law: the AC states NO file count. `len(files)` must equal
+`recount(files)` — two independent enumerations of the
+`extracted/locales/<clientCode>/<kind>.json` tree over the manifest's nine
+locales (pivot included) — and the inventory must be plane-symmetric across
+those locales with kind membership ⊆ managed ∪ reserved deferred names. All
+overlay files validate against
+`overlay.schema.json` (managed-kind entries keyed within the canonical id
+set); every `locale_availability.jsonl` row validates against
 `availability.schema.json` (shape only — the row law stays in
-`availability-regenerated`).
+`availability-regenerated`). Chrome `ui/` and draft planes sit outside the
+enumerated locale set and are never validated here.
 
 ```sh
 PYTHONIOENCODING=utf-8 python - <<'PY'
-import json, pathlib, jsonschema
-ov = json.loads(pathlib.Path("contracts/overlay.schema.json").read_text(encoding="utf-8"))
-av = json.loads(pathlib.Path("contracts/availability.schema.json").read_text(encoding="utf-8"))
-ov_v, av_v = jsonschema.Draft7Validator(ov), jsonschema.Draft7Validator(av)
-files = sorted(pathlib.Path("extracted/locales").glob("*/*.json"))
-assert len(files) == 27, len(files)
-for p in files:
-    d = json.loads(p.read_text(encoding="utf-8"))
+import json, sys, pathlib, jsonschema
+sys.path.insert(0, "pipeline/tools"); import wave_kinds
+m = json.loads(pathlib.Path("contracts/api.manifest.json").read_text(encoding="utf-8"))
+locs = {m["locales"]["pivot"]} | set(m["locales"]["dataCodes"])   # directories use CLIENT codes; the pivot overlay plane is in scope too
+reserved = {"place", "group", "element", "levelProps", "achievement"}
+root = pathlib.Path("extracted/locales")
+# recount(files): walk per locale dir; compare with the flat glob enumeration
+files, recount = [], 0
+for loc in sorted(p.name for p in root.iterdir() if p.is_dir() and p.name in locs):
+    names = sorted(p.name for p in (root / loc).iterdir() if p.suffix == ".json")
+    recount += len(names)
+    files += [(loc, n[:-len(".json")]) for n in names]
+files.sort()
+globbed = sorted((p.parent.name, p.stem) for p in root.glob("*/*.json") if p.parent.name in locs)
+assert files == globbed and len(files) == recount, (len(files), recount, len(globbed))
+assert files, "overlay tree empty - locale regeneration in flight?"
+per_loc = [{k for l, k in files if l == loc} for loc in sorted(locs)]
+assert all(s and s == per_loc[0] for s in per_loc), "asymmetric overlay plane"
+bad_kinds = sorted({k for _, k in files} - (set(wave_kinds.MANAGED_KINDS) | reserved))
+assert not bad_kinds, bad_kinds
+ov_v = jsonschema.Draft7Validator(json.loads(pathlib.Path("contracts/overlay.schema.json").read_text(encoding="utf-8")))
+av_v = jsonschema.Draft7Validator(json.loads(pathlib.Path("contracts/availability.schema.json").read_text(encoding="utf-8")))
+for loc, k in files:
+    d = json.loads((root / loc / (k + ".json")).read_text(encoding="utf-8"))
     e = next(ov_v.iter_errors(d), None)
-    assert e is None, (str(p), e.message)
-rows = pathlib.Path("extracted/relinks/locale_availability.jsonl").read_text(encoding="utf-8").splitlines()
-for i, ln in enumerate(rows, 1):
+    assert e is None, (loc, k, e.message)
+    if k in wave_kinds.MANAGED_KINDS:                  # deferred corpora have no canonical file yet
+        canon = {json.loads(l)["id"] for l in pathlib.Path("extracted/data", k + ".jsonl").read_text(encoding="utf-8").splitlines()[1:]}
+        extra = sorted(set(d) - canon)
+        assert not extra, (loc, k, extra[:3])
+row_lines = pathlib.Path("extracted/relinks/locale_availability.jsonl").read_text(encoding="utf-8").splitlines()
+assert row_lines, "locale_availability.jsonl missing/empty - regen in flight?"
+for i, ln in enumerate(row_lines, 1):
     e = next(av_v.iter_errors(json.loads(ln)), None)
     assert e is None, (i, e.message)
-print("AC4 ok:", len(files), "overlay files,", len(rows), "availability rows")
+print(f"AC4 ok: {len(files)} overlay files (recount {recount}), {len(row_lines)} availability rows")
 PY
 ```
 
 ### AC5: Provenance whitelist is structural
 
-(a) Every published-side schema composes the shared envelope: each of the 40
-kind `baseRecord` defs plus `list`, `tooltip`, `markers`, `map.published`
-carries an `allOf` ref to `common.schema.json#/$defs/provenanceEnvelope`.
-(b) No contract file contains any banned token — `_meta`, `sourceSheet`,
-`container`, `textKey`, `keyRule`, `localeTextRoute`, `res.pak`,
-`assets.pak`, `content.pak`, `map.pak`, `.cdb`, `harvest/`, `sha256`,
-`adler`, `"license"`, `coordinateGate`, `publicationPlane` (the last two may
-appear ONLY in `map.published.schema.json`, which names them in order to ban
-them).
+(r1) (a) Envelope composition, PER CARRIER SPELLING: every kind `baseRecord` def
+plus `list`, `tooltip`, `markers` composes
+`common.schema.json#/$defs/provenanceEnvelope`; `map.published` requires the
+registry-native `buildid` (integer) + `coverage` and declares NO `buildId`.
+(b) Banned vocabulary, per [§11](#11-provenance-field-law-two-classes-one-whitelist)'s
+classes, scoped to PUBLISHED-side defs: no accepted key
+(`properties`/`patternProperties`/`required` slots) of any
+`baseRecord`/`listEntry` or shared published schema may be a banned
+bookkeeping key — except names that are real canonical columns of that kind
+(derived from `_meta.columns`, the `tool` carve-out); no class-2 substring
+may appear anywhere in a published-side schema file. `canonicalRow` and the
+repo-plane documents are out of scope by law
+([§3](#3-planes-and-ownership-boundaries), [§11](#11-provenance-field-law-two-classes-one-whitelist)).
 
 ```sh
 PYTHONIOENCODING=utf-8 python - <<'PY'
 import json, sys, pathlib
 sys.path.insert(0, "pipeline/tools"); import wave_kinds
-BANNED = ["_meta", "sourceSheet", "container", "textKey", "keyRule",
-          "localeTextRoute", "res.pak", "assets.pak", "content.pak",
-          "map.pak", ".cdb", "harvest/", "sha256", "adler", '"license"',
-          "coordinateGate", "publicationPlane"]
-ALLOW = {"map.published.schema.json"}
-bad = []
-for p in pathlib.Path("contracts").rglob("*.json"):
-    t = p.read_text(encoding="utf-8")
-    for tok in BANNED:
-        if tok in t and p.name not in ALLOW:
-            bad.append((p.name, tok))
-assert not bad, bad
+SHARED_PUB = ["list.schema.json", "tooltip.schema.json", "markers.schema.json"]
+BANNED_KEYS = {"_meta", "sourceSheet", "container", "emitted", "columns", "enums",
+               "keyRule", "localeTextRoute", "textKey", "gate", "coordinateGate",
+               "publicationPlane", "provenance", "mechanism", "valid", "source",
+               "sourceRef", "coordinateRows"}
+BANNED_VALUES = ["res.pak", "assets.pak", "content.pak", "map.pak", ".cdb",
+                 "harvest/", "extracted/", "sha256", "adler", '"license"']
 REF = "common.schema.json#/$defs/provenanceEnvelope"
-def has_ref(s):
-    return REF in json.dumps(s)
-for k in wave_kinds.MANAGED_KINDS:
-    s = json.loads(pathlib.Path(f"contracts/kinds/{k}.schema.json").read_text(encoding="utf-8"))
-    assert has_ref(s["$defs"]["baseRecord"]), k
-for n in ("list.schema.json", "tooltip.schema.json", "markers.schema.json",
-          "map.published.schema.json"):
+def accepted_keys(node, hit):
+    if isinstance(node, dict):
+        for slot in ("properties", "patternProperties"):
+            hit.update((node.get(slot) or {}).keys())
+        hit.update(node.get("required") or [])
+        for v in node.values(): accepted_keys(v, hit)
+    elif isinstance(node, list):
+        for x in node: accepted_keys(x, hit)
+def corpus_columns(kind):
+    meta = json.loads(pathlib.Path("extracted/data", kind + ".jsonl").read_text(encoding="utf-8").splitlines()[0])["_meta"]
+    return {c["name"] for c in meta.get("columns", [])}
+bad = []
+for k in sorted(wave_kinds.MANAGED_KINDS):
+    s = json.loads(pathlib.Path("contracts/kinds", k + ".schema.json").read_text(encoding="utf-8"))
+    br = s["$defs"]["baseRecord"]
+    if REF not in json.dumps(br): bad.append((k, "envelope"))
+    slots = set(); accepted_keys(br, slots); accepted_keys(s["$defs"]["listEntry"], slots)
+    clash = sorted((slots & BANNED_KEYS) - corpus_columns(k))
+    if clash: bad.append((k, clash))
+for n in SHARED_PUB:
     s = json.loads(pathlib.Path("contracts", n).read_text(encoding="utf-8"))
-    assert has_ref(s), n
-print("AC5 ok: whitelist structural, banned tokens absent")
+    if REF not in json.dumps(s): bad.append((n, "envelope"))
+KEY_SCAN = SHARED_PUB + ["map.published.schema.json", "common.schema.json"]
+for n in KEY_SCAN:
+    s = json.loads(pathlib.Path("contracts", n).read_text(encoding="utf-8"))
+    slots = set(); accepted_keys(s, slots)
+    clash = sorted(slots & BANNED_KEYS)
+    if clash: bad.append((n, clash))
+pub_files = [pathlib.Path("contracts", n) for n in SHARED_PUB] + \
+            [pathlib.Path("contracts", "map.published.schema.json"),
+             pathlib.Path("contracts", "common.schema.json")] + \
+            list(pathlib.Path("contracts/kinds").glob("*.schema.json"))
+for p in pub_files:
+    t = p.read_text(encoding="utf-8")
+    for tok in BANNED_VALUES:
+        if tok in t: bad.append((p.name, tok))
+mp = json.loads(pathlib.Path("contracts", "map.published.schema.json").read_text(encoding="utf-8"))
+props = mp.get("properties") or {}
+assert props.get("buildid", {}).get("type") == "integer", "map.published buildid carrier"
+assert "coverage" in (mp.get("required") or []), "map.published coverage"
+assert "buildId" not in props, "map.published must carry ONE spelling"
+assert not bad, bad
+print("AC5 ok: envelopes composed per spelling; banned keys/values absent from published defs")
 PY
 ```
 
 ### AC6: Schemas carry validated examples
 
-Every schema embeds ≥1 `examples` value somewhere in its `$defs`, and every
-embedded example validates against the def it sits in (self-proof; no
-separate fixtures directory). Threshold: ≥45 validated examples across the
-contract plane (40 kinds + the five shared schemas).
+(r1) Every F2-owned schema embeds ≥1 `examples` value somewhere in its `$defs`,
+and every embedded example validates against the def it sits in
+(self-proof; no separate fixtures directory). Resolution goes through a
+`referencing.Registry` over the whole contract plane, so examples placed in
+`baseRecord` (which composes external `$ref`s) validate without unresolvable-
+ref failures. Floor is PER FILE over the 47 F2-owned schemas (40 kinds + 7
+shared) — no aggregate threshold can hide example-less files;
+`contracts/maps.schema.json` (committed registry schema, not F2-owned) is
+out of scope by [§14](#14-files-touched).
 
 ```sh
 PYTHONIOENCODING=utf-8 python - <<'PY'
-import json, pathlib, jsonschema
-def count(s):
-    v = jsonschema.validators.validator_for(s)
-    n = 0
-    for ex in (s.get("examples") or []):
-        v.validate(ex, s); n += 1
-    for d in (s.get("$defs") or {}).values():
-        n += count(d)
-    return n
+import json, sys, pathlib, jsonschema, referencing, referencing.jsonschema
+sys.path.insert(0, "pipeline/tools"); import wave_kinds
+SHARED = ["common.schema.json", "overlay.schema.json", "availability.schema.json",
+          "list.schema.json", "tooltip.schema.json", "markers.schema.json",
+          "map.published.schema.json"]
+names = sorted(k + ".schema.json" for k in wave_kinds.MANAGED_KINDS) + SHARED
+def path_of(n):
+    return pathlib.Path("contracts/kinds", n) if n not in SHARED else pathlib.Path("contracts", n)
+store = {n: json.loads(path_of(n).read_text(encoding="utf-8")) for n in names}
+reg = referencing.Registry().with_resources(
+    [(n, referencing.Resource(contents=s, specification=referencing.jsonschema.DRAFT7))
+     for n, s in store.items()])
+MAP_SLOTS = ("$defs", "definitions", "properties", "patternProperties")
+ONE_SLOTS = ("items", "additionalItems", "additionalProperties", "not",
+             "allOf", "anyOf", "oneOf", "if", "then", "else")
+def iter_schemas(node):
+    yield node
+    if isinstance(node, dict):
+        for slot in MAP_SLOTS:                     # slot value: {name: subschema}
+            v = node.get(slot)
+            if isinstance(v, dict):
+                for x in v.values(): yield from iter_schemas(x)
+        for slot in ONE_SLOTS:                     # slot value: subschema or list of them
+            v = node.get(slot)
+            if isinstance(v, dict): yield from iter_schemas(v)
+            elif isinstance(v, list):
+                for x in v: yield from iter_schemas(x)
 tot = 0
-for p in pathlib.Path("contracts").rglob("*.schema.json"):
-    s = json.loads(p.read_text(encoding="utf-8"))
-    tot += count(s)
-assert tot >= 45, tot
-print("AC6 ok:", tot, "validated examples")
+for n in names:
+    cnt = 0
+    for sch in iter_schemas(store[n]):
+        v = None
+        for ex in (sch.get("examples") or []):
+            if v is None: v = jsonschema.Draft7Validator(sch, registry=reg)
+            errs = list(v.iter_errors(ex))
+            assert not errs, (n, errs[0].message)
+            cnt += 1
+    assert cnt >= 1, (n, "example-less schema")
+    tot += cnt
+print("AC6 ok:", tot, "validated examples across", len(names), "schemas (>=1 each)")
 PY
 ```
 
 ### AC7: URL namespace disjointness and derivation bijection
 
-Kinds ∩ locales ∩ reserved prefixes = ∅; and for a deterministic sample
-(first row id of every kind × {pivot, first locale} × {list, entity,
-tooltip}), applying the manifest derivation rule to the page URL yields the
-data URL, and the inverse mapping restores the page URL.
+(r1) Kinds ∩ reserved prefixes ∩ reserved suffixes = ∅ (pairwise), and each
+locale segment plane is disjoint from all three; the two segment arrays are
+positionally paired, complete, lowercase-normalized, pivot-free (they
+overlap by design — per-locale pairs); and for a deterministic sample (first row
+id of every kind × both segment planes × {list, entity, tooltip}, plus
+db/map), applying the manifest derivation rule to the page URL yields the
+data URL and the inverse restores the page URL — including the
+case-divergent pair (`pt-br` page → `pt-BR` data), asserted explicitly.
 
 ```sh
 PYTHONIOENCODING=utf-8 python - <<'PY'
 import json, sys, pathlib
 sys.path.insert(0, "pipeline/tools"); import wave_kinds
 m = json.loads(pathlib.Path("contracts/api.manifest.json").read_text(encoding="utf-8"))
-ks, ls, rs = set(m["kinds"]), set(m["locales"]["prefixed"]), set(m["reservedPrefixes"])
+ks, rs, xs = set(m["kinds"]), set(m["reservedPrefixes"]), set(m["reservedSuffixes"])
+pp, dc = m["locales"]["pagePrefixes"], m["locales"]["dataCodes"]
+pivot = m["locales"]["pivot"]
 assert ks == set(wave_kinds.MANAGED_KINDS)
-assert not (ks & ls) and not (ks & rs) and not (ls & rs), "namespace clash"
-def data_url(page):
-    seg = page.strip("/").split("/")
-    loc = seg.pop(0) if seg[0] in ls else None
-    inner = ([loc] if loc else []) + seg
-    return "/data/" + "/".join(inner) + ".json"
-def page_of(data):
-    seg = data.strip("/").split("/")
-    assert seg[0] == "data"
-    seg = seg[1:]
-    loc = seg.pop(0) if seg[0] in ls else None
-    return ("/" + loc if loc else "") + "/" + "/".join(seg)[:-len(".json")]
-first_ids = {}
+assert len(pp) == len(dc) == len(set(pp)) == len(set(dc)) == 8
+assert sorted(pp) == sorted(c.lower() for c in dc), "presentation ids are lowercase client codes"
+assert pivot not in pp and pivot not in dc
+seg = dict(zip(pp, dc)); inv = {v: k for k, v in seg.items()}
+assert len(inv) == 8
+sets = [ks, rs, xs]                                   # pairwise disjoint cores
+for i, a in enumerate(sets):
+    for b in sets[i+1:]:
+        assert not (a & b), sorted(a & b)
+for plane in (set(pp), set(dc)):                      # each segment plane vs every core set
+    for a in sets:
+        assert not (plane & a), sorted(plane & a)
+assert "tooltip" in xs and "data" in rs
+first = {}
 for k in sorted(ks):
-    ln = pathlib.Path(f"extracted/data/{k}.jsonl").read_text(encoding="utf-8").splitlines()[1]
-    first_ids[k] = json.loads(ln)["id"]
-probe = sorted(ls)[0]
+    ln = pathlib.Path("extracted/data", k + ".jsonl").read_text(encoding="utf-8").splitlines()[1]
+    first[k] = json.loads(ln)["id"]
+assert "tooltip" not in set(first.values()), "an id collides with the reserved suffix"
+def data_url(page):
+    s = page.strip("/").split("/")
+    code = None
+    if s and s[0] in seg:
+        code = seg[s.pop(0)]
+    return "/data/" + "/".join(([code] if code else []) + s) + ".json"
+def page_of(data):
+    s = data.strip("/").split("/")
+    assert s[0] == "data"
+    s = s[1:]
+    pre = None
+    if s and s[0] in inv:
+        pre = inv[s.pop(0)]
+    return ("/" + pre if pre else "") + "/" + "/".join(s)[:-len(".json")]
+divergent = next((p, c) for p, c in seg.items() if p != c)      # ("pt-br", "pt-BR")
 pages = []
 for k in sorted(ks):
-    pages += [f"/{k}", f"/{k}/{first_ids[k]}",
-              f"/{k}/{first_ids[k]}/tooltip"]
-pages += [f"/db", f"/map", f"/{probe}/db", f"/{probe}/map"]
+    pages += [f"/{k}", f"/{k}/{first[k]}", f"/{k}/{first[k]}/tooltip",
+              f"/{divergent[0]}/{k}/{first[k]}",
+              f"/{divergent[0]}/{k}/{first[k]}/tooltip"]
+pages += ["/db", "/map", f"/{divergent[0]}/db", f"/{divergent[0]}/map"]
 for pg in pages:
     d = data_url(pg)
-    assert d.endswith(".json") and "/data/" in d, (pg, d)
-    assert page_of(d) == pg, (pg, d)
-print(f"AC7 ok: namespaces disjoint, {len(pages)} page URLs bijective")
+    assert d.startswith("/data/") and d.endswith(".json"), (pg, d)
+    assert page_of(d) == pg, (pg, d, page_of(d))
+assert data_url(f"/{divergent[0]}/item/{first['item']}") == f"/data/{divergent[1]}/item/{first['item']}.json"
+print(f"AC7 ok: namespaces disjoint incl. suffix '{sorted(xs)[0]}'; "
+      f"{len(pages)} page URLs bijective; divergent pair {divergent[0]}->{divergent[1]} asserted")
 PY
 ```
 
 ### AC8: Manifest is the single typed source
 
-`api.manifest.json`: `version==1`; `kinds` equals the managed universe;
-`locales.pivot=="en"` and `prefixed` is exactly the 8 client codes;
-`localeCoverage == {mode:"wave-1", kinds:["class","item","skill"]}`;
-surfaces cover list/entity/tooltip/taxonomy/map.
+(r1) `api.manifest.json`: `version==1`; `kinds` equals the managed universe;
+`locales.pivot=="en"`; `dataCodes` is exactly the 8 frozen client codes;
+`pagePrefixes` their lowercase presentation ids; `reservedSuffixes ==
+["tooltip"]`; `localeCoverage == {mode:"emitted", kinds:[…]}` where `kinds`
+EQUALS the recount of kinds present in the availability plane (never a
+pinned list) and contains the wave-1 trio; surfaces cover
+list/entity/tooltip/taxonomy/map.
 
 ```sh
 PYTHONIOENCODING=utf-8 python - <<'PY'
@@ -714,19 +1075,29 @@ m = json.loads(pathlib.Path("contracts/api.manifest.json").read_text(encoding="u
 assert m["version"] == 1
 assert sorted(m["kinds"]) == sorted(wave_kinds.MANAGED_KINDS)
 assert m["locales"]["pivot"] == "en"
-assert sorted(m["locales"]["prefixed"]) == sorted(["de","es","fr","ko","pl","pt-BR","ru","zh"])
-assert m["localeCoverage"] == {"mode": "wave-1", "kinds": ["class","item","skill"]}
+assert sorted(m["locales"]["dataCodes"]) == sorted(["de","es","fr","ko","pl","pt-BR","ru","zh"])
+assert sorted(m["locales"]["pagePrefixes"]) == sorted(c.lower() for c in m["locales"]["dataCodes"])
+assert m["reservedSuffixes"] == ["tooltip"]
+cov = m["localeCoverage"]
+assert cov["mode"] == "emitted"
+recount = sorted({json.loads(l)["kind"]
+                  for l in pathlib.Path("extracted/relinks/locale_availability.jsonl").read_text(encoding="utf-8").splitlines()
+                  if l.strip()})
+assert sorted(cov["kinds"]) == recount, (sorted(cov["kinds"]), recount)
+assert {"class", "item", "skill"} <= set(recount)
 assert {"list","entity","tooltip","taxonomy","map"} <= set(m["surfaces"])
-print("AC8 ok")
+print(f"AC8 ok: manifest typed source; localeCoverage == recount ({len(recount)} kinds)")
 PY
 ```
 
 ### AC9: Marker contract accepts the frozen vocabulary and honest fixtures
 
-`markers.schema.json` checks (AC2); its `type` enum equals the 15 types
+(r1) `markers.schema.json` checks (AC2); its `type` enum equals the 15 types
 declared by today's registry `marker-layers` layer; three fixtures validate
-(required-only, fully-populated with a reserved deferred entity kind,
-null-bearing optionals); an unknown marker type is rejected.
+(required-only, fully-populated with a reserved deferred entity kind and a
+REAL deferred-corpus id, null-bearing optionals); an unknown marker type is
+rejected. Fixture values are real forms measured on buildid 20318128
+(`Gosenberg_1` region id, `A1BorderPost` place id, an existing export path).
 
 ```sh
 PYTHONIOENCODING=utf-8 python - <<'PY'
@@ -738,10 +1109,10 @@ assert sorted(sch["$defs"]["mark"]["properties"]["type"]["enum"]) == vocab
 v = jsonschema.Draft7Validator(sch["$defs"]["mark"])
 fx = [
     {"id": "A1BorderPost", "type": "border-crossing", "x": -1536.0, "y": 2048.0},
-    {"id": "GosenbergMarket", "type": "location-place", "x": 1024.0, "y": -512.0,
-     "regionId": "Gosenberg",
-     "entity": {"kind": "place", "id": "GosenbergMarket"},
-     "icon": "/cdn/v20318128/icon/GosenbergMarket.webp", "label": None},
+    {"id": "A1BorderPostMark", "type": "location-place", "x": 1024.0, "y": -512.0,
+     "regionId": "Gosenberg_1",
+     "entity": {"kind": "place", "id": "A1BorderPost"},
+     "icon": "/cdn/v20318128/item/Gold.webp", "label": None},
     {"id": "SecretChest12", "type": "treasure", "x": 0.0, "y": 0.0,
      "regionId": None, "entity": None, "icon": None, "label": None},
 ]
@@ -756,15 +1127,18 @@ PY
 
 ### AC10: Published map projection is total over today's registry
 
-Applying the allow-list projection of [§9](#9-map-marker-payload-shape-for-mapsjson-marks)
+(r1) Applying the allow-list projection of [§9](#9-map-marker-payload-shape-for-mapsjson-marks)
 to the CURRENT `extracted/data/maps.json` yields a document that validates
 against `map.published.schema.json` — proving the schema demands nothing the
-corpus cannot become.
+corpus cannot become. The dataPlaneOnly-imagery clause is PROVEN, not
+assumed: each layer's `publicationPlane` is captured BEFORE stripping, and
+after projection the layers keeping imagery must be exactly the served ones.
 
 ```sh
 PYTHONIOENCODING=utf-8 python - <<'PY'
 import json, copy, pathlib, jsonschema
 reg = json.loads(pathlib.Path("extracted/data/maps.json").read_text(encoding="utf-8"))
+planes = [l.get("publicationPlane") for l in reg.get("layers", [])]
 pub = copy.deepcopy(reg)
 for k in ("expectedPayloadVocabulary", "instanceMaps", "storagePlanes"):
     pub.pop(k, None)
@@ -780,39 +1154,89 @@ for l in pub.get("layers", []):
         for f in STRIP_TYPE: t.pop(f, None)
 for r in pub.get("regions", []):
     r.pop("nameKeyRoute", None)
+leaks = [i for i, l in enumerate(pub["layers"])
+         if planes[i] != "served" and l.get("imagery")]
+assert not leaks, leaks
+kept = {i for i, l in enumerate(pub["layers"]) if l.get("imagery")}
+served = {i for i, p in enumerate(planes) if p == "served"}
+assert kept == served, (kept, served)
 sch = json.loads(pathlib.Path("contracts/map.published.schema.json").read_text(encoding="utf-8"))
 errs = list(jsonschema.Draft7Validator(sch).iter_errors(pub))
 assert not errs, [e.message for e in errs[:3]]
-print("AC10 ok: registry projects cleanly onto the published schema")
+print("AC10 ok: registry projects cleanly; imagery kept on exactly the served layers")
 PY
 ```
 
 ### AC11: Icon path pattern matches the shipped export set
 
-Sample up to 30 files deterministically from `output/cdn/**/*.webp` and
-require each repo-relative published path to match
-`common.schema.json#$defs/cdnIconPath`.
+(r1) Sample-free totality over `output/cdn/**/*.webp`: every repo-relative
+published path matches `common.schema.json#$defs/cdnIconPath` (compiled
+through the mechanical ECMA-262→Python named-group conversion — the schema
+stores ECMA syntax; os-neutral paths via `pathlib … as_posix()`); every
+exported kind directory is a managed kind whose exported id set EQUALS its
+canonical id set; the repo QA companions found beside the trees are
+reported and stay repo-plane ([§13](#13-out-of-scope-and-the-stage-7-boundary) item 6).
 
 ```sh
 PYTHONIOENCODING=utf-8 python - <<'PY'
-import json, pathlib, re
+import json, sys, pathlib, re
+sys.path.insert(0, "pipeline/tools"); import wave_kinds
 c = json.loads(pathlib.Path("contracts/common.schema.json").read_text(encoding="utf-8"))
-pat = re.compile(c["$defs"]["cdnIconPath"]["pattern"])
-files = sorted(str(p).replace("\\\\", "/") for p in pathlib.Path("output/cdn").rglob("*.webp"))
+ecma = c["$defs"]["cdnIconPath"]["pattern"]
+python_pat = re.sub(r"\(\?<([A-Za-z][A-Za-z0-9_]*)>", r"(?P<\1>", ecma)
+pat = re.compile(python_pat)
+root = pathlib.Path("output", "cdn")
+files = sorted(root.rglob("*.webp"))
 assert files, "export set missing"
-step = max(1, len(files) // 30)
-sample = files[::step][:30]
-for f in sample:
-    assert pat.match("/" + f.split("output/", 1)[1]), f
-print("AC11 ok:", len(sample), "paths match cdnIconPath")
+for p in files:
+    rel = p.relative_to(root.parent).as_posix()
+    assert pat.match("/" + rel), rel
+for vd in sorted(d for d in root.iterdir() if d.is_dir()):
+    kinds_dirs = sorted(x for x in vd.iterdir() if x.is_dir())
+    assert kinds_dirs, vd
+    for d in kinds_dirs:
+        assert d.name in wave_kinds.MANAGED_KINDS, d.name
+        exported = {q.stem for q in d.glob("*.webp")}
+        canon = {json.loads(l)["id"] for l in pathlib.Path("extracted/data", d.name + ".jsonl").read_text(encoding="utf-8").splitlines()[1:]}
+        assert exported == canon, (d.name, sorted(exported ^ canon)[:5])
+qa = sorted(q.name for q in next(iter(sorted(d for d in root.iterdir() if d.is_dir()))).iterdir() if q.is_file())
+print(f"AC11 ok: {len(files)} exported paths match cdnIconPath; id sets bijective; QA companions repo-plane: {qa}")
 PY
 ```
 
 ### AC12: Build-piece output satisfies the contract
 
-Runs after the F2 build lands, before arbiter: re-run AC1–AC11 (all green),
-then `git status --porcelain contracts/ docs/` shows EXACTLY the ten §14
-paths — no extra schema files, no edits outside the list.
+(r1) Runs after the F2 build lands, before arbiter: re-run AC1–AC11 (all green);
+then `git status --porcelain -- contracts/` names EXACTLY the nine new
+contract files of [§14](#14-files-touched) and nothing else; this spec file
+(`docs/spec-f2-contracts.mdx`) is the ONLY docs-side artifact attributed to
+the piece, checked against an explicit ALLOWLIST — any OTHER dirty file
+under `docs/` belongs to a concurrent piece on the shared worktree and is
+NOT a failure of this gate (scoped per the pack's shared-worktree law; the
+former whole-`docs/` porcelain sweep flaked on sibling traffic).
+
+```sh
+PYTHONIOENCODING=utf-8 python - <<'PY'
+import json, sys, pathlib, subprocess
+sys.path.insert(0, "pipeline/tools"); import wave_kinds
+expected = {"common.schema.json", "overlay.schema.json", "availability.schema.json",
+            "list.schema.json", "tooltip.schema.json", "markers.schema.json",
+            "map.published.schema.json", "api.manifest.json"} \
+           | {k + ".schema.json" for k in wave_kinds.MANAGED_KINDS}
+out = subprocess.run(["git", "status", "--porcelain", "--", "contracts/"],
+                     capture_output=True, text=True, check=True).stdout
+touched = {line[3:].strip().replace("\\", "/").split("/")[-1] for line in out.splitlines() if line.strip()}
+assert touched == expected, sorted(touched ^ expected)
+docs_allow = {"docs/spec-f2-contracts.mdx"}
+out = subprocess.run(["git", "status", "--porcelain", "--", "docs/"],
+                     capture_output=True, text=True, check=True).stdout
+docs_dirty = {line[3:].strip().replace("\\", "/") for line in out.splitlines() if line.strip()}
+unattributed = sorted(docs_dirty - docs_allow)
+print("AC12 ok: contracts/ touched set exact;",
+      f"{len(docs_dirty & docs_allow)} allowlisted docs file dirty;",
+      f"{len(unattributed)} sibling docs files NOT attributed to this piece")
+PY
+```
 
 ### AC13: Documentation integrity
 
@@ -822,6 +1246,73 @@ target headings); no HTML in this file; ends with its END sentinel.
 
 Stage-7 owned verifications (NOT F2 acceptance): served-tree G26/CORS/
 content-type, tooltip↔page parity sweep, 404 semantics, registry→projection
-byte-check, icon 200s — see [§13](#13-out-of-scope-and-the-stage-7-boundary).
+byte-check, icon 200s, CDN publish filter — see
+[§13](#13-out-of-scope-and-the-stage-7-boundary).
+
+## r1 conflicts
+
+Cross-spec fallout of this revision, recorded here because F4/PT16/F5 are
+frozen authority this fix round does not edit:
+
+- **F4 ↔ F2 locale-segment spelling — RESOLVED ON THE F2 SIDE.**
+  [spec-f4-app-shell.mdx §2](spec-f4-app-shell.mdx#2-locale-model--one-table-one-derivation)
+  freezes lowercase `pt-br` page segments (recorded decision r1) while citing
+  "`spec-f2-contracts.mdx` §4" for data-plane client codes. F2 as reviewed
+  pinned client codes for BOTH legs, so its own §6 derivation broke for
+  `/pt-br/…` pages (MAJOR-2). Fixed by adopting F4's two-plane model:
+  F2 §4/§6/manifest now distinguish page presentation ids (`pt-br`) from
+  data client codes (`pt-BR`), with the manifest carrying both arrays
+  positionally paired. F4's citation becomes literally true; no F4 edit
+  needed. [DR-2026-08-20-locale-urls] ¶2's `/pt-BR/…` illustration is read
+  per F4's recorded rationale (membership + bare-path law are the ruling;
+  letter case is presentation-local) — no register change requested.
+- **PT16 inherits the corrected `localeCoverage`.** PT16 cites F2 §6's
+  frozen surfaces (unchanged) and generates llms.txt/sitemap membership from
+  the manifest's availability scope; the retired literal
+  `{mode:"wave-1", kinds:["class","item","skill"]}` would have misdescribed
+  the post-dig-14 plane downstream. PT16 needs NO edit — it consumes
+  whatever the manifest records — but its reviewers should note the mode
+  string is now `"emitted"` and the kinds list is a recount, not a pin.
+- **PT16 sitemap `lastmod` readers must accept the two carrier spellings.**
+  API documents carry `buildId`; the served `map.json` projection carries
+  the registry-native `buildid` ([§2.1](#21-recount-protocol-r1)). A lastmod
+  reader that walks only `/data/**` sees `buildId` exclusively; anything
+  reading `map.json` must use its spelling. Recorded here because PT16 §
+  "lastmod driven by buildId" predates the split.
+- **F5 — no conflict.** Its consumption of §6's derivation ("page URL +
+  `.json`") is unaffected by the two-leg rule (the data leg keeps appending
+  `.json` to the mapped data URL), and `contracts/search-index.schema.json`
+  stays outside §14's ten-file list as reviewed.
+- **locale-key-convention.mdx §3/§7 — STALE AFTER DIG 14, NOT EDITED HERE.**
+  It pins "Overlays … {item,skill,class}.json" and "3,779 rows" — the
+  pre-dig-14 plane. Its update rides the datasets-stage owner with the dig-14
+  documentation pass; until then F2's recount probes (R-2/R-3) and
+  [§12](#12-locale-coverage-scope-recount-governed) are the accurate
+  description of the plane.
+- **PROGRESS.mdx phase board** still reads "dig 14 running" (L21) as of the
+  r1 fix round's start; the plane landed and resettled mid-round (transient
+  14,246-row state observed). Board copy update rides the orchestrator's
+  next PROGRESS edit; no spec action.
+
+## Revision r1
+
+Finding-by-finding ledger (binding list:
+[review-spec-f2-contracts.mdx](review-spec-f2-contracts.mdx)):
+
+| id | severity | resolution | sections touched |
+|---|---|---|---|
+| BLOCKER-1 | blocker | Ground truth de-frozen: §2/§12/manifest/AC4 re-derived post-dig-14 with every count as a recount command+assertion (R-1..R-5, AC4/AC8); nothing pins 05:51 numbers | §2, §2.1 (new), §6, §12, AC4, AC8 |
+| BLOCKER-2 | blocker | True id charset measured across all 40 kinds: native `[A-Za-z0-9_]+`, corpus-wide `[A-Za-z0-9_-]+`, hyphen families `^env-[0-9]{4}$` (87) / `^recipe-[0-9]{4}$` (667) pinned; downstream patterns (cdnIconPath id segment, entityPointer, entityIdAny, route validation) re-derived; R-4 recount keeps them honest | §4, §5.1, §9, §10, AC11 |
+| MAJOR-1 | major | AC11 rebuilt for CPython/Windows: mechanical ECMA→Python named-group conversion, `pathlib.as_posix()` paths; RUN read-only pre-freeze (3,779 paths match; id sets bijective) | AC11, §10 |
+| MAJOR-2 | major | Two-plane locale segments adopted (page presentation ids lowercase per F4 §2; data client codes verbatim); manifest carries paired `pagePrefixes`/`dataCodes`; AC7 asserts the divergent `pt-br`→`pt-BR` pair | §4, §6, §1, AC7, AC8, r1 conflicts |
+| MAJOR-3 | major | AC5 now implements §11 fully: accepted-key scan for all bookkeeping/gate/registry vocabulary + class-2 value substrings, scoped to published defs with the corpus-derived canonical-column carve-out (`tool`) | §11, §3, §5.1, AC5 |
+| MAJOR-4 | major | Carrier split made single-per-document: API roots `buildId` via `provenanceEnvelope`; map.published keeps registry-native integer `buildid` via `provenanceEnvelopeRegistry`; AC5(a) asserts both directions; §13.4 byte-check preserved | §2.1, §9, §11, §14, AC5 |
+| MAJOR-5 | major | All embedded examples replaced with real measured values (item count 2,125/named 1,803, `Krowns`, real `/cdn/v20318128/item/Gold.webp`; real skill FenrisCharge all-9 locales, real de strings/stats/link; `Gosenberg_1`, real place id) | §7, §8, AC9 |
+| MINOR-1 | minor | AC6 gained registry-based cross-file resolution + per-file example floor over the 47 F2-owned schemas (maps.schema.json out of scope); AC3 moved off deprecated RefResolver | AC3, AC6, §15 |
+| MINOR-2 | minor | Manifest gained `reservedSuffixes:["tooltip"]`; AC7 pairwise-disjointness extended to terminal segments and sampled ids | §6, AC7, AC8 |
+| MINOR-3 | minor | Export dir's repo QA companions recorded as never-ship; stage-7 publish filter added as §13 item 6; AC11 reports them | §10, §13, AC11 |
+| MINOR-4 | minor | AC10 now proves the imagery clause: publicationPlane captured pre-strip, projected imagery must land on exactly the served layers | AC10, §9 |
+| MINOR-5 | minor | §2 gained the textKey-coverage row; all volatile numbers converted to recount probes; relink totals cited via gate/sha instead of restated | §2, §2.1 |
+| MINOR-6 | minor | AC12 rescoped to `contracts/` porcelain exactness + explicit docs allowlist; sibling dirty files no longer fail the gate | AC12 |
 
 <!-- END OF docs/spec-f2-contracts.mdx — read-in-full file: if you have not seen this line, you have not read this file. -->

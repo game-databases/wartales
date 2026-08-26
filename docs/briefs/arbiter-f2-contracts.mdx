@@ -1,0 +1,42 @@
+# Brief — Arbiter: F2 published contracts spec r1
+
+Fresh Arbiter agent; never spawn subagents; never commit; Wartales pack
+only. Deliverable: `docs/arbiter-f2-contracts.mdx`. Judge only — edit
+nothing outside your deliverable.
+
+Inputs, read IN FULL:
+1. `docs/review-spec-f2-contracts.mdx` — the 13 findings (BLOCKER-1/-2,
+   MAJOR-1..5, MINOR-1..6) that drove the revision.
+2. `docs/spec-f2-contracts.mdx` AS REVISED — `(r1)` tags, `## Revision
+   r1`, `## r1 conflicts`.
+3. Frozen authorities: FRAMEWORK.md §2.1–§2.3, §2.10;
+   `_foundation/seo-standard.md` §9;
+   `_foundation/localization-architecture.md` §5.1;
+   `pipeline/tools/wave_kinds.py`; RELATIONS.md envelope;
+   `contracts/maps.schema.json`.
+4. Cross-spec integration checks (MANDATORY — these bind Batch 3):
+   a. **pageSegments key**: F4's r1b errata froze additive
+      `"pageSegments": {"pt-br": "pt-BR"}` in api.manifest.json with a
+      three-way segment-resolution rule. Verify F2 §6/AC8 carry EXACTLY
+      that key name and semantics — any divergence (different key,
+      different direction) = finding; state precisely whose text wins
+      if they conflict.
+   b. **No-`/db` page law**: E-1 ruled entity pages have NO `/db`
+      prefix; F5 conformed to this §6 as frozen. Confirm §6 still pins
+      that and nothing in r1 reintroduced prefixed variants.
+   c. **PT16 inheritance**: r1 conflicts records PT16
+      localeCoverage/buildid-spelling inheritance claims — rule each
+      recorded conflict: genuine errata for the orchestrator to route
+      (name the exact clause + counterparty) vs already-consistent.
+5. Spot re-execution: re-run ≥3 of the spec's embedded AC programs /
+   recount probes read-only (including AC7 bijectivity on fresh URL
+   samples across ≥6 kinds). A probe that doesn't reproduce = BLOCKER.
+
+Per finding id rule **RESOLVED / WEAKENED / UNRESOLVED** with anchors.
+Sweep revision neighborhoods for NEW defects; amended ACs stay
+executable; provenance whitelist intact; stage-7 emitter boundary not
+breached.
+
+Verdict at top: **APPROVE-FOR-BUILD** (build gated on the pack's rule-8
+gate) or **NEEDS_REVISION** with residuals. End with count summary +
+your rulings on items 4a–c.
