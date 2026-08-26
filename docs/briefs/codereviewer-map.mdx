@@ -1,0 +1,19 @@
+# Brief — CodeReviewer: map pipeline (fresh subagent)
+
+Fresh CodeReviewer. Never spawn subagents, never commit, findings
+only. Wartales pack only. Read `docs/spec-map-pipeline.mdx`
+(arbiter-approved) + `docs/review-spec-map.mdx` (the F1-F13 that
+shaped it), then review `pipeline/map_tiles.py` +
+`pipeline/README-map.mdx` + `extracted/data/maps.json` +
+`contracts/maps.schema.json` against the spec. Run the suite
+(`python -m pytest pipeline/tests -q` — expect 80 passed / 33 skipped
+pack-wide) and spot-run the tool on real payloads if cheap.
+
+Mission: spec violations, bad code, real bugs. Key traps: the seven-
+field geometry schema completeness; yAxis/d null discipline (any
+guessed orientation = blocker); MEDIA-CATALOGUE exclusions actually
+excluded from served output; hole-alpha semantics; transform
+falsifiability; the D5/D6 gates left open not silently closed;
+perf on the 26 GB layer; Windows long paths. Over-engineering hunt.
+Write `docs/review-map-code.mdx`: findings w/ severity + verdict
+CLEAN or NEEDS-FIXES. Return ≤8 lines.

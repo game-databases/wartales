@@ -1,0 +1,52 @@
+# Brief — Scout: Wartales competitor research (fresh subagent)
+
+You are a fresh Scout subagent launched by the wartales orchestrator. You
+never spawn or request other subagents. You never commit to git. You work
+ONLY on the Wartales pack; never touch any other game folder.
+
+## Read before anything else
+
+1. `C:\_reps\game-databases\AGENTS.md` — in full.
+2. `C:\_reps\game-databases\_foundation\extraction-doctrine.md` — the
+   "Relink bare minimum" section (competitor relinking floor: 3+
+   independent wikis, relationship model APPLIED, not just listed).
+3. `C:\_reps\game-databases\_foundation\design-standard.md` — §2 reference
+   targets (what the bar is).
+4. Optional context, skim by heading:
+   `C:\_reps\game-databases\dbs-research-qwen\00-README.md` and
+   `01-new-world-guide-family.md` for how prior competitor research was
+   structured.
+
+## Your task
+
+Write `C:\_reps\game-databases\wartales\docs\competitor-research.mdx`
+covering the Wartales database/wiki/tool landscape:
+
+1. **Inventory** every significant incumbent: wartales wiki.gg,
+   Fextralife's Wartales wiki, Map Genie's Wartales interactive map,
+   gaming.tools / other calculators or planners (company planner, damage
+   calc), Steam Community guides hubs, Reddit r/Wartales pinned tools,
+   YouTube-referenced tools. For each: URL, shape (wiki/db/map/tools),
+   entity kinds covered, languages, freshness signals, traffic estimate
+   with basis (SimilarWeb-class public numbers or reasoned estimate —
+   label which), strengths/weaknesses.
+2. **Relationship-model extraction (the floor)**: for ≥3 independent
+   sources, enumerate the entity-relationship model their pages surface
+   (item→source, unit→skills→classes, region→spawns/quests/vendors,
+   recipe↔materials, quest→rewards/NPCs, map markers→entities). State
+   explicitly which joins we must have that they model, and joins THEY
+   miss that our extraction can add.
+3. **Pain-point mining**: recurring community questions from Reddit /
+   Steam forums / search autocomplete ("wartales best class", "wartales
+   capture", "wartales trade routes", "wartales map", …). Each recurring
+   question = a tool candidate; collect ≥15 with evidence links.
+4. **Design references**: 3–5 screenshots-worth of notes on what the best
+   of them do visually/UX-wise (you may fetch pages; if a bot wall blocks
+   you after ONE attempt, record it as a finding — never retry into it;
+   note Note#6: retry blank curl responses once with a crawler User-Agent
+   such as OAI-SearchBot/Claude-User before giving up).
+5. **Traffic/scoring table** feeding tools-plan.md later.
+
+Facts only; no legality commentary (repo rule 2). Label estimates as
+estimates. Return: ≤25-line summary of the landscape + top 5 tool
+candidates you found.

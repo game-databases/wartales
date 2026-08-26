@@ -1,0 +1,14 @@
+# Brief — TestWriter: map pipeline test suite (fresh subagent)
+
+Fresh TestWriter. Never spawn subagents, never commit. Wartales pack
+only. Work INDEPENDENTLY from `docs/spec-map-pipeline.mdx` §6 + §7
+(read IN FULL; also §2 format handling) — do not read CodeWriter's
+files. Build `pipeline/tests/test_map_tiles.py` (pytest): fixtures
+for tile-coord parsing (incl. the 273⊂276 subset + residue tiles),
+transform sign/orientation traps (negative origins per the review),
+seam-continuity checks, hole-alpha, mosaic assembly order, maps.json
+schema validation (seven-field geometry), MEDIA-CATALOGUE exclusion
+assertions (splat/normal/raw never served), placeholder handling.
+Integration-marked hooks for the real pyramid run (skipped by
+default). Suite must run green-on-skips pre-implementation. Return:
+≤10-line summary — families, counts, run status.

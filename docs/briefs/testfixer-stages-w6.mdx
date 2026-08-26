@@ -1,0 +1,50 @@
+# Brief — TestFixer r1: stages suite fixes W6 (fresh subagent)
+
+Fresh small TestFixer agent. **Never spawn subagents**; never commit;
+Wartales pack only. Headless: stdout → log; end with suite results
+verbatim. You are NOT any previous agent on this piece.
+
+Read first, in full: `wartales/docs/arbiter-stages-build-r1.mdx`
+(item W6 is your scope); `docs/review-stages-tests.mdx` (F1–F15 detail);
+the CodeFixer's report in `output/codefixer-stages.log` (its two
+documented interim failures are yours);
+`wartales/docs/spec-stages-datasets.mdx` §4.2 AS AMENDED by W5 (envelope
+enumeration — your F2 fix asserts against THIS contract).
+
+## Task
+
+Apply every W6 item to `pipeline/tests/test_stages_datasets.py` +
+`test_stages_toolchain.py` exactly as ruled:
+
+1. **F1**: rewrite `test_i1` as a real integration case over the REAL
+   CDB → real drafts regeneration path (or re-scope honestly per its
+   `--run-integration` arming; no dead assertions).
+2. **F2**: `doc["pairCount"]` top-level + a parity case pinning the full
+   amended §4.2 envelope (eight top-level keys incl.
+   textKeyCoverage.driftAbsent == []).
+3. **F3/F4 fault legs**: tampered MD row ⇒ validator red; truncated
+   locale set ⇒ availability-regenerated red.
+4. **F5**: `_meta.buildId`-only drift leg (mutant-killing).
+5. **F6**: retire T2b's skip — the dangling gate now fires rc==1; align
+   your assertion with the RULED count-only fail line (no edge names in
+   output; do not demand more than the ruled line ships).
+6. **F7**: add the three missing mini-world features (localizable
+   column, undeclared payload key, id-less keyRule sheet), disclosed.
+7. **F8** driftAbsent assert; **F9** wave_kinds.DEFERRED parity check;
+   **F10** naming clarity.
+8. **F11**: split T10's coupled legs so one setup failure cannot retire
+   others; FIX the dead fault-6 leg CodeFixer documented (reads a report
+   from a fixture copy that excludes reports — make the fault leg target
+   the right artifact or drop it with cause).
+9. **F12**: strengthen I4 (--dry-run exact vectors, --list CDB line,
+   TotalCount 36, run_all.sh forwarder parity, E1–E6 claims).
+10. AC9 consumer-precondition executable case; R2-regression leg (CRLF
+    twin promotes as updated); deferred items stay deferred (F15, R11
+    cosmetic).
+
+Target end state: whole pack suite **0 failed**, skips only the armed
+I1–I4 integration set (and any new skip carries its unblock). Frozen
+numbers must match the amended spec — re-measure anything you doubt.
+
+Report: per-item what changed + final pytest output verbatim (default
+run AND the two stage-suite files standalone).

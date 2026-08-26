@@ -1,0 +1,28 @@
+# Brief — Data dig: icons/sprites export to CDN set (fresh subagent)
+
+Fresh data-layer dig agent. Never spawn subagents, never commit.
+Wartales pack only. Read root AGENTS.md; FRAMEWORK §2.5 (icons are the
+game's own art: webp, versioned CDN path /cdn/v{buildid}/{kind}/{id}.webp,
+variants kept, named explicit-missing state);
+`docs/cdb-kind-map.mdx` (which sheets carry icon refs — icon column
+types); `extracted/data/_draft/item.jsonl` + skill/class (icon ref
+shape); the real payloads: `extracted/harvest/assets/ui/` (Icons/,
+atlases, style.css, elements/) + `assets/chars/`.
+
+## Task
+1. **Icon ref → file resolution**: pin how a CDB icon value (e.g.
+   item sheet's icon column) maps to a file under assets/ui/ (direct
+   path? atlas + frame? .asl style entry?). Prove on ≥20 entities per
+   kind (item/skill/class) with a ≥95% resolution rate; log misses.
+2. **Export**: convert resolved icons to webp under
+   `output/cdn/v20318128/{kind}/{id}.webp` (preserve distinct
+   variants the game distinguishes; keep original pixel sizes).
+   python PIL for png→webp; DDS via PIL (pygame-free) or texconv if
+   needed — record tool+version. Named explicit-missing state for
+   unresolvable refs (a placeholder webp + a misses.jsonl).
+3. **Coverage report** (`docs/icons-export.mdx`): per kind — total
+   entities, resolved, exported, missing (with sample paths);
+   atlas-vs-loose stats; bytes.
+4. Append `docs/data-dig-log.mdx`.
+Rules: read-only on A:; no legality commentary. Return: ≤12-line
+summary — resolution rates, export counts, misses character.

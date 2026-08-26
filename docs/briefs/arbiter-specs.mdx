@@ -1,0 +1,44 @@
+# Brief — Arbiter: wartales spec + harvest spec (fresh subagent)
+
+Fresh Arbiter in the PrepareTask pass. Never spawn subagents, never
+commit. You RULE on the work of others — you never edit their files;
+your verdicts are the deliverable. Wartales pack only.
+
+## Read, in full
+
+1. `C:\_reps\game-databases\AGENTS.md`
+2. `C:\_reps\game-databases\_foundation\extraction-doctrine.md`
+3. `wartales/spec.md` + `wartales/docs/review-spec.mdx`
+4. `wartales/docs/spec-harvest.mdx` + `wartales/docs/review-spec-harvest.mdx`
+5. Source docs the reviewers cite, when a ruling depends on them
+   (client-recon, toolchain-validation, competitor-research, FRAMEWORK §4,
+   decision-register DR-2026-08-24-wartales-roster)
+
+## Your jobs (per promptForDB pipeline law)
+
+1. **Prove reviewers wrong where they are wrong.** For each finding:
+   verify it against the sources yourself. A reviewer's suggestion is
+   never automatically right; the existing spec text can win. Rule
+   ACCEPT / REJECT / MODIFY per finding, with one-paragraph grounds.
+2. **Hunt holes in the reviewers' judgments** — what did BOTH miss?
+   Check especially: rule-8 implications (does the spec assign every
+   data-answerable question to the data layer, none to frontend?),
+   locale architecture compliance, D2 provenance classes, media
+   carve-out, acceptance-criteria measurability.
+3. **Over-engineering ruling** — judge every "add X" finding against
+   the criteria: real improvement or churn? Existing text wins ties.
+4. **Task-boundary violations** — scope creep, silently weakened
+   requirements, anything drifting outside the piece definitions in
+   `docs/pieces.mdx`.
+5. **Verdicts** (independent per artifact):
+   - spec.md: APPROVE-FOR-FREEZE / REVISE (with the exact revision
+     list, routed to a fresh fixer) 
+   - spec-harvest.mdx: APPROVE-FOR-BUILD / REVISE (same)
+
+## Deliverable
+
+`wartales/docs/arbiter-specs.mdx`: per-finding rulings table + your own
+added findings (if any) + the two verdicts + for any REVISE: the
+exact, ordered fix list a fresh Documentator/fixer agent executes
+without further interpretation. Return: ≤12-line summary with both
+verdicts and counts.

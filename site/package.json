@@ -1,0 +1,13 @@
+{
+  "name": "wartales-site",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "jpeg-js": "^0.4.4",
+    "vitest": "^3.2.4"
+  }
+}

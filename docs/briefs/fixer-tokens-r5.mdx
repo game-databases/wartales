@@ -1,0 +1,45 @@
+# Brief — Fixer r5: tokens carried hygiene closeout (fresh subagent)
+
+Fresh small fixer agent. **Never spawn subagents**; never commit; Wartales
+pack only. Headless: stdout → log; end with verification results.
+
+Read first: `wartales/site/public/assets/ui/README.md` (staging contract),
+`wartales/docs/critique-tokens-r4.mdx` ("Carried work" section),
+`wartales/design/sources/INDEX.mdx` (shot-20 row),
+`wartales/site/src/styles/tokens.test.ts` (served-refs guard).
+
+## State (verify, don't trust)
+
+r4 named two carried items. Disk now shows BOTH
+`site/public/assets/ui/ListHeader.png` and `ListHeaderHighlight.png`
+present — possibly staged after r4 landed. Verify byte-exactness against
+`design/extracted-ui/` (adler32/sha256 compare) rather than trusting
+presence.
+
+## Task
+
+1. Verify both binaries exist AND are byte-identical to
+   `design/extracted-ui/` copies; if missing/mismatched, re-stage per the
+   README cp block and record what you found.
+2. Run `npm test` in `wartales/site/` — all green expected (20+ tests
+   incl. served-refs guard). Record pass/fail verbatim.
+3. **Panel-alpha proof (the real carried gap)**: extend
+   `site/src/styles/tokens-preview.html` with a composite section that
+   renders the panel stack (`--panel-alpha`, dialog/list-header
+   textures) OVER `design/sources/shot-20-camp-firelight-texture.jpg`
+   as the backdrop — the first render exercising translucency over
+   firelit art. Screenshot the preview page headless:
+   `node C:/Users/lineg/.claude/tools/web-browse/browse.mjs shot <file-url>
+   output/_tokens-r5-preview.png --full` (serve the file if needed via
+   the tool's serve mode). Never Read the PNG into context — verify it
+   programmatically (exists, dimensions, non-trivial pixel variance vs
+   flat background using PIL/numpy if available, else file-size heuristics).
+4. Append findings to `docs/critique-tokens-r4.mdx` as a dated
+   "r5 closeout" note (facts only — verdicts belong to critics).
+
+## Constraints
+
+Do not modify token values unless a measured defect forces it (then
+record before/after). Never commit; never spawn subagents; do not touch
+anything outside `site/src/styles/`, `site/public/assets/ui/`, and the
+two docs/output paths above.

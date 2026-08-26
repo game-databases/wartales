@@ -1,0 +1,37 @@
+# Brief — Reviewer: wartales/spec.md (fresh subagent)
+
+Fresh Reviewer in the PrepareTask pass. Never spawn subagents, never
+commit, never edit files under review — findings only. Wartales pack
+only.
+
+Read first: root AGENTS.md; FRAMEWORK.md §4 template + §2; then
+`wartales/spec.md` in full; then spot-verify its citations against the
+sources it names (`docs/client-recon.mdx`, `docs/competitor-research.mdx`,
+`docs/toolchain-validation.mdx`, `tools-plan.md`, `_foundation/decision-register.md`
+entry DR-2026-08-24-wartales-roster, `_foundation/localization-architecture.md`,
+`_foundation/live-monitoring.md` §4).
+
+Mission: find what is MISSING or WRONG, and what is over-engineered:
+1. Template coverage — every FRAMEWORK §4 field present or justified
+   absent; locales block verified-against-client with method+date;
+   axes; entities kinds with real source containers; relations; maps
+   block (imagery path, layers, coordinate sources, readiness);
+   economy; live.steam (surfaces subset, coverage-label wording);
+   tools (flagship + evidence); automation (trigger/cadence/staleness);
+   satellite; legal; content-policy-holes; missing-data; status block
+   (spec-frozen false).
+2. Citation integrity — ≥10 random claims traced to their named source;
+   flag any number/claim you cannot trace.
+3. Canon conformance — localization architecture (pivot EN bare paths,
+   page-per-locale, filler policy declared), D2 provenance classes,
+   anti-slop implications for the spec's user-facing promises, DR
+   roster entry consistency (tier provisional).
+4. Over-engineering hunt — anything the template doesn't need at this
+   stage; anything gold-plated beyond evidence.
+5. Value — does the spec give CodeWriter/TestWriter/frontend teams
+   everything they need without re-deriving data questions?
+
+Write `wartales/docs/review-spec.mdx`: numbered findings, each with
+severity (blocker/major/minor), the exact spec line/field, evidence,
+and the concrete fix. End with an overall verdict line: READY-FOR-ARBITER
+or NEEDS-REVISION. Return: ≤10-line summary (count by severity + verdict).

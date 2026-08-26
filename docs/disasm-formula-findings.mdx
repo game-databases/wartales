@@ -1,0 +1,185 @@
+# Disassembly formula findings — Dig 8
+
+Operand-level reading of the HashLink bytecode layer (buildid **20318128**).
+Tool: [`pipeline/tools/hl_disasm.py`](../pipeline/tools/hl_disasm.py)
+(`--emit` renders all 52,114 functions / 2,508,050 ops into
+[`extracted/decompiled/hl/`](../extracted/decompiled/hl/) mirroring the
+1,609 debug source paths as `.dis.hx` text; `--verify` reruns the role
+audit). This is step 1–3 of [decompile-dig-1 §3](decompile-dig-1.mdx)
+landed and verified; the formula probe below is the first consumer pass.
+
+## 1. Measured operand model (extends the Dig 6 fork facts)
+
+Everything below was measured against the full corpus this dig
+(scratch probes preserved under `output/_dig-disasm/_*.py`; results also in
+the emitted `_unknown-opcodes.jsonl` `_meta`):
+
+| fact | measurement |
+|---|---|
+| Field ops (`OField/OSetField/OGetThis/OSetThis`) index FLATTENED data fields root ancestor → leaf of the receiver type | in-range **317,945/317,945** sites on declared obj receiver types |
+| Virtual receivers (anonymous structures) index that virtual type's OWN field list | **95,929/95,929** sites in range |
+| Receiver resolution must use the DECLARED register/global type | declared global-type chain fits **17,639/17,639** `GetGlobal→Field` pairs; claimed-class overrides fit only 32% (abstract-impl pattern makes `types[].global` claims ambiguous — e.g. global 39 is claimed by both `h3d.$Engine` and `h3d.Vector4Impl`) |
+| `OCallMethod/OCallThis` ordinals are proto VTABLE pindeXes (most-derived override wins) | 799 `(hierarchy,name)` pairs observed, **0** same-name ordinal collisions (a flat-position model would collide under overrides), **0** ordinals above a type's max pindex |
+| Jump destinations = `pc + 1 + t` | **194,984/194,984** conditional+unconditional sites in range |
+| `OSwitch` flattened layout `[reg, ncases, default, offsets…]` | **3,356/3,356** targets+defaults in range; byte order matches the canonical reader (offsets then default) |
+| Call-family op 28 = `OCall4(dst=reg, fun=findex, arg0..arg3=reg)` | **15,858/15,858** sites: dst<nregs, fun lands exactly on an existing function/native findex (impossible by chance), every arg<nregs |
+
+Known-semantics reproduction (the Dig 6 set): `WorldMesh.getFow`,
+`MiniMap.getPlayerPosition`, `Layers2D.getLayerColor`,
+`ui.comp.Compass.sync` all render back their documented behavior line for
+line — see [cfg-spot-verify](../output/_dig-disasm/cfg-spot-verify.mdx).
+
+Residual unknowns (ledgered, not guessed): field/method accesses on `dyn`
+registers (24,442 + 33 sites — unresolvable without runtime state),
+`OBytes` payloads (0 occur in this build), fork ops 99–101 (never occur).
+
+## 2. The CDB constant access chain (how game code reads parameters)
+
+The boot module registers every one of the 1,266 `constant` sheet ids as a
+field on `_Data.$ConstantKind_Impl_` holding its NAME string
+(`fun$init.dis.hx` pcs ≈64,295–70,000, one triple
+`OGetGlobal name · OGetGlobal impl · OSetField` per constant).
+
+Runtime consumers load the constant's name as a pooled string global
+(rendered `g#N<String>`) and pass it to resolvers:
+
+- `f#12949@Const.hx(name)` → row with `.value` — the plain getter;
+- `st.Unit.getBonusPercent(unit, name, null)` — unit-bonus variant;
+- `st.player.Progress.getGlobalBonusPercent(progress, name, null)`.
+
+So **grepping the corpus for a parameter's `g#N` finds every consumer
+site** — the mechanism behind §3. (`output/_dig-disasm/_constconsumers.py`
+automates the join.)
+
+## 3. Formulas now readable at operand level
+
+### 3.1 Capture odds & knockout curve — fully decoded [MIXED → composition read]
+
+**`battle.Unit.getCaptureChance(attacker, target)` f#7774**
+(`src/battle/Unit.hx.dis.hx`, 374 ops, cc 36):
+
+| pcs | step |
+|---|---|
+| 0–4 | not melee → chance 0 |
+| 5–11 | special battle mode → chance 100 |
+| 12–37 | leader check: battle `modifiers & (1<<5)` and `group.leader == target.data` |
+| 38–42 | target engaged by attacker → 0 |
+| 43–55 | target has no "Fierce" status count AND no dying-status count → 0 |
+| 56–67 | `hpFloor = target.getPercentHealth(int(Const("KnockOutChanceMinHealthPercent")), true)`; if `target.health < hpFloor` → 0 (too healthy) |
+| 68–70 | leader → 100 |
+| 71–92 | element-NPC flags `& (1<<9)` gate → 0 |
+| 93–106 | `t = (health − getPercentHealth(MaxHealthPercent)) / (hpFloor − getPercentHealth(MaxHealthPercent))` clamped to `[0,1]` |
+| 116–117 | **`t = pow(t, 0.5)` — square-root softening** |
+| 118–133 | `chance = KnockOutChanceMax + t·(KnockOutChanceMin − KnockOutChanceMax)` (= 100 at ≤10% HP → 50 at ≥50% HP) |
+| 140–159 | × `getBonusPercent("HumanKnockoutChance")` when target is not an animal |
+| 160–179 | × `"AnimalCaptureChance"` when animal; × `"HorseCaptureChance"` when `isCategory("Pony")` (pcs 180–200) |
+| 201–220 | × `Progress.getGlobalBonusPercent("CaptureChance")` |
+| 221–263 | × skill bonus: if `"HuntBonusEasyCapture"` skill is in `battle.state.globalSkills`, multiply by its `skill.props.vars.value/100` |
+
+This closes the interpolation-curve open item of
+[formulas-inventory §3.5](formulas-inventory.mdx): **clamped linear lerp in
+health between MaxHealthPercent→MinHealthPercent, then sqrt(t)**, then five
+multiplicative modifiers.
+
+Spawn-side companion decoded: **`ent.p.Npc.getUnit` f#15187 pcs 502–540**
+— capturable flag gate `unitClass.flags & (1<<7) == 0`, then
+`GameState.rand()·100 < props.prisonerProbability` adds the unit to the
+recruitable pool (feature-gated by `hasFeatureConst`).
+
+### 3.2 Combat XP — composition decoded
+
+**`battle.Debrief.addXP` f#25108** (pcs cited):
+
+```
+per enemy e:                       xp_e = XpWinBasePerEnemy            (pc25–30)
+                                          + (e alive ? 0 : XpWinBasePerEnemyKilled)  (pc30–38)
+scale = e.inf.props.powerScale ?? 1                                    (pc39–49)
+avgPower = Σ(xp_e·scale) / max(Σscale, 1)                              (pc50–61)
+ratio = clamp(pow(avgPower, XpWinPowerRatio), 0.2, 2.0)                (pc63–80)
+mult  = 1 − difficultyFight·XpWinDifficultyFactor                     (pc81–97)
+… Merchant-group branch continues at pc98–115 (`st.Group.isType("Merchants")`)
+```
+
+Level pacing: **`st.Unit.getNextXpLevel` f#6040** (25 ops):
+`ceil(Const("LevelXpValues")[level] · inf.props.xpScale ?? 1 / 20) · 20`
+— xp-to-next is always a multiple of 20 scaled by the class's xpScale.
+
+### 3.3 Trade prices — distance gradient decoded
+
+**`st.Item.getLocalPriceFactor(item, place)` f#6543**:
+
+| pcs | step |
+|---|---|
+| 30–32 | applies only when `item.isType("TradeGoods")` |
+| 33–83 | nearest non-region Place whose `getLocalProduction()` contains the item kind, minimizing `Place.getDistanceTo(me)` |
+| 84–91 | free radius: `d = max(minDist − 50.0, 0)` |
+| 92–94 | no producer anywhere → factor 0.2 flat |
+| 95–110 | `factor = pow(d / TradeGoodPriceOverDistance, TradeGoodPricePowerDistance)`; price ×(1 + factor) |
+
+Sell side **`st.Item.getSellPrice` f#6544**: base factor
+`1 + (ItemPriceDefaultSellFactor − 1)` = 0.5 (pcs 8–14); first
+itemType parent-chain `props.sellPriceFactor` overrides (pcs 15–33);
+Luxuries global-bonus adjustment (pcs 34–49); final
+`int(price · ItemPriceMaximumSellFactor)` floored at 1 and never above the
+pre-cap value (pcs 198–216). Quality multipliers live in
+`st.item.Quality.getBasePrice` f#6605 pcs 24–38 (`ItemQualityPrice1/2/3`).
+
+### 3.4 Guard & backstab — resolution decoded
+
+**`battle.skill.SkillTargetPreview.calcDamages` f#8320 pcs 60–115**:
+
+```
+guard = min(target.guard + bonusGuard, int(Const("GuardMaxValue")))   // cap 80 (pcs 75–84)
+guard -= ceil(guard · UnitStats(attacker,"IgnoreGuard") / 100)        // pierce (pcs 85–100)
+if backstab: guard -= int(Const("BackstabIgnoreGuard"))               // −50 (pcs 101–110)
+guard = max(guard, 0)                                                 // (pcs 111–114)
+```
+
+Confirms and extends the CDB-side note in
+[formulas-inventory §3.7](formulas-inventory.mdx); the same function is the
+damage-preview pipeline the build planner mirrors.
+
+### 3.5 `MaxLevelLock` semantics — resolved
+
+**`st.GameState.getGenItemLevel` f#11900 pcs 37–51**: generated item level
+is `min(referenceLevel, int(Const("MaxLevelLock")))` where referenceLevel
+comes from region reference levels or fixed-difficulty simulation tables.
+**MaxLevelLock = 15 caps LOOT item levels, not player leveling** — it does
+not contradict `UnlockLieutenantLevels` (the open flag in
+[formulas-inventory §3.4](formulas-inventory.mdx)). Also consumed by
+`ent.p.Npc.getUnit` pc1020 (spawn gating).
+
+## 4. What needs the structured-text step (plan §3 step 5)
+
+The disassembly is complete but still SSA-flavored: expressions are spread
+across register moves and repeated subexpression recomputation (the
+compiler emits `this.game.state.…` chains inline). What a reader still
+needs machine help for:
+
+1. **Expression folding** over register defs (single-block def-use is
+   already unambiguous; branch merges need φ-style joins).
+2. **If/while reconstruction** from the CFG (blocks + edges already
+   emitted per function in `_functions-index.jsonl`; dominator tree next).
+3. **Call-site typing through closures** (`OCallClosure` targets resolve
+   only to registers today; folding `OStaticClosure/OInstanceClosure`
+   producers closes it).
+4. **Constant-value materialization** for `g#N` string constants
+   (constants.jsonl fields decode as string-index + length; verified on
+   `hxsl.HlslOut.declGlobal`'s HLSL shims).
+
+None of these gate the calculators: every parameter family in
+[formulas.jsonl](../extracted/logic/formulas.jsonl) now has named
+functions + op ranges (this doc), which is the citation layer tools need.
+
+## 5. Reproduce
+
+```powershell
+python pipeline/tools/hl_disasm.py --emit     # full corpus (~9 s)
+python pipeline/tools/hl_disasm.py --verify   # role audit + known-set renders
+python pipeline/tools/hl_disasm.py --function 7774
+python output/_dig-disasm/_constconsumers.py  # constant->consumer map
+```
+
+Verification artifacts: `output/_dig-disasm/cfg-stats.json`,
+`cfg-spot-verify.mdx`, `probe-f*.dis.txt`, unknown ledger at
+`extracted/decompiled/hl/_unknown-opcodes.jsonl`.

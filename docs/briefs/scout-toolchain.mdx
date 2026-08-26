@@ -1,0 +1,56 @@
+# Brief — Scout: Wartales extraction toolchain validation (fresh subagent)
+
+You are a fresh Scout subagent launched by the wartales orchestrator. You
+never spawn or request other subagents. You never commit to git. You work
+ONLY on the Wartales pack; never touch any other game folder.
+
+## Read before anything else
+
+1. `C:\_reps\game-databases\AGENTS.md` — in full.
+2. `C:\_reps\game-databases\_foundation\extraction-doctrine.md` — in full
+   (fallback plans A–D, three mandatory layers).
+3. Skim headings of `C:\_reps\game-databases\tools\README.md` and check
+   `quickbms-script-compendium/` under tools/ for existing Heaps/pak
+   scripts.
+
+## Context
+
+Client: `A:\SteamLibrary\steamapps\common\Wartales\` — Heaps.io/HashLink
+engine by Shiro Games. Four `.pak` archives (assets/content/map/res),
+`hlboot.dat` = compiled HashLink bytecode (the game's logic), XML text
+tables at root. Python 3.14 at C:\Python314, node v22 available. Steam
+appid 1527950.
+
+## Your task
+
+Identify, acquire (into `C:\_reps\game-databases\wartales\pipeline\tools\`
+or an existing tools/ dir when one already fits), and PROVE working on the
+real client files:
+
+1. **Pak reader** for Heaps .pak (Shiro Games format). Check local
+   compendia first; then web-search ("heaps io pak extractor", "shiro
+   games pak northgard wartales", "hxp pak quickbms", GitHub). Validate:
+   list ≥100% of entries from each pak header (read-only), extract ONE
+   small known entry to prove decode. Record tool name, version, license
+   tag, source URL as data hygiene.
+2. **HashLink bytecode disassembler/decompiler** for hlboot.dat
+   ("hlbc", "hashlink bytecode decompiler", "hldump", "fmt-hlbc").
+   Validate: parse the dat's header, dump a module/function listing count.
+   Full decompile comes later — today only PROOF it opens the real file.
+3. **Texture/sprite path**: identify what image formats live inside the
+   paks (png? tga? Heaps-specific?) from the entry listings, and name the
+   conversion plan to webp (DirectXTex/PVRTexTool/ImageMagick/python PIL
+   already on disk where applicable).
+
+Write `C:\_reps\game-databases\wartales\docs\toolchain-validation.mdx`:
+tools chosen + alternates rejected (why), validation evidence (commands +
+counts + output snippets), gaps/fallbacks A–D per doctrine, and what the
+full-deconstruction scope maps onto for this engine (data layer = pak
+entries + XML tables; logic layer = hlboot.dat decompile; relink layer =
+id registries from both).
+
+No legality commentary anywhere (repo rule 2) — record license tags as
+facts only. Read-only on A:. If a tool needs building, build it under
+wartales/pipeline/tools/ (node/python available; git clone is fine).
+
+Return: ≤25-line summary — chosen tools, proof status, blockers.

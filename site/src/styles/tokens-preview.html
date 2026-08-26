@@ -1,0 +1,555 @@
+<!doctype html>
+<!-- F1 tokens preview r3 — REAL CARRIERS (fixer-tokens-r2, answering
+     critique-tokens-r2 SEND-BACK). r2's compositions kept; the two binary
+     carriers now render for real:
+       1. FONTS — the five contract woff2 are fetched into
+          site/public/fonts/ per its README (OFL, untracked). tokens.css
+          declares them at the served /fonts/ root; this preview re-declares
+          the same five faces with a src relative to site/src/styles/ so the
+          brief's file:// shoot resolves them (critique r2 "fix the
+          resolution path"). Later @font-face rules win, so these carry the
+          render. Georgia appears in NO stack anywhere.
+       2. TEXTURE CHROME — the extracted element binaries in
+          design/extracted-ui/ (gitignored, adler32-verified) render as the
+          panels' real 9-slice chrome: HeaderBg.png bands (slice 10),
+          SmallEntryBG.png tucked bodies (slice 10), dialogBg.png dialogs
+          (slice 20), RarityBackground.png slot frames (hgrid 3, tile pos
+          0/1/2 = uncommon/rare/legendary per style.css item-slot rules).
+          The preview re-points the --tex-* tokens at the extracted files;
+          the served contract in tokens.css is untouched.
+       3. UNCOMMON legibility — the extracted frame fill is a single flat
+          color #151A1E (PNG-verified: frame 0 carries no other pixel), so
+          over any well it is unnameable. Each framed tier composes its own
+          extracted tip wash over its own extracted fill (--rarity-lift);
+          no invented hue, --rarity-1..3 byte-untouched (test-pinned).
+       4. HOVER — the white outline(0.5, white) state is RENDERED on a
+          .is-hover slot, not narrated by a caption.
+     Static, framework-free, ZERO JavaScript. Open directly in a browser. -->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Wartales tokens — F1 real carriers</title>
+<link rel="stylesheet" href="./tokens.css" />
+<style>
+  /* ---- font path override: same five faces as tokens.css, relative src ----
+     Declared after the tokens.css link so these win under file://. Ranges
+     byte-identical to tokens.css; the served site keeps /fonts/. */
+  @font-face {
+    font-family: "EB Garamond";
+    src: url("../../public/fonts/eb-garamond-latin-400-normal.woff2") format("woff2");
+    font-weight: 400; font-style: normal; font-display: swap;
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+      U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+      U+2212, U+2215, U+FEFF, U+FFFD;
+  }
+  @font-face {
+    font-family: "EB Garamond";
+    src: url("../../public/fonts/eb-garamond-latin-ext-400-normal.woff2") format("woff2");
+    font-weight: 400; font-style: normal; font-display: swap;
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
+      U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
+      U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+  }
+  @font-face {
+    font-family: "EB Garamond";
+    src: url("../../public/fonts/eb-garamond-latin-700-normal.woff2") format("woff2");
+    font-weight: 700; font-style: normal; font-display: swap;
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+      U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+      U+2212, U+2215, U+FEFF, U+FFFD;
+  }
+  @font-face {
+    font-family: "EB Garamond";
+    src: url("../../public/fonts/eb-garamond-latin-400-italic.woff2") format("woff2");
+    font-weight: 400; font-style: italic; font-display: swap;
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+      U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+      U+2212, U+2215, U+FEFF, U+FFFD;
+  }
+  @font-face {
+    font-family: "IM Fell English";
+    src: url("../../public/fonts/im-fell-english-latin-400-normal.woff2") format("woff2");
+    font-weight: 400; font-style: normal; font-display: swap;
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+      U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+      U+2212, U+2215, U+FEFF, U+FFFD;
+  }
+
+  /* demo scaffolding only — every value below is var()-composed from tokens */
+  * { box-sizing: border-box; margin: 0; }
+  :root {
+    /* texture sources re-pointed at the extracted binaries so the file://
+       shoot renders the game's own chrome; served contract stays in tokens.css */
+    --tex-dialog-bg: url("../../../design/extracted-ui/dialogBg.png");
+    --tex-header-bg: url("../../../design/extracted-ui/HeaderBg.png");
+    --tex-small-entry: url("../../../design/extracted-ui/SmallEntryBG.png");
+    --tex-rarity: url("../../../design/extracted-ui/RarityBackground.png");
+    --tex-list-header: url("../../../design/extracted-ui/ListHeader.png");
+    --tex-list-header-highlight: url("../../../design/extracted-ui/ListHeaderHighlight.png");
+    /* r5: the firelit backdrop — a sources shot, never a served asset */
+    --tex-shot20: url("../../../design/sources/shot-20-camp-firelight-texture.jpg");
+    /* uncommon legibility lift — the extracted wash over the extracted fill */
+    --rarity-lift: 16%;
+  }
+  body {
+    background: rgb(var(--bg-1-rgb) / 1);
+    color: var(--text-main);
+    font-family: var(--font-ui);
+    font-size: var(--text-base);
+    padding: var(--space-8);
+    display: grid;
+    gap: var(--space-8);
+    max-width: 1120px;
+    margin-inline: auto;
+    justify-items: stretch;
+  }
+
+  /* ---- real 9-slice chrome (design/extracted-ui binaries) ---------------- */
+  /* dialog chrome — style.css: `background: url(dialogBg.png) 20 20`.
+     Longhands: border-image-slice takes a NUMBER (px in the shorthand
+     position is invalid and drops the whole declaration). */
+  .panel.dialog {
+    border: calc(var(--tex-slice-dialog) * 1px) solid transparent;
+    border-image-source: var(--tex-dialog-bg);
+    border-image-slice: var(--tex-slice-dialog) fill;
+    padding: var(--space-7) var(--space-6);
+  }
+  /* section band — style.css `.section > .title`: HeaderBg slice 10, h35,
+     title text `align: middle` (centered), offset-y -3. The border carries
+     the slice; height = 10 + 35 + 10 keeps the texture 35 tall. */
+  .band {
+    position: relative;
+    z-index: 1;
+    height: calc(var(--tex-slice-header) * 2px + 35px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: calc(var(--tex-slice-header) * 1px) solid transparent;
+    border-image-source: var(--tex-header-bg);
+    border-image-slice: var(--tex-slice-header) fill;
+  }
+  .band h2 {
+    font-size: var(--text-dialog);      /* section titles: #969696 @19 */
+    font-weight: 400;
+    color: var(--text-desc);
+    transform: translateY(-3px);        /* style.css offset-y -3 */
+  }
+  /* section body — style.css `.section > .content`: SmallEntryBG slice 10,
+     padding 10 / 10 15, margin-top -10 (tucks under the band) */
+  .pbody {
+    margin-top: calc(var(--tex-slice-entry) * -1px);
+    padding: var(--space-6) var(--space-6) var(--space-7);
+    border: calc(var(--tex-slice-entry) * 1px) solid transparent;
+    border-image-source: var(--tex-small-entry);
+    border-image-slice: var(--tex-slice-entry) fill;
+  }
+
+  /* ---- 1 · inventory: real RarityBackground frames on 54px slots --------- */
+  .inv-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, 54px);
+    gap: var(--space-4);
+    justify-content: start;
+  }
+  .slot {
+    width: 54px; height: 54px;          /* item-slot 54×54 (style.css) */
+    border: 1px solid var(--border);
+    background-color: rgb(var(--bg-3-rgb) / 0.5); /* empty-well recipe */
+    box-shadow: inset 0 0 0 1px rgb(var(--bg-1-rgb) / 0.6);
+    display: grid;
+    place-items: center;
+    color: var(--text-bright);
+    transition: box-shadow var(--duration-fast) var(--ease-state);
+  }
+  .slot svg { width: 26px; height: 26px; }
+  .slot:hover, .slot.is-hover {
+    box-shadow: inset 0 0 0 1px rgb(var(--bg-1-rgb) / 0.6),
+      var(--effect-hover-outline);      /* outline(0.5, white) vocabulary */
+  }
+  /* framed tiers: the real hgrid texture, tile pos 0/1/2 stretched to the
+     slot (style.css item-slot > #rarityBackground: uncommon 0, rare 1,
+     legendary 2; common shows NO frame) + the tier's own extracted wash
+     lifted over its extracted fill so the hue is nameable at arm's length */
+  .slot.t1, .slot.t2, .slot.t3 {
+    background-repeat: no-repeat;
+    background-size: 162px 54px;        /* hgrid 3 → 54px frames */
+  }
+  .slot.t1 {
+    background-image:
+      linear-gradient(
+        color-mix(in srgb, var(--rarity-1-wash) var(--rarity-lift), transparent),
+        color-mix(in srgb, var(--rarity-1-wash) var(--rarity-lift), transparent)),
+      var(--tex-rarity);
+    background-position: 0 0;
+  }
+  .slot.t2 {
+    background-image:
+      linear-gradient(
+        color-mix(in srgb, var(--rarity-2-wash) var(--rarity-lift), transparent),
+        color-mix(in srgb, var(--rarity-2-wash) var(--rarity-lift), transparent)),
+      var(--tex-rarity);
+    background-position: -54px 0;
+  }
+  .slot.t3 {
+    background-image:
+      linear-gradient(
+        color-mix(in srgb, var(--rarity-3-wash) var(--rarity-lift), transparent),
+        color-mix(in srgb, var(--rarity-3-wash) var(--rarity-lift), transparent)),
+      var(--tex-rarity);
+    background-position: -108px 0;
+  }
+
+  .caption {
+    margin-top: var(--space-5);
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-6);
+  }
+  .key { display: inline-flex; align-items: center; gap: var(--space-2); }
+  .key i {
+    width: 12px; height: 12px;
+    border: 1px solid var(--border);
+    display: inline-block;
+  }
+
+  /* ---- 2 · entity tooltip: the real dialogBg card (§4 Tooltip) ----------- */
+  .tooltip { width: 350px; max-width: 100%; }
+  .tip-head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .tip-name {
+    font-size: var(--text-lg);
+    font-weight: var(--font-weight-bold);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .tip-name.r2 { color: var(--light-rarity-2); }
+  .tip-name svg { width: 15px; height: 15px; } /* qualitystar beside the name */
+  .tip-icon { width: 28px; height: 28px; color: var(--text-bright); }
+  .tip-desc {
+    font-style: italic;
+    font-size: var(--text-dialog);
+    color: var(--text-emph);
+    padding: var(--space-4) 0 var(--space-5);
+  }
+  .rows { display: grid; gap: var(--space-6); } /* bonuses list spacing 10 */
+  .trow {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--space-5);
+    padding: var(--space-3) var(--space-4);
+    transition: box-shadow var(--duration-fast) var(--ease-state);
+  }
+  .trow:hover, .trow.is-hover { box-shadow: var(--effect-hover-outline); }
+  .trow.selected { box-shadow: var(--effect-gold-highlight-ring); } /* THE one */
+  .trow .k { color: var(--text-main); }
+  .trow .v { color: var(--text-bright); font-weight: var(--font-weight-bold); }
+  .trow .v.pos { color: var(--positive); } /* deltas green/red, numbers alone */
+  .price {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: var(--space-5);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--border);
+  }
+  .price .k { color: var(--text-main); }
+  .price .v {
+    color: var(--accent-bright);        /* currency gold, never decoration */
+    font-weight: var(--font-weight-bold);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .price .v svg { width: 13px; height: 13px; }
+
+  /* ---- 3 · type specimen: the two voices at real ramp sizes ------------- */
+  .voices {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-6);
+    padding-bottom: var(--space-5);
+    margin-bottom: var(--space-5);
+    border-bottom: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+  }
+  .specimen > div {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--space-6);
+    padding: var(--space-3) 0;
+    border-bottom: 1px dashed var(--input);
+  }
+  .specimen small {
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+    white-space: nowrap;
+  }
+  .s-display { font-family: var(--font-flavor); font-size: var(--text-display); color: var(--text-emph); }
+  .s-lg      { font-family: var(--font-ui); font-size: var(--text-lg); color: var(--text-emph); }
+  .s-dialog  { font-family: var(--font-ui); font-style: italic; font-size: var(--text-dialog); color: var(--text-main); }
+  .s-base    { font-family: var(--font-ui); font-size: var(--text-base); color: var(--text-main); }
+  .s-sm      { font-family: var(--font-ui); font-size: var(--text-sm); color: var(--text-desc); }
+
+  header.panel.dialog h1 {
+    font-family: var(--font-flavor);    /* the game's dialog-title face */
+    font-size: var(--text-display);
+    font-weight: 400;
+    color: var(--text-emph);
+  }
+  .sub { color: var(--text-desc); font-size: var(--text-sm); margin-top: var(--space-2); }
+
+  .duo {
+    display: grid;
+    grid-template-columns: 350px minmax(0, 1fr);
+    gap: var(--space-8);
+    align-items: start;
+  }
+  @media (max-width: 900px) {
+    .duo { grid-template-columns: 1fr; }
+  }
+
+  /* ---- 4 · panel stack over shot-20 firelight (critique r1 gap 3 / r4
+     carried 1) — the first render exercising --panel-alpha against real art.
+     The stage's only backdrop is the shot itself; no flat --bg-1 veil sits
+     beneath any carrier. Three mechanisms float on it:
+       .float-well   — the .wt-panel token recipe: the well literal at
+                       rgb(var(--panel-well-rgb) / var(--panel-alpha)) under
+                       the double bevel — the claim under test, verbatim;
+       .float-dialog — dialogBg.png slice 20 fill: the PNG's own center alpha
+                       (215/255) is how the game's dialogs glass over art;
+       .lrow         — ListHeader / ListHeaderHighlight stretch bands (center
+                       alphas 125 / 189), the binaries staged after r4.
+     Carrier alphas measured by PIL survey of design/extracted-ui/, r5. */
+  .stage {
+    position: relative;
+    height: 500px;
+    border: 1px solid var(--border);
+    background: var(--tex-shot20) center / cover no-repeat;
+  }
+  .stage h3 {
+    font-family: var(--font-flavor);
+    font-size: var(--text-lg);
+    font-weight: 400;
+    color: var(--text-emph);
+    margin-bottom: var(--space-4);
+  }
+  .float-well {
+    position: absolute;
+    left: var(--space-7);
+    top: var(--space-7);
+    width: 300px;
+    padding: var(--space-6);
+  }
+  .float-dialog {
+    position: absolute;
+    right: var(--space-7);
+    top: var(--space-7);
+    width: 330px;
+  }
+  .statrow {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--space-5);
+    padding: var(--space-3) 0;
+    border-bottom: 1px dashed var(--input);
+  }
+  .statrow:last-of-type { border-bottom: 0; }
+  .statrow .k { color: var(--text-main); }
+  .statrow .v { color: var(--text-bright); font-weight: var(--font-weight-bold); }
+  .onart {
+    position: absolute;
+    left: var(--space-7);
+    bottom: 172px;
+    max-width: 420px;
+    font-size: var(--text-dialog);
+    font-style: italic;
+    color: var(--text-emph);
+    text-shadow: var(--text-shadow-over-art);
+  }
+  .lrows {
+    position: absolute;
+    left: var(--space-7);
+    right: var(--space-7);
+    bottom: var(--space-6);
+    display: grid;
+    gap: var(--space-2);
+  }
+  .lrow {
+    height: 32px; /* the 18px band, stretch role per assets/ui/README.md */
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-inline: var(--space-5);
+    background-image: var(--tex-list-header);
+    background-size: 100% 100%;
+    text-shadow: var(--text-shadow-over-art);
+  }
+  .lrow.is-hover { background-image: var(--tex-list-header-highlight); }
+  .lrow .k { color: var(--text-emph); }
+
+  footer { color: var(--text-muted); font-size: var(--text-sm); }
+</style>
+</head>
+<body>
+
+<header class="panel dialog">
+  <h1>Wartales design tokens — real carriers</h1>
+  <p class="sub">F1 r3 · every pixel composed from tokens.css, extracted from ui/style.css + element PNGs
+  (adler32-verified) · the five contract fonts render from site/public/fonts · band, body, dialog and
+  slot chrome are the extracted textures themselves.</p>
+</header>
+
+<!-- 1 ── inventory panel -------------------------------------------------->
+<section>
+  <div class="band"><h2>Inventory — extracted frames on beveled slots (§3A)</h2></div>
+  <div class="pbody">
+    <div class="inv-grid">
+      <div class="slot" title="common — untinted well, no frame"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M11 1h2v12h3v2h-3v5h-2v-5H8v-2h3z"/></svg></div>
+      <div class="slot t1" title="uncommon — steel-blue wash over the extracted frame"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3l7 6-7 12-7-12z"/></svg></div>
+      <div class="slot t2 rarity-tier-2" title="rare — olive-gold, static sheen"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M5 13a7 7 0 0 1 14 0v7h-4v-3H9v3H5z"/></svg></div>
+      <div class="slot" title="common"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M10 2h4v5l4 9a3 3 0 0 1-3 4H9a3 3 0 0 1-3-4l4-9z"/></svg></div>
+      <div class="slot" title="common"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z"/></svg></div>
+      <div class="slot t3 rarity-tier-3" title="legendary — violet, animated ring"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="7" fill="none" stroke="currentColor" stroke-width="3"/><path fill="currentColor" d="M12 1l2 2-2 2-2-2z"/></svg></div>
+      <div class="slot" title="common"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M11 1h2v12h3v2h-3v5h-2v-5H8v-2h3z"/></svg></div>
+      <div class="slot t1" title="uncommon"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M10 2h4v5l4 9a3 3 0 0 1-3 4H9a3 3 0 0 1-3-4l4-9z"/></svg></div>
+      <div class="slot" title="common"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3l7 6-7 12-7-12z"/></svg></div>
+      <div class="slot t2 rarity-tier-2" title="rare"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2l2.9 6.2 6.8.8-5 4.7 1.3 6.7L12 17.2l-5.9 3.2L7.3 13.7l-5-4.7 6.8-.8z"/></svg></div>
+      <div class="slot" title="common"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M5 13a7 7 0 0 1 14 0v7h-4v-3H9v3H5z"/></svg></div>
+      <div class="slot" title="common"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M10 2h4v5l4 9a3 3 0 0 1-3 4H9a3 3 0 0 1-3-4l4-9z"/></svg></div>
+      <div class="slot t1" title="uncommon"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z"/></svg></div>
+      <div class="slot" title="common"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M11 1h2v12h3v2h-3v5h-2v-5H8v-2h3z"/></svg></div>
+      <div class="slot" title="common"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3l7 6-7 12-7-12z"/></svg></div>
+      <div class="slot t2 rarity-tier-2" title="rare"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M10 2h4v5l4 9a3 3 0 0 1-3 4H9a3 3 0 0 1-3-4l4-9z"/></svg></div>
+      <div class="slot is-hover" title="hover state — RENDERED: outline(0.5, white)"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M5 13a7 7 0 0 1 14 0v7h-4v-3H9v3H5z"/></svg></div>
+
+      <div class="slot" title="common"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z"/></svg></div>
+      <div class="slot" title="common"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M11 1h2v12h3v2h-3v5h-2v-5H8v-2h3z"/></svg></div>
+      <div class="slot t1" title="uncommon"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3l7 6-7 12-7-12z"/></svg></div>
+      <div class="slot" title="common"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M10 2h4v5l4 9a3 3 0 0 1-3 4H9a3 3 0 0 1-3-4l4-9z"/></svg></div>
+      <div class="slot t3 rarity-tier-3" title="legendary"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M5 13a7 7 0 0 1 14 0v7h-4v-3H9v3H5z"/></svg></div>
+      <div class="slot" title="common"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2l2.9 6.2 6.8.8-5 4.7 1.3 6.7L12 17.2l-5.9 3.2L7.3 13.7l-5-4.7 6.8-.8z"/></svg></div>
+      <div class="slot" title="common"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3l7 6-7 12-7-12z"/></svg></div>
+      <div class="slot t2 rarity-tier-2" title="rare"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z"/></svg></div>
+      <div class="slot" title="common"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M11 1h2v12h3v2h-3v5h-2v-5H8v-2h3z"/></svg></div>
+      <div class="slot t1" title="uncommon"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M10 2h4v5l4 9a3 3 0 0 1-3 4H9a3 3 0 0 1-3-4l4-9z"/></svg></div>
+      <div class="slot" title="common"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M5 13a7 7 0 0 1 14 0v7h-4v-3H9v3H5z"/></svg></div>
+      <div class="slot" title="common"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2l2.9 6.2 6.8.8-5 4.7 1.3 6.7L12 17.2l-5.9 3.2L7.3 13.7l-5-4.7 6.8-.8z"/></svg></div>
+      <div class="slot" title="empty well — bg-3 at 50% + 1px border, quiet"></div>
+      <div class="slot" title="common"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M10 2h4v5l4 9a3 3 0 0 1-3 4H9a3 3 0 0 1-3-4l4-9z"/></svg></div>
+      <div class="slot t1" title="uncommon"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M11 1h2v12h3v2h-3v5h-2v-5H8v-2h3z"/></svg></div>
+      <div class="slot" title="common"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3l7 6-7 12-7-12z"/></svg></div>
+      <div class="slot" title="common"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M5 13a7 7 0 0 1 14 0v7h-4v-3H9v3H5z"/></svg></div>
+    </div>
+    <p class="caption">
+      <span class="key"><i style="background:rgb(var(--bg-3-rgb) / 0.5)"></i> common — untinted, no frame</span>
+      <span class="key"><i style="background:color-mix(in srgb, var(--rarity-1-wash) var(--rarity-lift), var(--rarity-1))"></i> uncommon — steel-blue, wash over the extracted frame</span>
+      <span class="key"><i style="background:color-mix(in srgb, var(--rarity-2-wash) var(--rarity-lift), var(--rarity-2))"></i> rare — olive-gold + static sheen</span>
+      <span class="key"><i style="background:color-mix(in srgb, var(--rarity-3-wash) var(--rarity-lift), var(--rarity-3))"></i> legendary — violet + moveGradient</span>
+      <span>white outline = the hover state, rendered on the marked slot above</span>
+    </p>
+  </div>
+</section>
+
+<div class="duo">
+  <!-- 2 ── entity tooltip: the real dialogBg card ---------------------------
+       Gold selection sits on EXACTLY ONE element: the Armor row. -->
+  <section class="panel dialog tooltip">
+    <div class="tip-head">
+      <svg class="tip-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M5 13a7 7 0 0 1 14 0v7h-4v-3H9v3H5z"/></svg>
+      <span class="tip-name r2">Warden Helm
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2l2.9 6.2 6.8.8-5 4.7 1.3 6.7L12 17.2l-5.9 3.2L7.3 13.7l-5-4.7 6.8-.8z"/></svg>
+      </span>
+    </div>
+    <p class="tip-desc">Ceremonial helm of the border garrisons; the crest marks its officer.</p>
+    <div class="rows">
+      <div class="trow selected"><span class="k">Armor</span><span class="v pos">+12</span></div>
+      <div class="trow"><span class="k">Weight</span><span class="v">3.5</span></div>
+      <div class="trow"><span class="k">Durability</span><span class="v">100&thinsp;/&thinsp;100</span></div>
+      <div class="trow"><span class="k">Set — Warden's Vigil</span><span class="v" style="color:var(--light-rarity-2)">2&thinsp;/&thinsp;3</span></div>
+    </div>
+    <div class="price">
+      <span class="k">Market price</span>
+      <span class="v"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="3"/><path fill="currentColor" d="M12 2l2 2-2 2-2-2z"/></svg>1,250</span>
+    </div>
+  </section>
+
+  <!-- 3 ── type specimen ---------------------------------------------------->
+  <section>
+    <div class="band"><h2>Type scale — the two voices at real sizes (§1)</h2></div>
+    <div class="pbody">
+      <p class="voices">
+        <span><strong style="color:var(--text-emph)">flavor serif</strong> — IM Fell English · --font-flavor</span>
+        <span><strong style="color:var(--text-emph)">UI face</strong> — EB Garamond · --font-ui (= --font-sans; serif-first canon: the game has no latin sans)</span>
+      </p>
+      <div class="specimen">
+        <div><span class="s-display">Stormfowl Inn</span><small>--text-display 25 · --font-flavor</small></div>
+        <div><span class="s-display">Aldyn, Warden of the Marches</span><small>--text-display 25 · unit names ride the Fell cut</small></div>
+        <div><span class="s-lg">Secondary header rides the UI face</span><small>--text-lg 22 · --font-ui</small></div>
+        <div><span class="s-dialog">Dialog body speaks italic at nineteen.</span><small>--text-dialog 19 · italic</small></div>
+        <div><span class="s-base">Default interface text, sixteen.</span><small>--text-base 16 · --font-ui</small></div>
+        <div><span class="s-sm">Small annotations and table meta, fourteen — game floor, web floor twelve.</span><small>--text-sm 14</small></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- 4 ── panel stack composited over shot-20 firelight (r5) ----------------
+     critique r1 gap 3 / r4 carried 1: --panel-alpha had only ever been
+     certified over flat --bg-1. The stage below is the first render of the
+     token layer against real art — the shot IS the backdrop. -->
+<section>
+  <div class="band"><h2>Over live art — the panel stack on shot-20 (§2.1)</h2></div>
+  <div class="pbody">
+    <div class="stage">
+      <div class="wt-panel float-well">
+        <h3>Camp supplies</h3>
+        <div class="statrow"><span class="k">Salted meat</span><span class="v">24</span></div>
+        <div class="statrow"><span class="k">Firewood</span><span class="v">61</span></div>
+        <div class="statrow"><span class="k">Waterskins</span><span class="v">8&thinsp;/&thinsp;10</span></div>
+      </div>
+
+      <section class="panel dialog float-dialog">
+        <h3>The night watch</h3>
+        <p class="tip-desc">The fire holds the cold at bay until the morning bell.</p>
+        <div class="trow"><span class="k">Guards on watch</span><span class="v">3</span></div>
+      </section>
+
+      <p class="onart">Every surface here floats on the campfire — nothing sits on flat color.</p>
+
+      <div class="lrows">
+        <div class="lrow"><span class="k">Tiltren County — patrol report</span><span>12</span></div>
+        <div class="lrow is-hover"><span class="k">Ludern — hunt ledger</span><span>4</span></div>
+        <div class="lrow"><span class="k">Grinmeer — caravan manifest</span><span>37</span></div>
+      </div>
+    </div>
+    <p class="caption">
+      <span class="key"><i style="background:rgb(var(--panel-well-rgb) / var(--panel-alpha))"></i> .wt-panel — the well literal at --panel-alpha 0.7, double bevel</span>
+      <span>dialogBg fill glasses by its own α215; ListHeader bands ride α125 / α189 (highlight row is the middle one)</span>
+    </p>
+  </div>
+</section>
+
+<footer>
+  Evidence: design/extracted-ui/style.css (32,113 lines, adler32-verified) + the element PNGs it cites.
+  Fonts: the five contract woff2 self-hosted at site/public/fonts (README contract; this preview
+  re-declares them with a site-relative src so the file:// shoot resolves them — tokens.css keeps the
+  served /fonts/ path). Chrome: HeaderBg / SmallEntryBG / dialogBg / RarityBackground rendered as
+  border-image slices per style.css `background: url(...) 10 10 / 20 20`. Legendary ring animates 5s
+  alternate infinite and freezes at its first stop under prefers-reduced-motion. r5: §4 composites
+  the panel stack over design/sources/shot-20 — the first translucency-over-art render (critique r4
+  carried item 1); ListHeader / ListHeaderHighlight render for the first time with it.
+</footer>
+
+</body>
+</html>

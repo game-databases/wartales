@@ -1,0 +1,135 @@
+# HBSON format — Wartales prefab container, fully reversed
+
+Heaps **binary object notation**, magic `HBSON\0`. This is the payload codec
+of every `.prefab` and `.l3d` in the Wartales client (extensions lie —
+routing is by magic per [toolchain-validation §1](toolchain-validation.mdx)).
+Reversed 2026-08-25 (Dig 7) against three independent oracles that AGREE:
+
+1. **Bytes** — the whole harvested corpus: res.pak 727 blobs /
+   20,353,567 B · content.pak 2,674 / 287,251,010 B · assets.pak 135 /
+   163,613 B = **3,536 blobs / 307,768,190 B** (per-pak
+   `*.manifest.jsonl`).
+2. **Bytecode** — the shipped reader/writer in `hlboot.dat`, class
+   `hxd.fmt.hbson` (`Reader.read` f#40899, `Reader.readString` f#40900,
+   `$Reader` ctor f#40901, `Writer.writeString` f#47569,
+   `Writer.writeRec` f#47570; debug paths `hxd/fmt/hbson/Reader.hx:18/39`,
+   `Writer.hx:29/46`). Disassembled with the validated dig-6 fork decoder
+   (`output/_dig-map/orientation_disasm2.py`; op table = upstream v4 ids
+   0–98 + fork 99–101 per [decompile-dig-1](decompile-dig-1.mdx)).
+3. **CastleDB schemas** — data.cdb hidden sub-sheets for the four
+   datafile-backed sheets (`place@*`, `group@*`, `element@*`,
+   `levelProps@*`) name every expected object key; blob contents match.
+
+Decoder: [`pipeline/tools/hbson_decode.py`](../pipeline/tools/hbson_decode.py)
+(strict, stdlib-only). Proof: decode → form-traced re-encode reproduces
+**all 3,536 original files byte-for-byte**
+(`output/_dig-hbson/fullcorpus-reencode.json`), plus a 225-blob stratified
+round-trip + independent second implementation
+(`output/_dig-hbson/roundtrip-proof.json`).
+
+## Container
+
+```
+file := "HBSON\0" value        # exactly one root value, no header/version
+```
+
+Evidence: `WorldMap_Sounds.prefab` is 27 B = 6 magic + 21 of payload; every
+corpus file decodes with zero trailing slack (P1 above).
+
+## Value grammar
+
+First byte = tag; payload follows. Little-endian throughout.
+
+| Tag | Name | Payload | Writer evidence (`writeRec` pc) |
+|---:|---|---|---|
+| `0x00` | int **0** | — | int==0 branch writes single `0x00` |
+| `0x01` | u8 int | 1 B unsigned | writeByte(1); writeByte(v) |
+| `0x02` | i32 int | 4 B signed LE | writeByte(2); writeInt32(v) |
+| `0x03` | f64 double | 8 B LE | writeByte(3); writeDouble(v) |
+| `0x04` | true | — | bool branch |
+| `0x05` | false | — | bool branch |
+| `0x06` | null | — | null branch |
+| `0x07` | empty object | — | fields.length==0 branch |
+| `0x08` | object | u8 nfields, then n × field | fields<256 branch |
+| `0x09` | object | i32 nfields LE, then n × field | fields≥256 branch |
+| `0x0A` | string | see below | TClass(String) dispatch |
+| `0x0B` | empty array | — | length==0 branch |
+| `0x0C` | array | u8 count, then count × value | length<256 branch |
+| `0x0D` | array | i32 count LE, then count × value | length≥256 branch |
+
+Tags `>= 0x0E`: **never emitted** by this build's writer and **never
+observed** in the corpus (tag histogram over all 3,536 blobs:
+`0x00`×139,088 · `01`×506,802 · `02`×401,234 · `03`×11,931,175 ·
+`04`×39,366 · `05`×28,445 · `06`×248 · `07`×17,265 · `08`×1,894,445 ·
+`09`×4 · `0A`×5,004,041 · `0B`×6,957 · `0C`×67,541 · `0D`×976). The
+strict decoder fails loud on them.
+
+```
+field := key_string value          # key is a BARE string (no 0x0A tag!)
+object := tag(07|08|09) count { field }×count
+array  := tag(0B|0C|0D) count { value }×count     # elements are full tagged values
+```
+
+The bare-key fact (no `0x0A` before a field key's word) is visible in any
+file: `wmap_current.prefab` offset 6 = `08 02 | 04 00 00 40 "type" ...`
+— after `08 02` comes the key word directly. Duplicate field names are
+legal bytes-wise; runtime semantics are last-wins (`Reflect.setField`),
+and none occur in the corpus (measured).
+
+## Strings
+
+Every string starts with an i32 LE **word w**; top two bits select the form,
+low 30 bits are the length **in UTF-8 BYTES** (verified: `"Canne à pêche"`
+= 13 chars / 15 B / declared 15; zero-slack across 2,659,360 inline strings
+independently confirms byte semantics):
+
+| `w >> 30` | Form | Followed by | Reader evidence (`readString`) |
+|---:|---|---|---|
+| 0 | **back-reference** | nothing | index into the running string table |
+| 1 | inline ASCII/table-push | `len` raw bytes (pure ASCII) | decoded, **pushed to `stringTbl`** |
+| 2 | inline UTF-8/plain | `len` raw bytes (UTF-8) | decoded, **NOT pushed** |
+| 3 | unused | — | never observed |
+
+- The running `stringTbl` persists across strings within the stream and
+  grows in encounter order; backrefs resolve against it
+  (`Reader.readString` pc 35–42: `idx < stringTbl.length` else throw;
+  global[2435] error path).
+- Whether bit-31 strings push was decided **empirically**: decoding with
+  b31-pushing yields 1,557,692 non-identifier dict keys out of 6.29 M
+  (prose leaking into key positions); without it, 2,111. Reader bytecode
+  agrees (the push sits behind the `(w & 0x40000000) != 0` branch).
+- Corpus counts: inline ASCII 279,688 · inline UTF-8 2,379,672 ·
+  **back-references 20,614,979** — dedup via `Writer.stringMap`/
+  `stringCount` dominates; repeated keys (`type`, `name`, `x`, …) cost 4 B.
+  Backref indices stay far below table size everywhere (strict validation,
+  0 failures).
+
+## What lives in these blobs
+
+- Root values are `{type:"prefab", children:[...]}` scene graphs (Heaps
+  editor trees: `object`, `reference`, `model`, `npc`, `light`,
+  `advancedDecal`, `terrainPath`, `polygon`, `camera`, …) or
+  `{type:"level3d", ...}` world scenes.
+- Scene nodes carry local transforms as plain keys: `x`,`y`,`z` (f64),
+  `rotationX/Y/Z` (degrees), `scaleX/Y/Z`.
+- **CastleDB rows are embedded**: any object with a literal
+  `$cdbtype:"<sheet>"` key is a row of that sheet (place/group/element/
+  levelProps), keyed by its `id` column where the sheet has one. This is
+  how CastleDB `props.dataFiles` sheets externalize their lines.
+- Region prefabs self-place: each `regions/<tree>/POI/Region*.prefab`
+  carries a `Content` child whose x/y IS the world anchor (Alazar_1 and
+  Worldwide ship no Content transform — their children are already
+  world-space). Everything below composes additively along `reference`
+  chains; POI markers additionally point at their marker prefab through
+  `props.world.prefab`.
+
+## Proof summary (buildid 20318128)
+
+- Strict decode: **3,536/3,536 blobs, 307,768,190/307,768,190 B, slack 0**,
+  28 s (`output/_dig-hbson/corpus-stats.json`).
+- Byte-exact re-encode from (value + form trace): **3,536/3,536**
+  (`output/_dig-hbson/fullcorpus-reencode.json`).
+- Stratified sample 225 (40 smallest incl. 27 B + 10 largest up to
+  4,457,124 B + stride fill): P1 strict decode 225/225 · P2 byte-exact
+  225/225 · P3 re-decode equality 225/225 · P4 independent
+  implementation 225/225 (`output/_dig-hbson/roundtrip-proof.json`).

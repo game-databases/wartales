@@ -1,0 +1,123 @@
+# Arbiter R3 — rulings on `design/spec-tokens.mdx` review
+
+2026-08-24 · Third attempt (two predecessors died mid-run; this run is
+receipt-driven and narrow). Input: [review-spec-tokens.mdx](./review-spec-tokens.mdx)
+(8 findings). Method per brief: for each finding, read only the cited spec
+section and spot-check the specific evidence — greps against
+`design/extracted-ui/style.css`, two self-computed WCAG ratios (the brief's
+budget, spent where the ruling depended on them: F2), targeted reads of
+`design/spec-tokens.mdx` §0/§2/§4–§7. Untouched sections not re-reviewed.
+
+## Spot-check receipts
+
+| Check | Result |
+|---|---|
+| `#26221B` in style.css (case-insensitive) | **0 occurrences** — confirms F1 |
+| `ToolTipBg.png` refs | **6 occurrences** (`tip-content .with-title` family, slices `5 50`/`10 50`) — confirms F5 |
+| `6.7` occurrences in spec | lines 164 (§2.6) and 273 (§6.2) — exactly the two F2 targets |
+| WCAG `#FFF7DB` on `#B63131` | **5.64** (self-computed) — spec's 6.7 is wrong |
+| WCAG `#FFFFFF` on `#B63131` | **6.05** — matches reviewer; no pairing yields 6.7 |
+| §6.2 tested-token list | `--text-*`, `--light-rarity-*`, `--positive`, `--negative`-text only — `--warning` absent, confirms F3 |
+| `outline(0.5, white)` count | **38**, spec §2.5 says ×34 — drift real |
+| `text-shadow:` declarations | **28**, spec §2.2 says 18× — drift real |
+| `reputation-up` selector | **0 hits**; `counter.good #tf` (3631) and `progress-bar.ready #bar` (5061) exist — confirms F7b |
+| `#0A0A0A` literals | style.css lines 56, 20585 — darker than `--bg-1 #100F0E`; spec §2.1:64 "deepest surface literal" needs qualification — confirms F7a |
+| `XpBar.png` usage | always on `progress-bar … #bar` (**fill**), never a track element — confirms F7c |
+| `tabSelector` count | 19 — mechanism real (F7d's non-contested half) |
+| `site/` tree | empty; `tokens.css` referenced nowhere outside the spec and briefs — confirms F4 |
+
+## Rulings
+
+| # | Sev | Ruling | One-line ground |
+|---|---|---|---|
+| F1 | major | **ACCEPT** | Value untraceable (0 css hits, receipt above); §2.6 is the sole table without a source column — breaks the spec's own style.css-wins method |
+| F2 | major | **ACCEPT** | Self-computed 5.64:1 (white = 6.05:1); the constant is baked into the §6.2 test assertion, so it must be corrected |
+| F3 | medium | **ACCEPT** | Matrix omission confirmed in spec text; fix is robust either way — once `--warning` is in the matrix, the test computes the true ratio and dictates constrain-vs-brighten |
+| F4 | medium | **ACCEPT** | `site/` empty, no path pinned anywhere downstream agents would read — real handoff ambiguity |
+| F5 | medium | **ACCEPT** | Tooltip's actual skin texture used 6× yet absent from the §0 follow-up list — canon row would ship unsampled chrome |
+| F6 | minor | **ACCEPT** | Both spot-checks reproduce the reviewer's numbers exactly (38 ≠ 34; 28 ≠ 18); qualitative conclusions survive, definitions must be pinned |
+| F7 | minor | **ACCEPT** | a/b/c byte-verified above; for d, take the reviewer's option (b) — soften wording — since hunting a replacement shot costs more than the one-line fix |
+| F8 | minor | **MODIFY** | Adopt the reviewer's own scoping proposal: keep the gate, fail only on unmapped *color/font* literals; otherwise concur — clean hunt |
+
+### Grounds
+
+**F1 — ACCEPT.** The receipt is decisive: `#26221B` has zero occurrences in
+style.css, and §2.6 (`design/spec-tokens.mdx:163`) is the one token table
+with no game-source column — precisely where an unevidenced value could
+hide. Every other value in the spec traces to a cited literal, sampled PNG,
+or filter string; this one does not, and the spec's whole authority rests on
+that traceability. The three fix routes are all acceptable; preferred order:
+(a) extract `buttonBg.png` (already on the §0 follow-up list) and sample its
+hover frame; failing that, (b) state a documented wash-over-`--bg-2`
+derivation formula; last resort (c) substitute an evidenced value.
+
+**F2 — ACCEPT.** Recomputed from scratch within the brief's two-ratio
+budget: `#FFF7DB` on `#B63131` = **5.64:1**, white on `#B63131` = 6.05:1 —
+matching the reviewer and matching no reading of 6.7. Because §6.2
+(`design/spec-tokens.mdx:273`) asserts the number inside the contrast test,
+the shipped test would fail against reality; correct both occurrences
+(lines 164 and 273) to 5.64:1. Still AA (≥4.5) — design intent survives.
+
+**F3 — ACCEPT.** The §6.2 matrix list verifiably omits `--warning`, and the
+game uses it at body size. Per the brief I did not spend further contrast
+computations on the reviewer's 4.29:1 figure; the fix does not depend on it:
+adding `--warning` to the matrix makes the test measure the true value, and
+constrain-surfaces vs brighten-token then falls out of §2.3 documentation.
+
+**F4 — ACCEPT.** Verified `site/` is empty and `tokens.css` appears in no
+plan/pieces doc outside the spec itself. Pin paths — theme
+`site/src/styles/tokens.css`, faces `site/public/fonts/*.woff2`, tests +
+census script under the site test dir — or declare an explicit deferral to
+the F2 scaffold piece in §5. Either closes the ambiguity; pinning preferred.
+
+**F5 — ACCEPT.** `ToolTipBg.png` is the tooltip's actual background (6 refs,
+slices `5 50`/`10 50`) and is absent from the §0 follow-up list read at
+`design/spec-tokens.mdx:28-32`. Add it (required);
+`EquipementSlot.png`/`TrinketSlot.png` recommended alongside, same
+one-liner EXTRACT-LOG protocol.
+
+**F6 — ACCEPT.** Independent recounts match the reviewer exactly:
+`outline(0.5, white)` = 38 (spec: ×34), `text-shadow:` decls = 28 (spec:
+18×). The counts were evidently taken under differing implicit regexes; do
+not relitigate each number — pin the counting rules in §6.4 (word-boundary
+property matching, selector-vs-value discrimination, `ui/*.{png,dds}`
+texture pattern) and restate or range-mark the affected inline counts.
+
+**F7 — ACCEPT.** (a) `#0A0A0A` sits in the css twice — qualify §2.1's
+"--bg-1 deepest surface literal" to "deepest *panel* literal".
+(b) `reputation-up` does not exist; `counter.good` + `progress-bar.ready`
+are the real `--positive` sources — correct §2.3. (c) css applies
+`XpBar.png` to the `#bar` **fill**, not a track — correct §4 Progress.
+(d) Do not re-cite a shot: soften the shot-07 wording in §4 Tabs (keep the
+real `tabSelector` ×19 mechanism) and mirror the softening in §5 AC4, which
+also names shot-07 as "tabs + data rows".
+
+**F8 — MODIFY.** Not accept-as-written because the reviewer's own fix is a
+scope reduction, and the reduced form is the right one: keep the build-gating
+census (defensible under data honesty + `update-trigger: build-id`) but fail
+the build only on unmapped **color/font** literals, not any style.css
+change — CI should not couple to cosmetic patch noise. Concur with the rest
+of the over-engineering hunt; nothing else to cut.
+
+## Verdict — REVISE
+
+Gate items (must land before build): **F1** (source for `--accent #26221B`)
+and **F2** (6.7 → 5.64). Ordered fix list:
+
+1. §2.6 line 164 + §6.2 line 273: replace `6.7:1` → `5.64:1`.
+2. §2.6: add a Game-source column; resolve `--accent` per F1 route (a) →
+   (b) → (c) in that order.
+3. §6.2: add `--warning` to the contrast matrix; §2.3: document constrained
+   surfaces or the brightened value, whichever the measured ratio forces.
+4. §5/§6.4: pin file paths (theme, fonts, tests+census) — or record the
+   explicit deferral to the F2 scaffold piece.
+5. §0: append `ToolTipBg.png` (required) + `EquipementSlot.png`,
+   `TrinketSlot.png` (recommended) to the follow-up extraction list.
+6. §6.4: add the census-definition sentence; align or range-mark the four
+   drifted inline counts (§2.2 ×18, §2.4 184/182, §2.5 ×34, §0 229/856).
+7. Four F7 one-liners: §2.1 "deepest panel literal"; §2.3 positive sources;
+   §4 Progress XpBar = fill; soften shot-07 tab wording in §4 and §5 AC4.
+8. §6.4: scope the build-gate failure to color/font literals.
+
+Re-review may be a diff-read against this list — no finding reopens the
+extraction, the token method, or the style.css-wins hierarchy.

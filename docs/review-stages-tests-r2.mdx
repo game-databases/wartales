@@ -1,0 +1,199 @@
+# Review r2 — TestReviewer delta on the W6 suite-fix diff
+
+Status: FINAL r2 (2026-08-25). Fresh TestReviewer agent per the r2 brief:
+no subagents spawned, nothing committed, wartales pack only. Inputs read in
+full: root `AGENTS.md`, `_foundation/decision-register.md`,
+[spec-stages-datasets.mdx](./spec-stages-datasets.mdx) (§4.2 AS AMENDED by
+W5), [arbiter-stages-build-r1.mdx](./arbiter-stages-build-r1.mdx) (W6
+scope), [review-stages-tests.mdx](./review-stages-tests.mdx) (round-1
+F1–F15), `output/testfixer-stages.log` (fixer claims + disclosed incident),
+pack `spec.md` + `EXTRACTION-LOG.md`, both test files
+(`test_stages_toolchain.py`, `test_stages_datasets.py`) end to end,
+`conftest.py`, and the landed validator/verifier/promoter code where a
+test's pin rests on it. Every experiment below was executed first-hand on
+this host; scratch writes sandboxed under `D:\_rev-tmp2\` (fakeroot pattern,
+[F15](./review-stages-tests.mdx) lever).
+
+## Verdict: NEEDS-FIXES — three small ordered items, none re-opens W6
+
+All 14 W6 items landed as ruled and their assertions pin criteria, not
+proxies; the suite reproduces 187/25 digit-for-digit; all five integration
+legs execute green first-hand; four planted adjacent faults die on the new
+legs. What keeps this from CLEAN is one narrow corruption window in the
+RELATIONS.md tamper leg's own recovery path (G1) plus two one-line guards
+(G2/G3) — §Ordered fixes.
+
+## 1. Suite state — reproduced
+
+| Run | Result |
+|---|---|
+| Whole pack default (`pytest pipeline/tests -q --basetemp D:\_rev-tmp2\…`) | **187 passed, 25 skipped** in 48.60s — matches the fixer log digit-for-digit, 0 failed |
+| `test_stages_toolchain.py` standalone | 27 passed, 5 skipped in 29.38s ✓ |
+| `test_stages_datasets.py` standalone | 36 passed in 8.96s ✓ |
+| Both stage files + `--run-integration` | **68 passed in 43.51s** — I1/I2/I3/I4-integration and the AC9 consumer class execute GREEN on this host, verified first-hand rather than trusted from the log (the round-1 lesson: an integration layer that has never run is where dead tests live) |
+
+Shared-tree integrity across every run above: `extracted/RELATIONS.md`
+`7e8bfb1e…` and `relinks/matrix.json` `5efaba53…` byte-identical before,
+between, and after (both also match the fixer's recorded post-repair pins —
+the disclosed 0-byte incident is fully healed); no `.tw-*` debris siblings;
+all six tool sha256s match EXTRACTION-LOG §2 exactly (`cdb_emit`
+`3013abd2…`, `cdb_verify` `cc9c5b6e…`, `wave_kinds` `e96a95c3…`,
+`promote_drafts` `f3516e1f…`, `relink_catalog` `f795286d…`, `validate_all`
+`df701495…`). Scoped git status clean at commit fe8200f1.
+
+Skip inventory (mission item 4): exactly 25 skips, every one armed with the
+single honest reason `integration smoke: pass --run-integration …` via the
+`conftest.py` marker machinery — the 5 stage cases
+(`toolchain :1472/:1529/:1595/:1750/:1850` = I1, I2, I3, I4-subprocess,
+AC9-sandbox) plus the 20 pre-existing map-suite integration marks. Zero new
+skip reasons introduced by the rewrite wave; `st_green`'s input-absence
+skip arms did not fire locally (inputs present).
+
+## 2. All 14 W6 items landed as ruled
+
+Spot-checked at assertion level — each pins its RULED criterion, not a
+proxy. Line refs are `test_stages_toolchain.py` unless marked ds
+(`test_stages_datasets.py`).
+
+| Item | Landed as | Pin quality |
+|---|---|---|
+| **F1** | `test_i1_stage4_chain_end_to_end` :1472–1527 — §3.1 verbatim from `HARVEST_CDB`: emit waves 1+2 into tmp → gate → promote THOSE drafts → canonical re-verify → per-kind == census, Σ 10,207 → second promotion `updated=0 unchanged=40` + mtimes untouched. Mini reuse deleted; `_run_promote` gained the `--buildid` passthrough (:422–435) | Pins gate stdout substrings (`40 files, 10207 rows`, edges/dangling line), per-kind census equality, Σ, and AC3 counts — the real chain, not arithmetic stand-ins ✓ |
+| **F2** | I2 asserts top-level `doc["pairCount"] == 780` (:1580); always-run envelope case `test_matrix_envelope_matches_amended_spec_section_4_2` :1111–1140 pins EXACTLY the amended §4.2 eight keys + totals/textKeyCoverage sub-shapes + pair-record keys + deferred-target record shape incl. `state`/`unblock=="R1"` | Exact-set equality against spec-named keys — the old `doc["header"]` KeyError is regression-pinned ✓ |
+| **F3** | Fault leg `md-cell-falsified` :1348–1408 falsifies ONE rendered cell's field value (E→E−1, marker + row count intact) → `catalog-parity=False`; validator side parse-and-compares BOTH direction kinds (`validate_all.py:362–397`, modeled regex + non-modeled short form) | Field-value tamper, not string regeneration; see §3 for the leg's shared-state redesign ✓ |
+| **F4** | Fault leg `locale-set-truncated` :1410–1428 (9→3 on one row) → `availability-regenerated=False`; green tree carries ONE lawful ∅/∅ row (:1168–1170) keeping 3,779 | Pins the bimodal law's partial-set rejection AND its empty arm, count intact ✓ |
+| **F5** | T5 leg tampers ONLY `_meta.buildId` → exactly that file `updated`, healed byte-exact to draft bytes (:666–683) | Mutant-killing for H-A documented in-line; symmetric with the emitted-only exemption leg kept above it ✓ |
+| **F6** | T2b probe/skip retired entirely; hard-asserts rc==1 + the ruled COUNT-ONLY line `"pack-wide dangling invariant: 1 != 0"` (:473–493) | Matches W2's landed fail() wording; no edge names demanded where the ruled line has none ✓ |
+| **F7** | Mini world gains all three features (`_mini_db` :127–282): localizable `item.label` (exact-shape textKey through verify), undeclared `skill[0].__tw_undeclared__` (emitter counter table == 1, verifier total ≥ 1), id-less `env` carrier under `keyRule` (synthetic ids `env-0000/0001`, nothing references it); new case :535–580; remaining divergences disclosed in the docstring (:146–152) | Exercises the features THROUGH the verifier's own checks (gate green is the proof), not parallel re-implementations ✓ |
+| **F8** | `driftAbsent == []` at T8 :959, envelope parity :1132, green tree :1271–1272, I2 REAL artifact :1582 | Every matrix load named by the ruling except T9 (not named); ✓ |
+| **F9** | Fixture restated to module tokens `DEFERRED_FROZEN` (ds :151–161); parity case ds :462–474 `wave_kinds.DEFERRED` ↔ fixture (+ `MANAGED_KINDS`/`EXPECTED_PAIR_FILES` ride-along); old slug table gone | Neither-side-moves-alone restored; validate_all separately pins module vs inline §3.5 copy (`validate_all.py:79–90,399–412`) — three-way lockstep ✓ |
+| **F10** | Renames + arithmetic-only marks (ds :304–341, :360–365, :481–505); cheap live move `test_regen_bridge_sheet_count_live_from_export_en` ds :808–822 (read-only, 35) | Nothing heavier than ordered ✓ |
+| **F11** | Split: session `st_green` fixture :1175–1223 (assembled+validated once, reports excluded from fault clones :1239–1249) → green case :1257 + 6 parametrized one-fault cases :1286–1428 + independent RED case :1431–1449 (report record, no traceback). Dead fault-6 dropped WITH CAUSE in module docstring :30–36 + case docstring | One regression can no longer retire another leg; cause documented rather than faked ✓ (one structural note, G7 below) |
+| **F12** | Static half :1675–1747 always-run (§3.1/§4.1/§5.1 argv fragments verbatim, CDB required AND printed, `-TotalCount ≥ header lines`, sh-forwarder identity, E1–E6 incl. sha256-pinned tool rows + dated §6 entry naming W1–W4); integration half :1751–1847 (--list resolved `CDB =`, unknown flag exit 2, EVERY dry-run vector token-wise with resolved python/buildid/CDB, zero mtime delta on stage surfaces, `run_all.sh --list` output IDENTICAL, decompile stub) | Spec-vector citations, not stage-name substrings; heavy subprocess legs correctly behind the mark ✓ |
+| **F13** | Green case parses VALIDATION-REPORT.md's table; every JSON check id present with matching pass word; `rows == checks` (:1273–1283) | Was existence-only; now content-parity ✓ |
+| **AC9** | Sandboxed tmp pack (real `run_all.ps1` + minimal defaults block + tools copy + canonical planes): four legs — delete kind / plant ghost / break pair count via emit / truncate seeds via relink — each exit 2 NAMING the owning producer (:1850–1931) | Zero shared-tree mutation (executed green in my integration run); closes AC9's last class executably ✓ |
+| **R2-reg** | T5 leg plants an LF-normalized twin target → counted `updated`, healed byte-exact (:685–700) | Byte-equality drift pinned; see portability note G4 ✓ |
+
+## 3. The RELATIONS.md tamper leg — redesign verified, two residual windows
+
+The redesign does what the disclosure claims: backup lands FIRST in a
+same-volume sibling; tamper and restore both go through fully-written
+siblings + atomic `os.replace`; mtime restored; post-restore read-back
+fails LOUDLY with regeneration instructions; fault clones exclude report
+outputs so a crashed run cannot be masked by stale green reports
+(:1239–1249).
+
+Re-run twice per the brief: **pass in 5.62s and 6.05s**, `RELATIONS.md`
+byte-identical after each, no debris siblings. The suite-scale run (which
+executes the leg once more) and the integration run left the same hashes.
+Steady-state behavior is safe.
+
+Two residual windows found by reading the failure paths against this host's
+disk pressure (C: at 100 %):
+
+- **G1 (minor, ordered)** — if ENOSPC lands *during*
+  `backup.write_bytes(original)` (:1378), the finally block replaces the
+  still-intact shared file with the PARTIAL backup (`backup.exists()` is
+  true for a partially-written file). The read-back then detects it, but
+  the intact bytes are already gone pending manual regeneration — on the
+  exact incident class the redesign exists to prevent. Hardening is two
+  lines: publish the backup atomically (write `.tmp` sibling → `os.replace`
+  to the backup name), or verify `len(backup.read_bytes()) ==
+  len(original)` before proceeding to the tamper.
+- **G3 (nit, ordered with G1)** — `finally` references `tampered` before
+  assignment whenever a pre-tamper text op raises (marker absent, decode
+  error, needle assert miss :1381–1389). The UnboundLocalError masks the
+  true cause and — compounded with G1's scenario — would skip the loud
+  read-back entirely (state restored or corrupted, but never explained).
+  Init `tampered = None` and guard the unlink.
+
+Irreducible and accepted: a hard process kill mid-leg leaves the tampered
+MD plus the `.tw-backup` sibling as self-evident recovery evidence for the
+seconds the validator runs — same class as the I3 snapshot/restore
+precedent, and the general fakeroot lever stays deferred per the F15
+ruling.
+
+## 4. New-defect hunt (mission item 2)
+
+Beyond G1/G3:
+
+- **G2 (minor, ordered)** — vacuous-pass trap in the parametrized fault
+  table: `FAULTS` (:1286–1288) drives a pure `if/elif` chain with NO
+  `else`. Adding a future fault id without a branch yields a green test
+  that exercises nothing — precisely how the old dead fault-6 hid. One
+  line: `else: pytest.fail(f"unhandled fault {fault!r}")`.
+- **G4 (note)** — the R2-reg leg's LF-normalization (:689–692) is only a
+  real mutation because Windows text-mode writes give the drafts CRLF; on
+  a POSIX host `bytes.replace(b"\r\n", b"\n")` is identity and the leg
+  fails spuriously. House platform is NE8K/Windows and the suite is
+  NE8K-bound, so this is a portability remark, not a defect — worth one
+  comment line next time the file is touched.
+- **G5 (note)** — the cross-drive cwd workaround is LEGAL and honestly
+  scoped: `_run_validate`'s `cwd=tree["root"]` (:1230–1236) controls only
+  invocation environment, is commented with its cause, and redirects no
+  pinned surface — the validator's `PACK_ROOT` is `__file__`-anchored
+  (`validate_all.py:34–35`), so surfaces follow the tool, not the cwd. It
+  does leave the underlying wart unpinned: `validate_all.py:429` computes
+  report-message paths with cwd-relative `os.path.relpath`, which raises
+  across drives — harmless through `run_all` (same drive, `Set-Location`),
+  latent for isolated invocation. Finding A's sibling; fold the one-line
+  anchor into the NEXT tool-side pass (not W6 scope).
+- **G6 (observation, no fix)** — mass erosion through the LAWFUL empty
+  locale arm is invisible to the availability check: 200 rows flipped to
+  ∅/∅ stay PASS (mutation M4b below). This is the F4 ruling's own
+  proportionality — the law froze per-row arms from measurement, not the
+  histogram ratio — and in-pipeline exposure is ~zero because stage-6 step
+  1 regenerates the file before every check (my first M4 attempt was
+  sanitized exactly this way, which is itself proof of ownership).
+  Recorded so nobody mistakes per-row law for histogram protection.
+- **G7 (note)** — a fixture-level `st_green` skip still retires ALL seven
+  T10 legs together including RED. Structurally necessary (the RED case
+  needs a validated green tree to fault against) and the achieved
+  improvement — no single REGRESSION retires another leg — matches F11's
+  intent; skip reasons name the missing input. Not a defect.
+- **Over-coupling sweep**: exact-key envelope pins are sanctioned by the
+  amended §4.2 enumeration (a rename SHOULD fail fast until the spec is
+  re-amended); T9's and the validator's cell-grammar coupling is the
+  adjudicated parse-and-compare approach; gate-stdout substring pins match
+  house style over sha256-frozen tools; `eval()` of emitter counter tables
+  is a pre-existing pattern, unchanged by this wave. No new false-fail-on-
+  lawful-refactor coupling found beyond the accepted ones.
+
+## 5. Mutation spot-checks — 4 faults planted adjacent to the new legs
+
+All inside a fakeroot pack (`D:\_rev-tmp2\fakeroot`: the seven tools +
+conftest/tests copied, canonical planes + drafts + bridge + CDB copied;
+everything `__file__`-anchored redirects into the sandbox — zero
+shared-tree writes). Baseline first: validator over the assembled tree
+**PASS 8/8, exit 0**. Then:
+
+| # | Planted fault (adjacent to…) | Observed |
+|---|---|---|
+| M1 | rename `totals.modeledDirections` → `modeledDirs` in the catalog tool (→ F2's envelope case; goes one level deeper than the fixer's own top-level `pairCount` rename) | **CAUGHT** — always-run parity case red in 1.09s offline: "Extra items in the right set: 'modeledDirections'" |
+| M2 | blank ONE scaffold cell's unblock in RELATIONS.md (`partial → ordered-pair upgrade dig` → `partial` on `activity–amb` forward; marker + rows intact) (→ F3's leg, non-modeled arm) | **CAUGHT** — `catalog-parity=False`, mismatch quoted verbatim: ``MD ('unparseable', 'partial') != matrix ('partial', 'ordered-pair upgrade dig')`` — proving the W1 sub-assertion covers the 1,482 scaffold directions too, not just the 39 modeled ones |
+| M3 | trailing `\n` appended to matrix.json (parsed content identical) (→ the marker arm beside F3's cell arm) | **CAUGHT** — `catalog-parity=False`, `markerMatch=False`, `cellMismatches=0`: the byte-derived marker survives the W1 extension and covers exactly what field-compare cannot. Arms are complementary, empirically |
+| M4a | bogus 10th locale `"xx"` injected into one availability row (→ F4's law) | **CAUGHT** after neutralizing step-1's regen child with a stub dig (first attempt was silently sanitized by the faithful fakeroot's own regeneration — see G6) — `localeLawViolations=["class/Admiral: av=[… 'xx' …]"]`, exit 1 |
+| M4b | scope probe: 200 all-9 rows → ∅/∅ | **GREEN** (scoped residual, G6) |
+
+Incidental first-hand reproduction of the R10-class cp1252 print crash
+(`UnicodeEncodeError` on `→` from a probe script) — the tests themselves
+are immune (`encoding="utf-8"` on every subprocess capture).
+
+## 6. Ordered fixes
+
+1. **G1** — md-cell-falsified leg: make the backup publication atomic
+   (`.tmp` sibling → `os.replace`) or verify its byte length before
+   touching the shared file. (`test_stages_toolchain.py:1377–1394`)
+2. **G2** — add the `else: pytest.fail(...)` guard to
+   `test_t10_fault_flips_its_named_check` so a future unhandled FAULTS id
+   cannot pass vacuously. (:1305)
+3. **G3** — init `tampered = None` + guarded unlink in the same finally
+   block, so a pre-tamper exception reports its true cause and the loud
+   read-back always executes. (:1396–1406)
+
+One commit, TestFixer-owned, W7 discipline (no tool edits → no pin
+refresh needed). Items 1+3 are the same ten lines of one function.
+
+Everything else reviewed — the 14-item landing, suite state, skip
+discipline, integration execution, mutation posture, cross-drive
+workaround legality, tautology sweep — held up under independent
+re-execution and is CLEAN.

@@ -1,0 +1,42 @@
+# Brief — TestReviewer: stages 4–6 test suite (fresh subagent)
+
+Fresh TestReviewer agent. **Never spawn subagents**; never commit; Wartales
+pack only. Headless: stdout → log; end with your findings list. You did NOT
+write these tests; the CodeWriter's implementation exists — read it ONLY as
+needed to prove a test's blindness/weakness, never to fix tests yourself.
+
+Read first, in full: `wartales/docs/spec-stages-datasets.mdx` (THE contract
+— §5 verdict set, §7 T-numbers, AC1–AC11+, F4/F6 fixtures);
+`pipeline/tests/test_stages_datasets.py` + `test_stages_toolchain.py`
+(under review); `test_map_tiles.py` + `conftest.py` (house conventions);
+`output/testwriter-stages.log` (the writer's own claims — treat as claims).
+
+## Mission — break the suite
+
+Prove the tests are not complete enough or don't cover all the cases:
+1. **AC/T coverage gaps**: walk EVERY acceptance criterion and T-number
+   in the spec; name any with no asserting case (or whose assertion
+   doesn't actually pin the criterion).
+2. **Fixture shortcuts**: cases that pass vacuously (asserting on data
+   they just wrote, catching broad exceptions, skipif conditions that
+   will never unskip, mini-fixture worlds that diverge from real corpus
+   shapes without saying so).
+3. **Wrong frozen numbers**: re-measure 5+ pinned numbers independently
+   (regeneration protocol or direct counts) and compare against what
+   tests assert.
+4. **Blindness checks**: mutate-and-expect-red experiments — for ≥6
+   representative cases, plant the fault the case claims to catch and
+   verify it goes red; for ≥3, plant an ADJACENT fault and check whether
+   the suite wrongly stays green (that's a hole).
+5. **The RED case**: validate_all KeyError on non-managed kind — is the
+   test itself correct and minimal, or does it over-specify the crash?
+6. Skip discipline: every skip justified + armed with its unblock.
+
+For each finding: severity BLOCKER/MAJOR/MINOR, file:line, proof,
+concrete missing-test sketch. Run pytest freely (temp on D: if C: is
+tight).
+
+## Deliverable
+
+`docs/review-stages-tests.mdx` — findings table + verdict CLEAN /
+NEEDS-FIXES (ordered). Facts only.

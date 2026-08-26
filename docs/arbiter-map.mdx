@@ -1,0 +1,69 @@
+# Arbiter — [spec-map-pipeline](spec-map-pipeline.mdx) post-review verdict
+
+2026-08-25 · Fresh Arbiter, delta-only, per [briefs/arbiter-map](briefs/arbiter-map.mdx).
+No subagents, no commits, no re-scouting. Read in full this pass:
+[review-spec-map](review-spec-map.mdx) (both passes, F1–F13) and
+[spec-map-pipeline](spec-map-pipeline.mdx) end to end. Citations grounded
+directly where the verdict depended on them: FRAMEWORK §2.6 (registry mandate
+reads verbatim "world, continents/floors, cities, dungeons/instances";
+coordinate-source vocabulary includes `unknown-P0` — both match the spec's use)
+and decision-register [DR-2026-08-18-media-scope] (catalogue-first heavy
+assets → `MEDIA-CATALOGUE`, removal only after owner pick — matches §4's
+storage plane paragraph).
+
+## Fold-in check — all 13 findings
+
+| # | Sev | Folded | Receipt in current spec |
+|---|---|---|---|
+| F1 | MAJOR | ✅ | §3 coordinate-sources table now 16 rows — every COMP §7.4/M4 legend layer (border crossings, Knowledge Books, Bandit Reinforcements, Unique Recruits, Secrets→poi-marker row, Treasures, Bosses, Black-Market, resources, camp equipment, fishing spots, veins) carries a carrier + gate or explicit `unknown-P0` + shared **H-POI** name-vocabulary hypothesis that D5 must confirm/refute; §5 states nothing deferred |
+| F2 | MINOR | ✅ | Ambiguity column retired outright; impossible branches gone (see arithmetic receipts) |
+| F3 | MINOR | ✅ | §2: "**16 raw tiles** (8 full + 8 `_s`) — 6 as json, 10 as xml"; real `textures.json` inside the json count of 7; "sole real JSON is `textures.json`" — self-contradiction removed |
+| F4 | MINOR | ✅ | AC4 threshold "frozen from measured distribution (not invented)"; D6 budget derived from assembled overview's measured feature spacing, frozen in EXTRACTION-LOG before the run, "never negotiated after seeing results" |
+| F5 | MINOR | ✅ | Sample de-pinned: `yAxis: null`, `"d": "<D6>"`, `tileSizePx: null`, `format: null`; pinned form kept in comment only |
+| F6 | MINOR | ✅ | §4 records the measured negative with evidence (PRE `/backgrounds/*` are scenes, battle-tactical the only non-world CRS) — satisfies FRAMEWORK §2.6's dungeons/instances registry mandate without inventing a family |
+| F7 | MINOR | ✅ | §4 storage/publication planes: served plane = albedo-derived webp only; splat/normal/raw stay data-plane inputs handed to `MEDIA-CATALOGUE` at harvest close; never git |
+| F8 | LOW | ✅ | AC1: parse CR-insensitively (TSV is CRLF), coordinates signed ints; lexicographic example now uses in-range `−8` vs `−2` |
+| F9 | LOW | ✅ | All four guards: roundtrip promoted to **AC9**, hole-cell alpha snapshot test, neighbor-seam continuity reusing D2's edge metric, negative-origin rebase (unit test + AC9) |
+| F10 | MAJOR | ✅ | §2 replaced by measured triples (albedo 512² DXT5/BC3, normal 2048² DXT1, splat 2048² RGBA8), all arithmetically closed; DX10-header note explains why BC7 was never possible; D1 stays as the 4,131-file uniformity sweep |
+| F11 | MAJOR | ✅ | AC1 runs on wtpak.py's own tree-walk manifest at rerun time; committed fixtures carry numeric expected values only; bijection property test gated on recon §9 local-TSV presence, fresh clones assert fixtures |
+| F12 | MINOR | ✅ | §1 asserts `78c858d4` ⊂ `0ff430e9` strict subset (overlap 273, residue cells x7 y27 / x7 y28 / x28 y24); D3 verification row demands the subset assertion + 3-cell explanation duty |
+| F13 | MINOR | ✅ | §3 lists all seven geometry-flavored CDB fields (two original hints + `samePosAs`, `worldmapZoom`, `hudOffset`, `fowRadius`, `waterHeight`); wired into dig rows — D2 tests `waterHeight` as sea-level pin, D5 resolves `samePosAs`, D6 folds `worldmapZoom`/`hudOffset` |
+
+## Named spot-checks (brief's 5) — all pass
+
+1. **273⊂276 subset** — asserted in §1 with the exact residue enumeration; enforced again in D3's verification cell.
+2. **Seven-field geometry schema in D2/D5/D6** — complete set stated once in §3, distributed across the three dig rows (each field lands where it acts).
+3. **AC9 guards** — roundtrip idempotence with frozen budget *and* the negative-origin rebase, both in AC9; rebase also a unit test.
+4. **Instance-map negative** — recorded in §4 with its evidence, closing FRAMEWORK §2.6's registry question (mandate quote re-checked against FRAMEWORK.md directly this pass).
+5. **Payload-vocabulary extension** — both senses verified: the 11 legend rows typed into carriers-or-H-POI (F1), and the CDB field set extended into the D2/D5/D6 expected-payload vocabulary (F13).
+
+## Arithmetic receipts (recomputed this pass)
+
+- Per-class sums from n × bytes-each: albedo 1,377×262,272 = 361,148,544 ·
+  normal 1,377×2,097,280 = 2,887,954,560 · splat 1,377×16,777,344 =
+  23,102,402,688 · height 1,376×1,048,576 + 4,194,304 = 1,447,034,880 ·
+  `_s` 1,377×65,536 = 90,243,072 · index 2,531 → Σ = **27,888,786,275** ✓
+  (Δ=0 invariant self-consistent; DDS subtotal 26,351,505,792 = albedo+normal+splat ✓).
+- Measured triples close per tile: 512²×1 B = 262,144 · 2048²×0.5 B = 2,097,152 ·
+  2048²×4 B = 16,777,216 — and each file size = payload + exactly one 128-byte
+  classic header (262,272 / 2,097,280 / 16,777,344), independently corroborating
+  the mip-less, no-DX10-header reading behind F10.
+- F3 count closes: 6 json + 10 xml = 16 false positives; 16 + 1 real = 17 inside
+  the manifest's json 7 + xml 10.
+
+## Residual nits (non-blocking)
+
+- `place@props.fowRadius` lives in §3's seven-field set but is not named in any
+  individual dig row (its siblings are); the §3 vocabulary sentence covers it —
+  fine to leave until D5/D6 briefs are written.
+- §5's opening "all five marker kinds" reads against a now-16-row table; the
+  next sentence resolves the scope explicitly, so no edit required.
+
+## Verdict
+
+**APPROVE-FOR-BUILD.** Every finding from both review passes is folded,
+verifiably and without drift; the two MAJOR structural fixes (complete
+coordinate-sources table with gates, measured DDS triples) land exactly where
+CodeWriter/TestWriter would otherwise bake wrong assumptions into PT05. The
+measurement base reproduced digit-exact under independent recomputation. No
+deltas owed. Proceed to build per §6 acceptance criteria and §7 dig queue.

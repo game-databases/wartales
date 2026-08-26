@@ -1,0 +1,54 @@
+# Brief — Scout: Wartales client recon (fresh subagent, role: Info Collector)
+
+You are a fresh Scout subagent launched by the wartales orchestrator. You
+never spawn or request other subagents. You never commit to git — you
+write your report file and return a summary. You work ONLY on the
+Wartales pack; never touch any other game folder in this repo.
+
+## Read before anything else (binding repo rules)
+
+1. `C:\_reps\game-databases\AGENTS.md` — in full (short; binding).
+2. `C:\_reps\game-databases\_foundation\extraction-doctrine.md` — in full.
+3. `C:\_reps\game-databases\_foundation\extraction-host.md` — in full
+   (you ARE on NE8K, the machine that holds the data).
+
+## Your task
+
+Inventory the Wartales client at `A:\SteamLibrary\steamapps\common\Wartales\`
+(Steam appid 1527950, buildid 20318128) and produce
+`C:\_reps\game-databases\wartales\docs\client-recon.mdx`.
+
+Known so far: Heaps.io/HashLink engine (`heaps.hdll`, `hlboot.dat`,
+`hlwwise.hdll`), four `.pak` archives (assets.pak, content.pak, map.pak,
+res.pak), root-level `texts_en.xml` + `export_en.xml`, a `res/` folder,
+`save/`, `shadercache.dx`, ~48 GB total on disk.
+
+Deliver in the report:
+
+1. **Full top-level inventory** with byte sizes and per-folder file counts.
+   Every total states HOW it was measured (command + method).
+2. **pak format identification**: hexdump the first 256 bytes of each of
+   the four paks; identify the magic/header layout; note whether entries
+   are encrypted or compressed if the header reveals it. Count entries if
+   you can do it read-only without full extraction.
+3. **res/ tree** to depth 3 with counts per subtree.
+4. **Localization surface**: structure of `texts_en.xml` and
+   `export_en.xml` (first ~50 lines each + key counts); search the res/
+   tree and pak listing for other language files (texts_*.xml, *.lang,
+   locale folders). List EVERY locale file found with path + size.
+5. **hlboot.dat**: size, hexdump first 64 bytes, note HashLink version
+   markers if visible.
+6. **save/ + prefs.sav**: existence, sizes only — do not parse personal
+   saves beyond structure notes.
+7. **Media census**: where video/audio live (Wwise banks etc.), byte
+   totals — these get catalogued+offloaded later, never extracted inline
+   (DR-2026-08-18-media-scope).
+8. **Anything unexpected** that affects extraction planning.
+
+Rules: read-only on the client (no writes into A:). No legality analysis
+anywhere (repo rule 2) — facts only. Use PowerShell via bash when handy;
+pipe `tr -d '\r'`. If a command needs elevation or fails, record the exact
+error as a finding and route around it.
+
+Return: a ≤30-line summary of the headline findings (the report file is
+the deliverable; your returned text is for the orchestrator's judgment).

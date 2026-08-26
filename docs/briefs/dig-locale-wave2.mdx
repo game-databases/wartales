@@ -1,0 +1,43 @@
+# Brief — Data dig 14: locale overlays wave-2 kinds + UI strings (R9, folds R5)
+
+Fresh data-layer dig agent. Never spawn subagents; never commit; Wartales
+pack only (`C:\_reps\game-databases\wartales`).
+
+Read first: repo-root AGENTS.md; `_foundation/extraction-doctrine.md`;
+`_foundation/localization-architecture.md`; `wartales/spec.md` locales
+block; `wartales/docs/locale-key-convention.mdx`;
+`wartales/docs/data-dig-log.mdx` locale-bridge dig entry;
+`pipeline/tools/locale_bridge_dig.py` (extend, don't rewrite);
+`extracted/relinks/locale_availability.jsonl`; PROOF.md R9 row.
+
+## Orchestrator ruling you implement (R5, decided 2026-08-26)
+
+fr export vintage anomaly resolution: rows sourced from `export_fr.xml`
+(bare `<cdb>` root, no version/revision/date attrs) are stamped
+`"stampedBy": "buildid-fallback"` with the pack buildid 20318128 in
+availability/meta layers — never invented timestamps. Record the rule in
+the dig log entry.
+
+## Task
+
+1. Extend `locale_bridge_dig.py` kind set from item/skill/class to ALL
+   CDB kinds with text leaves (wave-1 + wave-2 + the four HBSON-decoded
+   kinds place/group/element/levelProps where export sheets exist).
+   Same conventions: structured textKey refs, preserve identifiers,
+   filler-class cells counted (expect zero among official locales).
+2. Regenerate `extracted/relinks/locale_availability.jsonl` covering
+   every emitted kind × entity (was 3,779 rows over 3 kinds).
+3. UI-string layer: parse master `texts.xml` + `texts_<l>.xml` ×9 into
+   `extracted/locales/ui/<locale>.json` keyed by group/id convention —
+   this feeds the site-chrome i18n namespace SEPARATELY from game
+   content (localization-architecture §4); record group inventory +
+   coverage counts.
+4. Apply the R5 stamping rule above to fr-sourced rows.
+5. Proofs: raw-span match counts per kind × locale; drift-absent lists
+   reconciled exactly; dual-parser structure spot-check ≥2 kinds.
+6. Append Dig 14 to docs/data-dig-log.mdx (incl. the R5 rule); update
+   PROOF.md R9 + R5 rows with measured facts.
+
+Constraints: Python `C:\Python314\python.exe` stdlib only; do not touch
+canonical `extracted/data/*.jsonl`, site/, run_all.*, or the four stage
+tools (a parallel agent owns the relink layer).

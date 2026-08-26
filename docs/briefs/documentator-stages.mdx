@@ -1,0 +1,50 @@
+# Brief — Documentator: spec for run_all stages 4–6 (datasets, relink, emit)
+
+Fresh Documentator agent (PrepareTask pass). **Never spawn subagents**;
+never commit; Wartales pack only. You write ONE spec file — no code.
+
+Read first, in full: repo-root `AGENTS.md`; `_foundation/extraction-doctrine.md`
+(all three principles + relink bare minimum); `wartales/EXTRACTION-LOG.md`;
+`wartales/run_all.ps1` + `run_all.sh` (stage pattern; the `map` stage is
+your wiring template); `wartales/docs/data-dig-log.mdx` Digs 1–3 (emit
+semantics, verifier method); `wartales/pipeline/tools/cdb_emit.py` +
+`cdb_verify.py` (capabilities + CLI); draft outputs in
+`extracted/data/_draft/` (40 kinds) and `extracted/relinks/_draft/`
+(51 files / 19,130 edges); `extracted/relinks/locale_availability.jsonl`;
+`wartales/extracted/PROOF.md` §2 derived-layer reconciliation;
+`_foundation/decision-register.md` [DR-2026-08-17-relink].
+
+## Task
+
+Write `docs/spec-stages-datasets.mdx` per FRAMEWORK §4 template:
+
+1. **Stage 4 `datasets`**: promote `_draft/*.jsonl` to canonical
+   `extracted/data/<kind>.jsonl` via cdb_emit.py — exact commands,
+   idempotency contract, `_meta` line schema (source sheet, buildid,
+   row count), verifier gate (cdb_verify.py must PASS before canonical
+   write), deferred-kinds honesty list carried forward.
+2. **Stage 5 `relink`**: promote seeds to canonical
+   `extracted/relinks/*.jsonl` + emit `extracted/RELATIONS.md`
+   (catalog format: pair → join key, cardinality, mechanism hard/logic/
+   inferred, status modeled/partial/missing — DR bar 1 shape). The
+   ordered-pair matrix UPGRADE itself is a later dig — this stage ships
+   the catalog scaffolding that marks every not-yet-modeled pair
+   honestly. Dangling/unverifiable edge policy stated.
+3. **Stage 6 `emit`**: final validation pass — row counts reconcile to
+   census totals (11,473), locale availability regenerates, a single
+   machine-readable `extracted/validation-report.json` lands. Keep it
+   honest: nothing to emit beyond validation until datasets/relink run.
+4. **run_all wiring** for all three stages following the map-stage
+   pattern exactly (BUILT gating, `| Out-Host` stdout fix, --dry-run,
+   exit codes); EXTRACTION-LOG §3 table + defaults block edit list.
+5. **Tests**: pytest suite conventions from
+   `pipeline/tests/test_map_tiles.py` (frozen expectations from measured
+   distributions, never invented); enumerate test cases per stage.
+6. **Acceptance criteria** — each verifiable by command exit code or
+   file assertion; no adjectives.
+7. **Exact files-touched list**, including EXTRACTION-LOG edits.
+
+Acceptance criteria must hold WITHOUT the HBSON decode landing (that dig
+runs parallel; its outputs join later as wave-3 kinds).
+
+Deliverable: `wartales/docs/spec-stages-datasets.mdx`. Nothing else.

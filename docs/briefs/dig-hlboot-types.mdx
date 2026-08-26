@@ -1,0 +1,46 @@
+# Brief — Data dig: complete the HashLink types walk (fresh subagent)
+
+Fresh data-layer dig agent (extraction doctrine governs this work, not
+the site pipeline). Never spawn subagents, never commit. Wartales pack
+only. Read root AGENTS.md + `_foundation/extraction-doctrine.md` first.
+
+## State (verify, don't trust)
+
+- `wartales/pipeline/tools/hlboot_probe.py` — seeded by the toolchain
+  scout: strict-parses the HLB v4 header of
+  `A:\SteamLibrary\steamapps\common\Wartales\hlboot.dat`, decodes ALL
+  75,321 strings (NUL-validated), counts 52,114 functions / 46,891
+  types / 34,258 globals / 569 natives / 27,941 constants; types walk
+  stops at type #4,220 needing per-kind payload semantics.
+- `wartales/docs/toolchain-validation.mdx` §2 — verdicts + evidence.
+- `wartales/pipeline/tools/_refs/hl_code.c|h` — canonical HashLink
+  reader semantics. Wartales ships a FORK: type-kinds ≥19 exist that no
+  public HL release table names.
+
+## Task
+
+1. Extend `hlboot_probe.py`: complete the types walk over ALL 46,891
+   types. For the novel kinds (≥19 and any other fork deviations):
+   infer payload layouts from the canonical reader's structure
+   (name/index/offset patterns), VERIFY each inference by round-trip
+   (the walk must land exactly on the function table start with zero
+   slack — that is your correctness proof, same standard as the pak
+   parser's Σsizes==span).
+2. Emit under `wartales/extracted/logic/hl-structure/`:
+   `types.jsonl` (kind, name, size, payload summary per type),
+   `functions.jsonl` (index, type-refs, debug source path where the
+   ~1,610 debug paths resolve them), `globals.jsonl`, `natives.jsonl`,
+   `constants.jsonl`, `strings.txt` (registry with indices), and
+   `WALK-PROOF.mdx` documenting the zero-slack proof per section.
+3. Write `wartales/docs/decompile-dig-1.mdx`: what the fork adds
+   (novel kinds table with inferred semantics + evidence), class-name
+   census (game packages/modules visible in type names — e.g.
+   expected Shiro game classes), next-step plan to a full decompiler
+   (codegen from the completed type/function tables).
+4. Update nothing under A: (read-only). Keep every script in
+   `wartales/pipeline/`. If a step fails, record the exact failure and
+   route around it — "we don't know what to do" is forbidden
+   (foundation-guide §13).
+
+Return: ≤15-line summary — proof status, novel-kind count, census
+highlights, next-step recommendation.

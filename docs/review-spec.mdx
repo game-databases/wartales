@@ -1,0 +1,132 @@
+# Review — wartales/spec.md (fresh Reviewer, PrepareTask pass)
+
+2026-08-24 · Reviewed against FRAMEWORK §2+§4 (template v2.2),
+localization-architecture, live-monitoring §4/D1, decision-register
+(DR-2026-08-24-wartales-roster, locale-urls, relink, media-scope), and the
+named sources: recon, COMP, TOOL, PLAN, INDEX. ~30 claims traced; primary
+TSVs in `output/_recon-scratch/` re-derived independently (REG trees,
+prefab census, terrain bins, script inventory, map composition, fbx/png/dds
+counts). Template coverage: every §4 field present or justified-absent —
+identity/live match template v2.2 shapes exactly (surfaces subset, coverage
+labels, publish paths); axes, relations, economy, tools, automation,
+satellite, legal, content-policy-holes, missing-data, status all land.
+Rule-8 discipline holds: every open question is a dataminer P0/P1, none
+deferred to frontend. Findings below; 3 major, 8 minor.
+
+---
+
+## Findings
+
+**F1 — MAJOR · citation overclaim: locales not "extracted & adler-MATCHed".**
+`spec.md:53`, `locales.source-per-locale.all` comment: "res.pak:/lang/* ships
+all 9 in-client ✅ extracted & adler-MATCHed (TOOL §1)". TOOL §1's extraction
+proofs are exactly four files (sealords PNG, Bag PNG→DDS, lightProbe envs.dds,
+albedo dds) plus `data.cdb`; `_verify/` contains no lang artifact and
+`run-log.txt` mentions none. Presence ×17 files and sizes are TSV/recon-solid,
+but the claimed verification event did not happen as cited.
+**Fix:** either run the extract+adler32 pass over the 17 lang entries with
+wtpak.py before freeze (minutes) and keep the ✅, or restate honestly:
+"present ×17 in TSV, sizes cross-checked recon §4; byte-extract pending P1".
+
+**F2 — MAJOR · .fbx counts contradicted by the primary TSVs.**
+`spec.md:359-360` (content-policy-holes): "6,946 .fbx=HMD in assets.pak alone
+(TOOL §1), 7,204 / 2.13 GB pack-wide (recon §7)". The complete entry TSVs give
+assets.pak **5,888** .fbx (1.92 GB) + content.pak **217** (31.6 MB) =
+**6,105 ≈ 1.96 GB pack-wide**. The two named sources disagree with each other
+and with the entry listings this same spec treats as ground truth; the
+MEDIA-CATALOGUE row inherits whatever number freezes.
+**Fix:** re-derive from scratch TSVs (cite them directly), correct the line,
+and note the discrepancy back to TOOL §1 / recon §7 owners so the source docs
+get fixed too.
+
+**F3 — MAJOR · localization filler policy undeclared (canon gap).**
+`spec.md:42-56` locales block has no filler-policy declaration.
+localization-architecture §5.5 requires each pack to declare its policy
+(omit the page vs localized "not yet translated" filler) in its spec; §5.2
+also wants game-side codes ↔ BCP-47 mapping recorded, §5.4 makes
+`extracted/relinks/locale_availability.jsonl` the driver artifact. Near-moot
+for the 9 shipped locales today, load-bearing the moment the ja
+authored-translation lane or a future DLC locale ships.
+**Fix:** add three lines under `source-per-locale`: filler policy chosen
+(either is defensible when coverage is total), client-code mapping
+(`zh` client → zh-Hans store naming), and the availability-jsonl obligation.
+
+**F4 — MINOR · internal contradiction on map.pak JSONs.**
+`spec.md:171` says map.pak is "(4,131 .dds / 2,754 .raw / **1 json**, scratch)"
+while `spec.md:273-274` says overlays ride HBSON because "NOT map.pak JSONs
+(**none exist** — scratch)". The TSV shows exactly one:
+`/assets/worldmap/data/textures.json` (2,531 B — a texture index, not region
+shapes). **Fix:** harmonize on "no region-shape JSONs; sole map.pak .json is
+`data/textures.json` (texture index)" in both places.
+
+**F5 — MINOR · unit slip in the audio hole.**
+`spec.md:361`: "Wwise **2.67 GiB** loose under res/" — 2,672,143,299 B is
+2.67 GB but **2.49 GiB** (recon §7 states 2.49 GiB itself). Sibling clause
+"EN(US) voice … 1.49 GB" is decimal-correct, so the block mixes conventions.
+**Fix:** "2.49 GiB (2.67 GB)".
+
+**F6 — MINOR · `readiness: verified` on kinds whose sheet is still unpinned.**
+`spec.md:120-123` (class, "+unit schema TBD-P1"), `:211-216` (animal-mount,
+"CDB (sheet TBD-P1)"), `:191-196` (npc-vendor, "schema TBD-P1") carry
+`readiness: verified` while admitting the producing sheet is unidentified —
+there is nothing yet that a read-verdict could attach to (contrast item/skill,
+where the EXP sheet mirror pins them).
+**Fix:** those roles drop to `readiness: on-disk` until the sheet is pinned;
+keep the compound readiness-notes verbatim.
+
+**F7 — MINOR · poi-marker glob silently drops 12 prefabs; M4 layer count off-by-one.**
+The REG "Secrets 115" bucket is two sibling dirs — `Secrets/` **103** +
+`Secret/` **12** (= 453 POI + 156 Towns + 115 = the stated 724, all verified).
+`spec.md:180` container "/POI/*.prefab + /Secrets/*.prefab" globs only one of
+them; and `spec.md:246-247` (M4) claims "≥12 typed layers" while enumerating
+11 (Bandit Reinforcements from the Usikava legend is the missing twelfth).
+**Fix:** glob `/Secret*/**/*.prefab (115 = 103+12)`; add Bandit Reinforcements
+to M4 or soften to "11+".
+
+**F8 — MINOR · `tier:` value outside the template enum.**
+`spec.md:18`: `tier: provisional-umbrella` — FRAMEWORK §4 enum is A|B|C|D
+(rollout-plan §2). The DR-pinned meaning is right; the value just isn't in the
+vocabulary any parser will switch on. **Fix:** keep the semantics, mark the
+enum explicitly deferred: e.g. `tier: TBD (owner D3 call; provisional umbrella
+per [DR-2026-08-24-wartales-roster] ¶2-3)`.
+
+**F9 — MINOR · `coordinate-transform: TBD-P0` is unbounded.**
+`spec.md:278` — honest unknown (HBSON undecoded), but the template contract is
+simple | rect-per-map, and maps machinery needs the worst case to start
+against. **Fix:** append the bound: "worst case rect-per-map; height/raw x-y
+pairs may collapse it to simple — resolved by first map dig".
+
+**F10 — MINOR · ship order duplicated from PLAN (drift risk).**
+`spec.md:325-327` restates PLAN §4's wave order and exclusions inside the
+tools comment. Two copies of an ordering guarantee eventual divergence on the
+first re-plan ("Re-run this plan on every major patch"). This is the only
+over-engineering-shaped issue found — otherwise density stays inside the
+blessed idioms. **Fix:** keep scores + flagship flag, replace the wave
+restatement with "ship order: PLAN §4".
+
+**F11 — MINOR · PAKTool version ambiguity inherited uncritically.**
+`spec.md:348` legal.tooling: "cross-check PAKTool v0.2/N3rdL0rd" — TOOL §1 is
+itself muddled ("PakTool v0.2 … tag `paktool-v0.3` shipped as
+`paktool-0.0.3-win-x64.zip`"). A TestWriter reproducing the cross-check needs
+the exact artifact. **Fix:** pin what was actually executed (zip name or
+binary hash) in legal.tooling.
+
+---
+
+Traced clean (sample of ~30): buildid 20318128 / TargetBuildID 21238928; CCU
+1,752 keyless 2026-08-24; 35,533 reviews; 600k copies; 8-DLC appid roster =
+INDEX provenance exactly; 9-locale list = res.pak lang pairs ×17 files =
+store list; CDB 6,088,918 B / 386 sheets / icon 801 / notify 482; EXP 35
+sheets / 9,912 leaves; prefab census (battle 6,656, backgrounds 2,697, fx
+1,734, places 1,454, camp 820, buildings 279, activity 45); terrain bins
+5,880; REG 11 trees / 724 prefabs / POI 453 / Towns 156; UIA 813 + style.css
+779,142; chars 6,128; hlboot 16,102,040; formulas.hx 687 B; map.pak 6,886
+exact / 1,612 entries >4 GiB sampled / 4,131 dds / 2,754 raw incl. the
+`_s` pyramid; tool scores 18…13 and wave order = PLAN §3/§4; guide visit
+counts, price caps ≈35%/≈25%, difficulty-mode names; DR roster entry
+(provisional tier, question-queue Q1, localhost-first, owner names builders);
+live block = live-monitoring §4.1/D1 field-for-field.
+
+**Verdict: NEEDS-REVISION** — one editing pass, no re-scouting: F1/F2 are
+integrity repairs (run the cheap adler pass or reword; re-derive fbx from
+TSVs), F3 is a three-line canon declaration. Everything else survives.

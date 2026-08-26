@@ -1,0 +1,395 @@
+# Wartales — harvest-stage spec (piece F3)
+
+Status: DRAFT for CodeWriter+TestWriter · authored 2026-08-24 by the
+Documentator from brief
+[`docs/briefs/documentator-harvest-spec.mdx`](./briefs/documentator-harvest-spec.mdx).
+Inputs read in full: root `AGENTS.md`, `_foundation/extraction-doctrine.md`,
+`_foundation/extraction-host.md`, `_foundation/decision-register.md`,
+[`client-recon.mdx`](./client-recon.mdx),
+[`toolchain-validation.mdx`](./toolchain-validation.mdx), pack `spec.md`,
+`output/_recon-scratch/*-pak-entries.tsv` (samples + flag distributions),
+`pipeline/tools/wtpak.py`, `pipeline/tools/wtpak_verify.py`,
+`pipeline/tools/_verify/run-log.txt`.
+
+Shorthands: **recon** = client-recon.mdx · **R2** = toolchain-validation.mdx ·
+**scratch** = `output/_recon-scratch/` (local-only, never committed).
+
+## 0. Scope in one line
+
+Build `pipeline/harvest.py`: extract all four Shiro `PAK\0` archives
+byte-identically into `extracted/harvest/` with per-entry manifests that
+reconcile exactly against the recon TSVs (path, size, adler) — the raw
+layer every later stage (decompile, datasets, relink) consumes. Nothing
+interprets payloads here.
+
+## 1. Authority chain
+
+- The **byte format authority** is R2 §1, which supersedes recon §2 where
+  they differ (see [§2.1](#2-1-corrections-vs-recon-2)). R2 parsed all four
+  paks to zero-slack trees and reconciled path+size+adler32 against the
+  40,201-row scratch TSVs with **0 mismatches**, plus extraction proofs past
+  the 4 GiB boundary.
+- The **reader implementation seed** is `pipeline/tools/wtpak.py`
+  (`Reader` class) — validated; build on it, don't fork its semantics.
+- The **ground truth** this stage must reproduce is scratch
+  `{assets,content,map,res}-pak-entries.tsv`: headerless 5-column TSV
+  `path<TAB>flag<TAB>offset<TAB>size<TAB>adler8hex` (the brief says "header
+  line" — there is none; row 1 is data). TSVs reconcile on (path, size,
+  adler) across all 40,201 rows — **never offset equality**; flag-0
+  offsets may additionally be compared (they tile); flag-2 offset columns
+  are unusable — synthetic pre-R2 reconstructions, provably not
+  payload-derived (uniform 2²⁸ steps on map.pak; max offset+size 4.28e9 <
+  27.9e9 span). TSV rows end CRLF — strip `\r` and compare fields
+  numerically, never as raw bytes.
+- Doctrine bindings: principle zero (extract everything reachable),
+  media carve-out [DR-2026-08-18-media-scope], PROOF-measured-totals
+  (principle two), single-entrypoint pipeline [DR-2026-08-18-pipeline].
+
+## 2. Format contract
+
+### 2.1 Corrections vs recon §2
+
+Implement R2's resolution. Observable behavior (bytes out, counts, hashes)
+is identical under both models; internal addressing is not.
+
+| Recon §2 said | Resolved by R2 (implement this) |
+|---|---|
+| Two data regions: flag-0 raw region + flag-2 "sequential region"; flag-2 fields `A`,`B` unresolved | One contiguous data region starting at `header_size`. Flag bit `2` means the entry's `dataPosition` is serialized as IEEE-754 **f64** instead of i32 (needed above the 32-bit mark). `A`,`B` were the two halves of that double. Random access works everywhere — 1,612 map.pak entries sit above 2³² and sampled ones adler-match |
+| Header u32@0x08 unknown (seed/checksum) | `dataSize` = Σ payload bytes stored reduced mod 2³² as i32; interpret unsigned; record `stored − Σsizes` as the wrap delta (only content.pak stores negative, −1,223,561,650; observed deltas exactly −2³³ and −3×2³³). Never used for accounting; recorded in summary.json as provenance only |
+| Magic `50 41 4B 00` ("PAK\0") | Bytes 0–2 = magic `PAK`; **byte 3 is the version byte** consumed by the canonical Heaps reader. Its value is not pinned in any report — read it, record it in summary.json, never hardcode it |
+| Per-entry hash "crc-like" | **Adler-32** (zlib) of the raw payload, stored u32. `zlib.adler32(data) & 0xFFFFFFFF` reproduces every TSV hash |
+
+Explanatory note (not needed by code): the contiguous model is positively
+proven by a live zero-slack walk of all four paks — one contiguous data
+region whose positions tile `[0, Σsizes)` gap-free end-to-end across
+mixed flags, the first f64-encoded entry sitting just past 2³¹. Grounded
+on the live walk, not the TSV column: the offset column predates the R2
+resolution and is synthetic reconstruction, not bytes.
+
+### 2.2 Byte layout (implementation normative)
+
+```
+Header (12 B):
+  u8[3] magic "PAK"          # 0x50 0x41 0x4B
+  u8    version              # record, don't hardcode (all four paks: 0)
+  i32   header_size          # == recon "boundary": tree ends here, data begins
+  i32   dataSize             # Σ payload bytes, i32-wrapped (provenance only)
+Tree/index blob: bytes [12 .. header_size-4), consumed EXACTLY (zero slack)
+Tree trailer: u32 0x41544144 = "DATA" at [header_size-4 .. header_size)
+Tree (DFS pre-order, inside the index blob):
+  node := u8 nameLen, u8[nameLen] name (UTF-8, nameLen counts BYTES), u8 flags
+  flags&1 (dir):      u32 childCount, then childCount child nodes
+  flags&1==0 (file):  dataPosition := i32 if flags&2==0 else f64
+                      u32 size, u32 adler32
+Payload: file k occupies [dataPosition_k + header_size, … + size_k)
+```
+
+Hard invariants (assert, fail loudly): index slack == 0; `"DATA"` marker
+present; per-pak Σsizes == fileSize − header_size **delta 0**; positions
+tile `[0, Σsizes)` with no gap and no overlap; every entry's recomputed
+adler equals its stored adler. The delta-0 span check also settles the one
+unresolved measurement conflict below ([§9](#9-contract-holes-found)).
+
+### 2.3 Ground-truth numbers (must reconcile exactly)
+
+From R2 §1 (0 mismatches vs scratch TSVs on every column):
+
+| pak | files (flag0+flag2) | dirs | Σ entry bytes (B) |
+|---|---|---|---:|
+| assets.pak | 17,131 (4,167+12,964) | 724 | 9,216,734,007 |
+| content.pak | 15,248 (4,530+10,718) | 1,225 | 7,366,372,942 |
+| map.pak | 6,886 (4,250+2,636) | 8 | 27,888,786,275 |
+| res.pak | 936 (936+0) | 127 | 767,068,478 |
+
+Expected map.pak size on disk: **27,889,015,798 B** at pinned buildid
+20318128 (live-measured 2026-08-24; = Σsizes 27,888,786,275 + header_size
+229,523 exactly; R2's 27,890,157,981 is the transcription slip, residual
++1,142,183). The §2.2 delta-0 span assert stays as the patch-drift
+tripwire.
+
+Total payload **45,238,961,702 B (~42.1 GiB)** across 40,201 files /
+2,084 dirs. Client: `A:\SteamLibrary\steamapps\common\Wartales\`,
+appid 1527950, pinned buildid **20318128** (queued TargetBuildID 21238928
+may swap the install mid-work — record sizes+mtime per run, see [§5](#5-environment-and-performance)).
+
+## 3. Stage contract — `pipeline/harvest.py`
+
+New module at pack-relative `wartales/pipeline/harvest.py`. Python **3.14**
+(NE8K `C:\Python314`), **stdlib only**: `struct, zlib, pathlib, argparse,
+json, sys, os, time, hashlib`. Imports `Reader` from
+`pipeline/tools/wtpak.py` for tree parsing (single source of reader truth);
+implements its own **chunked** payload copy (wtpak's `read_file_bytes`
+buffers whole entries — do not use it here).
+
+### 3.1 CLI
+
+```
+python pipeline/harvest.py --pak <path> [--pak <path> ...]
+                           [--out <dir>] [--manifest-only] [--list]
+                           [--sha256] [--fingerprint] [--strict]
+                           [--buildid <id>]
+```
+
+- `--pak` — path to a `.pak`; repeatable up to four times (one occurrence =
+  the brief's singular form, unchanged behavior).
+- `--out` — output root; default `<packroot>/extracted/harvest`.
+- `--manifest-only` — walk tree, write manifest + summary, extract nothing.
+- `--list` — print `path\tflag\toffset\tsize\thash` per file entry (stdout,
+  columns in the scratch-TSV order), write nothing anywhere.
+- `--sha256` — add a `sha256` column (hex) to manifest lines; default off to
+  protect the wall-clock budget.
+- `--fingerprint` — sha256 of each whole pak file into summary.json
+  provenance (adds minutes; off by default).
+- `--strict` — default on; `--no-strict` downgrades invariant violations
+  (§2.2) to warnings. Integrity failures still exit non-zero.
+- `--buildid` — free string stamped into summary.json provenance (e.g.
+  `20318128`) so EXTRACTION-LOG.md can cite machine-readable runs.
+
+Exit codes: `0` success · `2` usage/preflight · `3` format/integrity
+failure (bad magic, slack, DATA marker, adler mismatch, tiling violation) ·
+`4` output collision (duplicate/case-clashing path).
+
+### 3.2 Filesystem outputs (per pak `X.pak`)
+
+1. **Payloads**: `<out>/X/<entry-path>` — entry path minus its leading
+   `/`, forward slashes preserved as directory separators, bytes
+   byte-identical to the pak region. Written via `<target>.part` +
+   `os.replace` (atomic on-volume) so an interrupted run leaves no partial
+   file behind and resume is safe.
+2. **Manifest**: `<out>/X.manifest.jsonl` — one JSON object per **file**
+   entry (dirs are not listed; they exist only in summary counts), lines in
+   DFS tree order, UTF-8, LF endings:
+
+```json
+{"path":"/assets/worldmap/data/normal/normal_x10_y14.dds","flag":2,"offset":2148002816,"size":2097280,"hash":"6ba8d81a","detect":"dds","media":false}
+```
+
+   - `path` — pak-root-relative **with** leading `/` (TSV-identical for
+     mechanical diffing).
+   - `flag` — `0` or `2` as stored.
+   - `offset` — `dataPosition` as stored, relative to `header_size`;
+     integer. f64 positions are asserted integral before casting.
+   - `size` — bytes.
+   - `hash` — stored Adler-32, lowercase 8 hex (== TSV column 5).
+   - `detect` — true-format token from [§4.3](#4-3-detect-vocabulary).
+   - `media` — true ⇒ catalogue-only row, nothing written ([§4.2](#4-2-media-carve-out-hooks)).
+   - `sha256` — only with `--sha256`.
+3. **Summary**: `<out>/X.summary.json` — one block per pak: source path;
+   measured file size + mtime (+ sha256 with `--fingerprint`); version
+   byte; header_size; rawDataSize field + wrap delta vs Σsizes; counts
+   {files, dirs, media, skipped_reuse, extracted}; Σ entry bytes; Σ bytes
+   written this run; detect census; wall seconds + MB/s; tool version +
+   `wtpak.Reader` lineage; buildid string; strict-mode flag. This file is
+   the measured-total artifact PROOF.md coverage reconciliation cites
+   (doctrine principle two).
+
+### 3.3 Idempotency and resume
+
+A run re-verifies every entry: recompute adler32 over the existing target
+file (streamed) and compare to the stored hash. Match ⇒ skip the write,
+still emit the full manifest row, count `skipped_reuse`. Mismatch or
+missing file ⇒ re-extract. Exemption: `media:true` rows
+([§4.2](#4-2-media-carve-out-hooks)) get no verify and no extract — the
+row is still emitted, counted separately as `media`; an absent payload is
+expected there, never a mismatch. Manifests and summaries are always
+regenerated in full from the tree walk (cheap). Consequence: interrupt at any point,
+re-run, and the run completes with only the unfinished entries written —
+and every entry in the final tree is adler-verified every run at zero
+extra cost (the bytes are already flowing through the hasher).
+
+## 4. Behavior rules
+
+### 4.1 Collisions
+
+Duplicate full paths (two entries resolving to one target) are a hard
+error naming both tree locations — never silently overwrite. On Windows
+targets also treat paths differing only by case as colliding (NTFS is
+case-insensitive); same rule, exit 4.
+
+### 4.2 Media carve-out hooks [DR-2026-08-18-media-scope]
+
+Entries named `.wem/.bnk/.wav/.ogg/.mp3/.flac` or `.bik/.bk2/.usm/.webm/
+.mp4/.avi/.ogv/.mov`, or whose detected magic is an audio/video container,
+are **catalogued not extracted**: manifest row with `"media": true`,
+correct size/offset/hash, no payload file. Expected count in these four
+paks: **zero** — all audio is loose under `res/audio` (2.49 GiB Wwise,
+separate offload stage, not this one) and video provably does not exist in
+the install (recon §7). The hook exists so a future patch cannot smuggle
+in-pack media past the carve-out. Loose-file offload and MEDIA-CATALOGUE.md
+assembly consume these rows later; both out of scope here.
+
+### 4.3 Detect vocabulary
+
+Read ≤16 bytes at the entry's absolute offset (free — the seek is cheap
+even for skipped entries) and classify by magic, never extension:
+
+| token | magic | known extent (R2 §1 census) |
+|---|---|---|
+| `dds` | `44 44 53 20` ("DDS ") | most `.png` in assets (7,769/8,447), all `.envs`, map tiles |
+| `png` | `89 50 4E 47` | genuine PNGs |
+| `jpeg` | `FF D8 FF` | `.jpg/.jpeg` |
+| `hmd` | `48 4D 44` ("HMD") | every `.fbx` (6,946 in assets) |
+| `hbson` | `48 42 53 4F 4E 00` ("HBSON\0") | `.prefab`, `.l3d` |
+| `tx` | `76 2F 31 01` | Heaps `.tx` atlases |
+| `json` / `xml` | `{` / `<` after ASCII whitespace | `data.cdb` is JSON text |
+| `zip`, `gzip` | `PK\x03\x04`, `\x1f\x8b` | if encountered |
+| `empty` | zero-length entry | allowed; write empty file |
+| `u:<8hex>` | anything else; `<8hex>` = first 4 payload bytes as hex | fallback, e.g. terrain float bins |
+
+Never rename, never rewrite — the packed name and extension are preserved
+verbatim; `detect` rides alongside. This mechanizes recon §8.3 ("extensions
+lie systematically"). Entries shorter than the peek window hash what
+exists; a peek past EOF during extract is a format failure — exit 3
+naming the entry.
+
+### 4.4 Preflight (before touching payloads)
+
+1. Parse the tree; enforce §2.2 invariants (cheap, index-only).
+2. Measure free space on the output volume; require ≥ Σpayload×1.05 for
+   the paks in scope; else exit 2 with a message naming `--out` — NE8K
+   keeps tens-of-GB writes on `D:` (≈644 GiB free) rather than `C:`
+   (extraction-host drive map). Default `extracted/harvest/` stays valid
+   when the volume has room.
+3. Record per-pak measured size + mtime into summary.json (patch-drift
+   tripwire: buildid 20318128 is pinned, a queued 21238928 may land
+   mid-run).
+4. Long-path policy: write every payload target through a `\\?\`-prefixed
+   path, or preflight-verify `LongPathsEnabled=1` and exit 2 otherwise —
+   deep prefab paths plus 255-byte names under `<out>/<pak>/…` cross
+   MAX_PATH.
+
+## 5. Environment and performance
+
+Runs on NE8K (data host) against `A:\SteamLibrary\steamapps\common\
+Wartales\*.pak`; never copies paks across machines (extraction-host).
+Sequential, single-threaded, 4 MiB chunks, running `zlib.adler32(data,
+acc)`; never buffer a whole entry (largest observed ≈33 MB, but no
+assumption). Budget: honest expectation ≈10–25 min across 30–75 MB/s
+(45.2 GB through disk + hasher); print per-pak throughput in summary.json.
+The **30-minute cap** remains a fail-loud tripwire wired to the defined
+stop-and-report contingency: if a measured preflight estimate projects
+over budget, stop and report —
+do not silently parallelize; parallelism (`concurrent.futures` over
+entries, order-independent part-files, sorted manifest after join) is a
+contingency requiring a new spec note, not an improvisation.
+
+Repo hygiene (AGENTS.md rule 5 — game data never enters git): create
+`wartales/.gitignore` covering `extracted/` and `output/_recon-scratch/`
+(neither exists today) in the same change.
+
+## 6. Acceptance criteria
+
+All verifiable on NE8K; numbers from [§2.3](#2-3-ground-truth-numbers-must-reconcile-exactly).
+Each run writes the named acceptance-report artifact
+**`extracted/harvest-report.json`** with required keys: per-pak RNG
+seeds, sample paths, adler results, wall seconds, throughput.
+
+1. **Counts** — manifest line count per pak equals 17,131 / 15,248 /
+   6,886 / 936; summary dir counts equal 724 / 1,225 / 8 / 127.
+2. **Byte totals** — Σ sizes of extracted files == Σ TSV sizes per pak
+   (9,216,734,007 / 7,366,372,942 / 27,888,786,275 / 767,068,478); the
+   built-in delta-0 span check passed on all four.
+3. **Hashes** — seeded-RNG sample of 10 entries per pak (seed recorded in
+   the report for reproducibility): recomputed adler32 of the extracted
+   file == TSV col 5 == manifest `hash`. Additionally the every-entry
+   adler pass (§3.3) reports 0 mismatches.
+4. **Reconciliation harness** — `pipeline/tools/wtpak_verify.py` re-run
+   after harvest reports `mismatches=0 wtpak-only=0` per pak (existing
+   artifact; extend only to also spot-check harvested files on disk).
+   Secondary independent verifier: PAKTool `expand` of res.pak remains
+   byte-identical (sha256) to harvested output (R2 §1 cross-check).
+5. **DDS sanity (criterion d)** — harvested
+   `map.pak→assets/worldmap/data/albedo/albedo_x-1_y11.dds` starts
+   `44 44 53 20` with plausible header (dwSize ≥ 124); magic check is
+   sufficient at this stage (viewer opening deferred to the texture stage).
+6. **Wall clock** — full four-pak run completes < 30 min on NE8K,
+   throughput logged; kill mid-run, re-run, completion without manual
+   cleanup and with correct totals (resumability proof).
+7. **Idempotency proof** — immediate second run: `extracted=0`,
+   `skipped_reuse=<files>` for every pak, wall clock dominated by hashing.
+
+## 7. Test spec for TestWriter
+
+Unit tests build **synthetic mini-paks** with a writer helper mirroring
+§2.2 byte-for-byte (header, DFS tree, DATA marker, tiled payload); a unit
+assertion requires every written mini-pak to round-trip through
+`pipeline/tools/wtpak.py`'s `Reader` (`pipeline/tools/` is a non-package —
+no `__init__.py`; stub `sys.path` once at the top of the suite). Cases:
+
+1. Flat pak, three flag-0 files, offsets tiling from 0.
+2. Flag-0/flag-2 mix — including a flag-2 entry whose position is small
+   (encoding choice must not imply magnitude semantics).
+3. An f64-position entry above 2³¹ with a deliberately wrapped negative
+   `dataSize` field — reader tolerates, summary records the wrap delta.
+4. Unicode names: CJK, emoji, accented Latin; `nameLen` asserted to be the
+   UTF-8 **byte** length; a 255-byte multibyte name at the u8 ceiling.
+5. Empty dir (`childCount 0`), deeply nested chains, sibling dirs — dirs
+   produce no manifest lines, only counted in summary.
+6. Duplicate full path twice → exit 4, both locations named, nothing
+   written; case-only collision likewise on a mocked NTFS target.
+7. Zero-byte file → `empty` detect, empty file on disk.
+8. Corrupt fixtures, each exiting 3 with the offending entry named: bad
+   magic, truncated index (slack ≠ 0), missing DATA marker, tampered
+   payload byte (adler mismatch detected on re-run of a previously-good
+   extraction).
+9. Idempotency: second run skips everything; mutate one harvested byte →
+   exactly that entry re-extracts.
+10. `--list` prints TSV-compatible columns and leaves the output tree
+    byte-for-byte absent; `--manifest-only` produces complete manifests
+    and zero payload files.
+11. Media hook: synthetic `.wem`-named entry yields a `media:true`
+    catalogue-only row and no file; a second run re-emits the identical
+    row — no verify, no extract attempt, `media` counted once per run.
+
+12. Long-path target: an entry whose extracted path exceeds 260 chars
+    writes successfully under the §4.4 long-path policy (or exits 2 when
+    that policy's preflight fails) — never a silent truncate or raw
+    OSError.
+13. An f64-position entry above 2³² (real corpus: 1,612 such map.pak
+    entries) keeps its position exact through parse and manifest
+    emission.
+14. Implausible `childCount` fixture → loud failure naming the node,
+    never an unbounded walk — the reader loop over childCount is
+    unguarded.
+
+Integration smoke (marked, needs the real client): res.pak end-to-end —
+smallest pak (767 MB, 936 entries): counts, Σbytes 767,068,478,
+10-sample adler, `content/systemic/maps/sealords/sealordMap10Placeholder.png`
+byte-identical to `_verify/extract-res.pak-sealordMap10Placeholder.png`,
+`data.cdb` adler `d6bc3d60` MATCH. Unit suite never reads `A:`.
+
+## 8. Out of scope
+
+Decompile (`hlboot.dat`, Plan-B bytecode walk), CDB/HBSON/HMD/hscript/
+terrain-bin decoding, texture conversion (webp/texconv), dataset
+derivation, relink, loose `res/audio` offload stage, MEDIA-CATALOGUE.md
+assembly (consumes these manifests), patch-diffing, PROOF.md authorship
+(harvest emits the numbers; the orchestrator assembles). Later stages own
+all interpretation of payload contents.
+
+## 9. Contract holes found
+
+1. **map.pak file-size conflict**: recon §1 records 27,889,015,798 B; R2
+   §1 records 27,890,157,981 B (Δ 1,142,183). Exactly one is a
+   transcription slip — every other figure agrees across both reports and
+   each report is internally consistent with its own boundary/span math.
+   Resolution: harvest measures and asserts Σsizes == fileSize −
+   header_size (delta 0) at preflight; whatever passes is authoritative
+   and gets recorded. No code may hardcode a pak file size.
+2. **Flag-2 model inverted** (§2.1): the brief's and recon §2's
+   "sequential region" reading is superseded — bit 2 selects f64
+   position encoding; there is one data region and random access is
+   proven above 2³². Missing-data items "flag-2 fields (A,B)" and
+   "u32@0x08 unresolved" in `spec.md` are resolved by this spec and can
+   leave the missing-data list at next edit.
+3. **TSVs are headerless** despite the brief's "header line" — TestWriter's
+   reconciliation fixtures must not skip row 1.
+4. **Version byte value unpinned** anywhere in the corpus of reports —
+   recorded at runtime into summary.json; now known live: **0** on all
+   four paks (2026-08-24 read) — backfill into EXTRACTION-LOG.md on first
+   run.
+5. **Output-drive tension**: default `extracted/harvest/` lands on `C:`
+   (84.77 GiB free at last measure) against a 45 GB payload — legal only
+   after the §4.4 space gate passes; the sanctioned alternative is
+   `--out` onto `D:`. Downstream stages take paths as arguments, so the
+   location stays swappable.

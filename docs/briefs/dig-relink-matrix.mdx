@@ -1,0 +1,46 @@
+# Brief — Data dig 15: ordered-pair relink matrix upgrade (R10, DR bars 1–3)
+
+Fresh data-layer dig agent. Never spawn subagents; never commit; Wartales
+pack only.
+
+Read first: repo-root AGENTS.md; `_foundation/extraction-doctrine.md`
+(Principle one + the three non-negotiable relink bars);
+`_foundation/decision-register.md` [DR-2026-08-17-relink];
+`extracted/RELATIONS.md` + `output/_dig-catalog/matrix.json` shape (the
+780-pair scaffold with modeled/partial/missing + unblock pointers);
+`docs/data-dig-log.mdx` Digs 1/3/7 (hard-edge evidence);
+`docs/disasm-formula-findings.mdx` + `extracted/decompiled/hl-src/**`
+(logic-layer evidence); `docs/competitor-research.mdx` §7 (the APPLIED
+competitor relationship model — bar 3); `docs/cdb-kind-map.mdx`;
+draft datasets under `extracted/data/_draft/`.
+
+## Mission — close DR bar 1 and bar 2
+
+1. **Bar 1**: for EVERY direction currently `partial` or `missing` in
+   matrix.json, either (a) derive edges with mechanism `logic` or
+   `inferred` (method recorded per edge family) from: decompiled sources
+   (hl-src), formula findings, HBSON-decoded prefab fields, CDB hidden
+   sub-sheet schemas, co-occurrence/naming conventions — or (b) ledger
+   the pair with its CONCRETE unblock (never "unknown"). Emit derived
+   edges as `extracted/relinks/_logic/<kindA>__<kindB>.jsonl`
+   (`{fromId,toId,mechanism:"logic"|"inferred",method,evidence}` rows,
+   `_meta` first line) — canonical promotion stays a later spec re-freeze;
+   you are producing the EVIDENCE layer.
+2. **Bar 2 (UI links analyzed)**: walk the game's own UI surface
+   evidence (UIA style/asl entries naming sheets, texts.xml UI groups,
+   hl-src ui.* package reads) → emit
+   `extracted/relinks/ui_link_coverage.jsonl`: every relationship the
+   game UI presents ↔ schema/join that satisfies it, or documented gap.
+3. Update RELATIONS.md pointers? NO — the catalog generator is
+   arbiter-frozen; instead record in the dig log how `_logic/` files map
+   onto the scaffold's unblock tokens so the next spec re-freeze wires
+   them.
+4. Proofs: per-pair status transition table (before→after); sampled edge
+   verification ≥30 across families (each cited to evidence file+line/
+   function); no dangling ids (every toId/fromId exists in draft rows).
+5. Append Dig 15 to docs/data-dig-log.mdx; update PROOF.md R10 row.
+
+Constraints: stdlib only; never invent relations — an inferred edge
+needs its stated method to be mechanically re-checkable; do not touch
+canonical relinks/, stage tools, locale files (a parallel agent owns
+locales), site/, run_all.*

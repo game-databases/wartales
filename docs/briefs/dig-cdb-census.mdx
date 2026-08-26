@@ -1,0 +1,57 @@
+# Brief — Data dig: CastleDB census + first entity datasets (fresh subagent)
+
+Fresh data-layer dig agent (extraction doctrine governs; not the site
+pipeline). Never spawn subagents, never commit. Wartales pack only.
+Read root AGENTS.md + `_foundation/extraction-doctrine.md` (principle
+zero, preserve every identifier) + `wartales/spec.md` entities block
+(your kind map target) first.
+
+## State (verify, don't trust)
+
+- `wartales/pipeline/tools/_verify/extract-res.pak-data.cdb` — the game
+  brain, CastleDB JSON, 386 sheets, 6,088,918 B (toolchain-verified).
+- CastleDB format: JSON object `{"sheets":[{"name":...,"display":...,
+  "columns":[{"type":...,"name":...}],"lines":[[...]]}]}` — column
+  types encode structure (str/ico/list/ref/int/float/bool/color/
+  script/sub-data). `ref` columns are FOREIGN KEYS to other sheets —
+  the relink layer's hard edges. Document every type you encounter.
+- Locale bridge: `res.pak:/lang/export_<locale>.xml` (35 sheets,
+  9,912 text leaves @en) mirrors CDB sheets — extract all 9 via
+  `pipeline/tools/wtpak.py` into
+  `wartales/extracted/harvest/_lang-bridge/` for the next dig (do not
+  parse them in this dig).
+
+## Task
+
+1. **Census** (`wartales/docs/cdb-census.mdx`): all 386 sheets — name,
+   row count, column list with types, total cells; group sheets into
+   families (items/equipment, skills, classes/specializations, units/
+   enemies, companions, recipes/blueprints, regions/towns, quests/
+   dialogue, lore, achievements, camp/buildings, animals, potions/
+   food, economy/trade, UI strings, ...). Flag cut-content candidates
+   (empty or unreferenced sheets).
+2. **Kind map** (`wartales/docs/cdb-kind-map.mdx`): census families →
+   `spec.md` entities kinds; per kind: primary sheet(s), key column
+   (stable id), name/description column route (inline vs export_*.xml
+   bridge), relation edges visible from `ref` columns (sheet→sheet
+   with cardinality guess).
+3. **First datasets** (`wartales/extracted/data/_draft/`): for the
+   THREE clearest kinds (pick by census evidence, likely items,
+   skills, classes): emit canonical JSONL — one row per entity, ALL
+   columns preserved under original names (never strip identifiers),
+   `id` = the sheet's stable key, locale-text fields left as
+   structured references (`{"textKey": ...}`) not inlined prose.
+   Include a `_meta` first line per file (source sheet, buildid
+   20318128, row count, emitted timestamp).
+4. **Relink seeds** (`wartales/extracted/relinks/_draft/`): for every
+   `ref` column in the three kinds' sheets: emit
+   `<kindA>__<kindB>.jsonl` edges (fromId, toId, column, mechanism:
+   "hard").
+5. Record everything dig-shaped in
+   `wartales/docs/data-dig-log.mdx` (append; this becomes
+   EXTRACTION-LOG.md input).
+
+Rules: read-only on A:. Numbers must reconcile (census row sums ==
+per-family sums). No legality commentary. Return: ≤15-line summary —
+sheet families found, the three kinds emitted, ref-edge counts,
+surprises.

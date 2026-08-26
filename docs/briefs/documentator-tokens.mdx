@@ -1,0 +1,41 @@
+# Brief — Documentator: F1 design-tokens spec (fresh subagent)
+
+Fresh Documentator. Never spawn subagents, never commit. Wartales pack
+only. Read root AGENTS.md; `_foundation/design-standard.md` in full;
+`_foundation/foundation-guide.md` §6–§7;
+`wartales/design/shadcn-adoption.mdx` in full (owner directives:
+shadcn primitives UPGRADED to game UI fidelity — never a reskin);
+`wartales/design/sources/INDEX.mdx`.
+
+## Evidence you extract yourself (data work, allowed pre-gate)
+
+Use `wartales/pipeline/tools/wtpak.py` (proven reader) to extract from
+`A:\SteamLibrary\steamapps\common\Wartales\assets.pak` ONLY the UI
+canon entries into `wartales/design/extracted-ui/`:
+`ui/style.css` (779,142 B), the `.asl` icon-style entries, and 2-3
+atlas samples. Record entry paths + sizes + adler32 in
+`wartales/design/extracted-ui/EXTRACT-LOG.mdx` (facts only).
+
+## Deliverable
+
+`wartales/design/spec-tokens.mdx` — the F1 piece spec:
+1. Token extraction plan FROM THE GAME'S OWN style.css: font stacks,
+   color values, spacing, border/bevel recipes, effects — mapped to
+   the token contract (guide §6.1 + shadcn CSS-variable theme) with
+   the game's values, not invented ones.
+2. Rarity system: derive the tier scale from style.css + inventory
+   screenshots (olive/violet/steel tints on near-black quilted
+   panels; gold = currency/selection) → `--rarity-0..N` + light
+   variants + animated-border recipe for top tiers.
+3. Component-canon notes: which shadcn primitives map to which game
+   patterns (Combobox=locale, Command=header search, Tabs=conditional
+   registry, Tooltip/HoverCard=hover jobs) and what each must inherit
+   from the game canon (per shadcn-adoption §layers).
+4. Acceptance criteria: tokens.css compiles; every shadcn variable
+   overridden; ≥90% of style.css color/font values accounted for
+   (rest documented); visual side-by-side vs `design/sources/` shots
+   passes critic bar (§5 design-standard).
+5. Test spec: token-parity test (no default shadcn values remain),
+   contrast checks ≥WCAG AA on text tokens, 12px floor check.
+
+Return: ≤10-line summary + anything surprising in style.css.

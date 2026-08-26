@@ -1,0 +1,1512 @@
+# Wartales data dig log
+
+Append-only dig journal; becomes the input to
+`extracted/EXTRACTION-LOG.md` (doctrine Principle two pins tool +
+version + buildid here). One entry per dig unit.
+
+---
+
+## 2026-08-24 — Dig 1: CastleDB census + kind map + first datasets
+
+**Agent:** fresh data-layer dig agent (brief
+[briefs/dig-cdb-census.mdx](briefs/dig-cdb-census.mdx)). Read-only on the
+client (`A:\SteamLibrary\steamapps\common\Wartales\`); no subagents; no
+commits from this dig.
+
+**Inputs**
+
+- `res.pak:/data.cdb` via `pipeline/tools/_verify/extract-res.pak-data.cdb`
+  (6,088,918 B, adler32 MATCH at extract, TOOL §1). CastleDB JSON,
+  `compress=false`, 10 customTypes. Client **buildid 20318128**
+  (appmanifest-verified, recon §0).
+- Python 3.14 (`C:\Python314`), stdlib json only.
+
+**Tools written (this dig)**
+
+- `pipeline/tools/cdb_census.py` — census JSON + MDX generator.
+- `pipeline/tools/cdb_emit.py` — dataset + relink-seed emitter.
+
+**Method notes / gotchas**
+
+- Column types are stored as `"<code>"` or `"<code>:<param>"` strings in
+  `typeStr`; every code present (0–5, 6, 8–11, 13, 14, 16, 17) was
+  resolved against real cell payloads, not assumed from canonical
+  CastleDB tables. Full table:
+  [cdb-census.mdx §type system](cdb-census.mdx#column-type-system-every-type-encountered-payload-verified).
+- Windows cp1252 default decode crashes on this file — all opens are
+  explicit `encoding="utf-8"`.
+- `wtpak.py entries` output carries CRLF; piping paths onward needs
+  `tr -d '\r'` (16 silent not-found failures before the fix).
+- Four top-level sheets have **no `lines` key at all** — they declare
+  `props.dataFiles` and their rows live in HBSON prefabs.
+
+**Census results** ([cdb-census.mdx](cdb-census.mdx) full table)
+
+- Sheets: **386** = 45 top-level + 341 hidden sub-sheets (`@`, list-column
+  schemas, no lines of their own).
+- Inline rows: **11,473**; cells grid 101,262; populated 77,273.
+- Families (rows reconcile exactly): items & economy 3,270 · skills &
+  combat 2,529 · meta/UI/audio 4,181 · units & classes 691 · fief 557 ·
+  quests/dialogue/elements 214 · world & places 31.
+- Populated hard-ref cells across the file: **4,990** (itemType 2,167,
+  item 1,334, icon 780, notify 329, sound 275, …).
+
+**Findings that change the spec picture** (details + links in
+[cdb-kind-map.mdx](cdb-kind-map.mdx))
+
+1. `unitClass` (281 rows) IS the class sheet — spec unresolved-P1 closed.
+2. `craft` (667 rows) IS the recipe container: output/tool/ingredients/
+   learnCost are hard item refs; bridge-absent, named by its output item —
+   spec "recipe container unresolved" closed. M2 is mostly hard edges.
+3. `place`, `group`, `element`, `levelProps` are datafile-backed — their
+   rows are the PRE prefab corpus (CDB = id registry + schema). Not cut
+   content. Gates their kinds on HBSON decode as already suspected.
+4. `skill` subtree contains **zero** hard-reference columns — skill's
+   relations are logic-layer; no `hard` skill↔status/effect edge may be
+   claimed from CDB alone.
+5. Cut-content candidates: `item.done` enum `[TODO,Coded,Ok,Wait]` → 251
+   TODO + 70 Coded of 2,125 items (ledger candidates, not deletions);
+   never-referenced roots `craft`,`credits`,`env`,`frescos`,`input` are
+   root consumers, flagged relink-terminal only.
+
+**Emitted artifacts**
+
+- Datasets `extracted/data/_draft/{item,skill,class}.jsonl` — 2,125 /
+  1,373 / 281 rows, `_meta` first line (source sheet, buildid 20318128,
+  row count, timestamp, column schemas, enum case tables). Contract:
+  ALL original columns preserved by name; null cells omitted (absent =
+  null, schema in `_meta`); localizable text as structured
+  `{"textKey": {bridge, sheet, column, row}}` refs — prose stays in the
+  lang bridge until it is parsed (next dig).
+- Relink seeds `extracted/relinks/_draft/` — 8 files, **6,636 edges**,
+  mechanism `hard`, **0 dangling**, 0 unverifiable:
+  `class__attribute` 1,672 · `item__itemType` 2,095 · `class__item` 914 ·
+  `class__skill` 874 · `item__attribute` 728 · `class__itemType` 221 ·
+  `class__groupType` 122 · `class__region` 10.
+- Locale bridge `extracted/harvest/_lang-bridge/` — 18 files,
+  37,903,586 B adler-verified: `export_{de,en,es,fr,ko,pl,pt-BR,ru,zh}.xml`
+  (9), `texts_{…}.xml` (9), master `texts.xml`. NOT parsed this dig per
+  brief; leaf addressing (how `<entry>` keys map to row ids) is the next
+  dig's first question.
+
+**Reconciliation statement**
+
+- Census: family sheet sums = 386 ✓; family inline-row sums = 11,473 ✓;
+  emitted dataset rows 2,125+1,373+281 = 3,779 match source sheets' line
+  counts ✓; relink edges sum 6,636 = Σ per-file counts ✓; every emitted
+  ref edge validated against target-sheet id sets at emit time ✓.
+- Lang bridge: 18 extracted = all 18 `/lang/*` + root `texts.xml` res.pak
+  entries; sizes equal recon §4 table values ✓.
+
+**Next dig queue (evidence-ranked)**
+
+1. Parse `export_en.xml`: pin entry→row-id addressing, close E7 route for
+   real; then remaining locales are mechanical.
+2. Emit wave 2: craft→item family (recipe graph, feeds flagship tools),
+   groupType/env/loot/fief internal refs — same emitter, more kinds.
+3. HBSON decode (TOOL §1 magic known) → unlocks place/group/element/
+   levelProps rows + REG POI coords (map P0 transform hunt).
+4. Logic layer seeds: `constant` sheet (1,266 incl. difficulty variants)
+   + `9:` customTypes ASTs (BattleFilter/TargetDesc) + skill hscript
+   bodies already preserved inline in skill.jsonl.
+5. `hlboot.dat` type-walk continuation stays per TOOL §2 plan (untouched
+   this dig).
+
+---
+
+## 2026-08-24 — Dig 2: formulas + hscript logic layer
+
+**Agent:** fresh data-layer dig agent (brief
+[briefs/dig-formulas.mdx](briefs/dig-formulas.mdx)). Read-only on the
+client (`A:\SteamLibrary\steamapps\common\Wartales\`); no subagents; no
+commits from this dig.
+
+**Inputs**
+
+- `res.pak` (client buildid **20318128**): `formulas.hx` (687 B) + 11
+  `content/script/*.hx` sources — extracted this dig.
+- `pipeline/tools/_verify/extract-res.pak-data.cdb` (386-sheet CastleDB,
+  adler32 MATCH at extract, Dig 1) — script columns + `constant` sheet +
+  payload columns mined.
+- Python 3.14, stdlib json only. wtpak.py unchanged from Dig 1.
+
+**Tools written (this dig)**
+
+- `pipeline/tools/formula_emit.py` — emits
+  `extracted/logic/formulas.jsonl` (23 rows: id/system/source/formula/
+  params/units/status/toolUse + `bytecode` cross-ref, every numeric
+  pulled live from data.cdb) and `extracted/logic/constants.jsonl`
+  (all 1,266 `constant` rows with `values[]` + 30 `valueDifficulty`
+  variants resolved to Easy/Normal/Hard/Extreme).
+
+**Method notes / gotchas**
+
+- Brief said `/data/formulas.hx`; actual pak path is root-level
+  `formulas.hx`. The 11 script files are under `content/script/` as
+  expected (9 region globals + `World.hx` + `Paths.hx`, which is an
+  empty stub).
+- CastleDB omits null cells — row dicts must use `.get()` everywhere;
+  two crashes before that was internalized (`l["rarity"]`,
+  `l["calcPrice"]` on rows missing the key).
+- `kind:"script"` text columns exist on exactly two sheets:
+  `skill.script` (1,130 of 1,373 populated — the real runtime logic
+  corpus) and `element.script` (0 populated; element rows are
+  datafile-backed).
+- Skill scripts read their numbers from `props.vars.valueN` /
+  per-level `levels[].props.vars` — type-17 "datafile" columns hold
+  inline JSON objects here (census's "externalized" reading applies to
+  the four top-level no-lines sheets, not to every type-17 cell).
+- Windows console is cp1252: printing French attribute descs garbles
+  display only — files are UTF-8 clean.
+
+**Extraction results**
+
+- `extracted/logic/hscript/formulas.hx` + `hscript/content/script/*.hx`
+  ×11 — verbatim, adler32 MATCH 12/12 against pak-stored checksums,
+  byte sizes equal the recon TSV values.
+- formulas.hx holds exactly 4 functions: `weaponPrice`
+  (10 + tier×10, +20/+30 rarity U/R), `itemPrice` (explicit price →
+  itemType parent-chain basePrice → null/NaN), `craftPrice`
+  (Σ ingredients×qty / output price − 1), `validatefiefEvent`
+  (CDB authoring validator). Region scripts are state-flag registries
+  (167 World + 644 region flags = 811), not math.
+- `skill.script`: hook census onEval/onSkillEval/onHit/onDamage/
+  onDamageDealt/onBeginAction etc.; runtime API surface pinned
+  (damages/getPercentHealth/gainsHealth/pushback/opportunityAttack/
+  addStatus/corrupt…); damage fields minDmg/maxDmg 394 skills ·
+  dmgAttribute Str/Dex/Con = 244/105/40 · vars 852 · apCost 159.
+
+**Findings that change the tools picture** (full detail:
+[formulas-inventory.mdx](formulas-inventory.mdx))
+
+1. XP curve, wages, food/tiredness, injury/morale thresholds, knockout-
+   chance endpoints (50%@≥50%HP → 100%@≤10%HP), rope capture costs,
+   ransom valuation, loot probas, wealth/steal economies: all
+   client-read now — 18 of 23 inventory rows confirmed-in-client.
+2. Adaptive difficulty fully parameterized: per-mode enemy stat-bonus
+   tables ×18 levels, FixedDifficultyPowers + reference levels ×21
+   region-tiers ×4 modes, level windows, power-score weights — the
+   spawn-scaling inspector's core dataset exists.
+3. Crafting quality has THREE stat tiers in-client (1.1/1.2/1.3);
+   community documents only two (+10%/+20%).
+4. Valor points: no client-side trace found in this pass — recorded as
+   an explicit negative result, stays [P0-DIG] via hlboot globals.
+5. `itemType.props.basePrice` is datafile-backed (0 inline of 96) —
+   itemPrice's fallback path resolves only after HBSON decode.
+
+**Emitted artifacts**
+
+- `extracted/logic/hscript/**` — 12 verbatim sources (above).
+- `extracted/logic/formulas.jsonl` — 23 rows (18 confirmed-in-client,
+  4 mixed, 1 negative), status vocabulary defined in `_meta`.
+- `extracted/logic/constants.jsonl` — 1,266 rows, full parameter
+  registry, difficulty variants resolved by name.
+- `docs/formulas-inventory.mdx` — the human inventory with verbatim
+  formulas, parameter tables, tools-plan §2 cross-refs, reconciliation.
+- Scratch (local-only): `output/_dig-formulas/{skill-script-bodies.txt,
+  constant-sheet-verbatim.jsonl}`.
+
+**Reconciliation statement**
+
+- hscript: 12 extracted = all res.pak `.hx` entries ✓ (entries listing
+  shows exactly these 12); adler32 MATCH 12/12 ✓; sizes match TSVs ✓.
+- constants.jsonl rowCount 1,266 == census sheet total ✓; DIFF rows 30 ✓.
+- formulas.jsonl rows 23 == inventory §4 table ✓; every param value in
+  jsonl emitted by reading data.cdb at emit time (no hand-typed
+  numbers) ✓.
+
+**Bytecode cross-ref status**
+
+`extracted/logic/hl-structure/` landed mid-dig (types/functions/globals/
+strings/natives registries from the parallel types-walk dig). The cross-
+reference pass ran immediately: every formulas.jsonl row probed against
+the 75,321-string pool of hlboot.dat via new `BYTECODE_TOKENS` map +
+`annotate_bytecode()` in the emitter.
+
+- **double-confirmed** (identifier present in HLB pool): 18 rows — every
+  CDB parameter set cited (KnockOutChance*, LevelXpValues, XpWin*,
+  TradeGood*, EnemyStatBonusLevels{,Easy}, FixedDifficultyPowers/
+  ReferenceLevels, PowerFactor_*, ItemQualityBonus3, ForgeWeightTierA,
+  Corrupt*, salary/tiredness/morale/injury families, Pit_ReputationOnWin)
+  and the skill-script runtime API (getPercentHealth, opportunityAttack,
+  canCorrupt, criticalHitDamageBonus, damageHealth, onEval/onHit/
+  onSkillEval, Skill.KnockOut). The CDB parameters are live code
+  references.
+- **hscript-only**: `weaponPrice` / `itemPrice` / `craftPrice` appear
+  NOWHERE in bytecode — formulas.hx runs under an embedded hscript
+  interpreter, never compiled into hlboot.dat.
+- Name-level confirmation only: what the bytecode does with each
+  constant still needs opcode reading.
+
+Full table: [formulas-inventory.mdx §5](formulas-inventory.mdx).
+
+**Next dig queue (evidence-ranked additions to Dig 1's list)**
+
+1. Opcode-level read of consuming functions for MaxLevelLock=15
+   semantics + knockout interpolation curve (name-level cross-ref done;
+   composition still open — pairs with Dig 1 queue item 5).
+2. HBSON decode → basePrice payloads close itemPrice fallback (Dig 1 #3).
+3. bonus/effect/trait emit wave → path-perk modifier tables complete.
+4. Parse export_en.xml (unchanged from Dig 1 #1 — still the top E7 lever).
+
+## 2026-08-24 — Dig 2: locale bridge — key convention pinned, per-locale overlays emitted
+
+**Agent:** fresh data-layer dig agent (brief
+[briefs/dig-locale-bridge.mdx](briefs/dig-locale-bridge.mdx)). Read-only on
+the bridge harvest; no subagents; no commits from this dig.
+
+**Inputs**
+
+- `extracted/data/_draft/{item,skill,class}.jsonl` (dig 1; buildid
+  20318128) — `textKey` refs `{bridge, sheet, column, row}`.
+- `extracted/harvest/_lang-bridge/export_{en,fr,de,es,pl,pt-BR,ru,ko,zh}.xml`
+  (dig 1 harvest, adler-verified). Python 3.14.7, stdlib only.
+
+**Tool written (this dig)**
+
+- `pipeline/tools/locale_bridge_dig.py` — parses all 9 bridges with a raw-text
+  token state machine (preserves leaf bytes verbatim), cross-checks against an
+  independent ElementTree pass, re-verifies every emittable cell against the
+  raw file by a separate regex path, emits overlays + availability jsonl.
+  Deterministic: seed = buildid, sorted iteration, fixed sample sizes.
+
+**Contract pinned**
+
+- [locale-key-convention.mdx](locale-key-convention.mdx): textKey resolves
+  `sheet → <RowId> → <column>` tag-name addressing; values are the exact raw
+  leaf spans entity-decoded once (rich-text markup and `<br/>` stay verbatim);
+  field alias `desc→description`; overlay + availability schemas; filler
+  policy application; drift ledger.
+
+**Proof results**
+
+- Dual-parser structure (en, 35 sheets): **0 mismatches / 15,084 leaves**;
+  childless-leaf exact text **0 mismatches / 10,924**.
+- Exhaustive raw-span verification, all 9 locales × item/skill/unitClass:
+  **55,350 / 55,350 matched, 0 mismatched, 0 absent**.
+- Random-entity proof: 55 entities (30/15/10) × 9 locales — 50 resolve names
+  in all nine; the 5 failures are drift-population ids that fail in *every*
+  locale (`JamRecipe`, `FirstAidManual`, `RecipeBeltAccBleedingCrit`,
+  `Attract`, `KogoPassive`) — data gaps, not addressing failures.
+- Distinctness sanity: 2 of 3,219 en-named items identical across all 9.
+
+**Emitted artifacts**
+
+- `extracted/locales/<locale>/{item,skill,class}.json` ×9 — 29,889 overlay
+  entities total; per locale exactly item 1,807 / skill 1,236 / class 278;
+  pivot en first; omit-until-translated honored (no filler prose anywhere).
+- `extracted/relinks/locale_availability.jsonl` — 3,779 rows
+  (= 2,125 + 1,373 + 281), schema per
+  [localization-architecture](../../_foundation/localization-architecture.md) §5.4.
+
+**Findings that change the spec picture**
+
+1. **The 9 client locales are perfectly parallel.** Every locale has exactly
+   the same cells present (per locale: item ok 3,508 / missing 742 · skill
+   2,364 / 382 · class 278 / 3). **Filler-class cells = 0 for all kind ×
+   locale** — where the game shows an entity, it shows it in all 9 languages.
+   The frozen omit-until-translated policy therefore never fires inside the
+   official set; omissions are whole drift entities only.
+2. **CDB↔export drift is the sole coverage limiter:** 318 items / 137 skills /
+   3 classes (`TavernCustomer`, `Object`, `Dummy`) have no export entry in any
+   locale, plus 106 item / 108 skill single-column gaps on bridged rows.
+   Drift spans `done` statuses (290 Ok + 28 TODO among items) — engine-
+   internal rows, not cut content. Spec E7 coverage % should quote cell
+   coverage (82.5 / 86.1 / 98.9), not "all strings extracted".
+3. **fr export is a different vintage:** bare `<cdb>` root (no header attrs →
+   no version/revision/date stamp for E3 patch-diffing), tab-indented, UTF-8
+   BOM, and 3 duplicate entries in `element` (`Emissary`,
+   `A1RuinsRoom12HalfBridge`, `E1GardiansModel`). Content itself is complete
+   and parallel. Header stamps elsewhere: revision 43420 everywhere, dates
+   2025-09-30 (en) / 2025-10-01 ×8.
+4. Per-record version stamps (spec axes §version-eras, recon §8.10) exist
+   per FILE, not per row — per-row staleness must come from CDB side or
+   future export diffs, not these headers.
+
+**Method notes / gotchas (for the next dig)**
+
+- Mixed-content leaves (`<br/>` inside `<desc>`) shred under naive token
+  scanners AND cannot be adjudicated by DOM comparison once entity-decoded
+  (`&lt;happy&gt;` vs real `<happy>` is indistinguishable post-parse). The
+  sound stack: expat for structure + childless text, raw-span re-extraction
+  for everything emitted.
+- The fr file's bare `<cdb>` root matches generic `<tag>…</tag>` block regexes
+  as ONE file-sized pseudo-block — scope any raw indexing to below the root.
+- Windows console is cp1252: printing Cyrillic/CJK crashes Python stdout
+  (`PYTHONIOENCODING=utf-8` fixes); U+FFFD seen in earlier console output was
+  rendering, not data (all 9 files verified zero U+FFFD).
+- All opens explicit `encoding="utf-8-sig"` (fr carries a BOM).
+
+**Reconciliation statement**
+
+- Draft rows: 2,125 + 1,373 + 281 = 3,779 = availability rows ✓; each equals
+  its `_meta.rowCount` ✓ (asserted at emit).
+- Cells per locale: item 3,508+742 = 4,250 = 2,125×2 ✓; skill 2,364+382 =
+  2,746 = 1,373×2 ✓; class 278+3 = 281 ✓. Missing decomposition: item 742 =
+  318 rows×2 + 106 single-column ✓; skill 382 = 137×2 + 108 ✓; class 3 = 3×1 ✓.
+- Raw-span checks: 55,350 = (3,508+2,364+278)×9 = Σ ok × locales ✓; matched
+  55,350, mismatched 0 ✓. Overlay totals: 29,889 = (1,807+1,236+278)×9 ✓.
+- Filler counts: 72 kind×locale pairs, all 0 ✓ (parallel-locales finding).
+
+**Next dig queue (evidence-ranked)**
+
+1. Emit wave 2 datasets (craft→item recipe graph, groupType/env/fief refs) —
+   unchanged from dig 1 queue; overlays make their text join trivial now.
+2. `texts_<l>.xml` UI-string layer (+ master fr `texts.xml`): same treatment,
+   site-chrome namespace stays separate (localization-architecture §4).
+3. Patch-diff harness: per-file revision/date stamps captured; fr needs the
+   buildid fallback decided (E3).
+4. HBSON decode (unchanged, gates POI/prefab coords).
+
+## 2026-08-24 — Dig 3: datasets wave 2 — every remaining CDB kind
+
+**Agent:** fresh data-layer dig agent (brief
+[briefs/dig-datasets-wave2.mdx](briefs/dig-datasets-wave2.mdx)). Read-only
+on the client (`A:\SteamLibrary\steamapps\common\Wartales\`); no
+subagents; no commits from this dig.
+
+**Inputs**
+
+- `pipeline/tools/_verify/extract-res.pak-data.cdb` (Dig 1 extract,
+  adler32 MATCH, buildid **20318128**).
+- Wave-1 exemplars `extracted/data/_draft/{item,skill,class}.jsonl`
+  (shape matched exactly); census + kind map as emit plan. Python 3.14,
+  stdlib json only.
+
+**Tools written / changed (this dig)**
+
+- `pipeline/tools/cdb_emit.py` — wave selection (`--wave wave1|wave2`),
+  per-sheet id-column resolution with documented synthetic keys for the
+  three id-less sheets, enum-clash disambiguation, and preservation of
+  payload keys outside the declared schema (see defect 2).
+- `pipeline/tools/cdb_verify.py` — NEW independent verifier: shares no
+  code with the emitter; re-derives every expectation from the raw
+  CastleDB with an assertion-style traversal plus a doc-side copy of the
+  census counts, and cross-checks the dig-1 relink totals.
+
+**Defects found and fixed (all caught by cdb_verify.py or spot-checks)**
+
+1. Datafile-backed ref targets (`6:place`, `6:element`) were classified
+   DANGLING because only `@`-sub-sheet targets got the unverifiable
+   path. Correct rule: a target sheet with no inline rows is
+   unverifiable (`valid:null`), never dangling. Final state: dangling 0.
+2. **Silent data loss:** CastleDB rows carry keys OUTSIDE their sheet's
+   declared schema — `__ignoreLoc__` authoring flag on 87 rows across
+   skill/item/fiefEvent/notify/bonus/effect/trait/tutorial, plus
+   polymorphic leftovers (`confessions@data@choices@texts.trait` ×27
+   nested lists, `fiefEvent@params.target`, `fiefEvent@conditions.
+   conditions`, `craft.itemCost`, `item.lore`). The schema-driven walk
+   dropped every one — including in wave-1's item/skill. Emitter now
+   preserves undeclared keys verbatim; **wave-1 datasets regenerated**
+   (row counts unchanged 2,125/1,373/281, so locale overlays and
+   availability jsonl stay valid; item gains `__ignoreLoc__` on 21 rows,
+   skill on 40 + six `skill@levels.*` extras). None of the undeclared
+   values are plain ids — no hidden hard-ref edges were lost.
+3. `_meta.keyRule` was written as its first character (`next()` over a
+   string) instead of the full rule sentence.
+
+**Emitted artifacts**
+
+- Datasets `extracted/data/_draft/` — **37 new kinds**, 6,428 rows:
+  icon 801 · sound 848 · counter 622 · recipe(craft) 667 · bonus 495 ·
+  notify 482 · status 330 · fiefEvent 377 · loot 382 · trait 214 ·
+  groupType 97 · itemType 96 · tutorial 81 · input 84 · env 87 ·
+  confessions 87 · unitPattern 70 · credits 67 · battle 133 · effect 66
+  · activity 24 · attribute 27 · startChoice 29 · fiefGoal 55 ·
+  mission 22 · fiefPlace 19 · fiefCondition 20 · fiefLaw 43 · region 13
+  · kingdom 9 · frescos 9 · fiefAlignment 5 · fiefAdministration 15 ·
+  fiefPopulation 11 · amb 11 · fiefMission 12 · condition 18.
+  `craft` emits under spec kind `recipe`; sheets with no `"0"` id
+  column carry `_meta.keyRule` (frescos keys on its unique `place` ref;
+  env/recipe take zero-padded ordinals — original columns untouched).
+- Relink seeds `extracted/relinks/_draft/` — 43 new pair files,
+  **12,494 edges**, mechanism `hard`: largest fiefMission__itemType
+  4,371 · recipe__item 3,515 · loot__item 994 · recipe__icon 460 ·
+  notify__notify 329 (self-ref chain) · counter__icon 319 ·
+  fiefEvent__condition 294 · confessions__trait 276 ·
+  unitPattern__unitClass 256 … full set per emitter output.
+
+**Reconciliation statement**
+
+- Per-kind rowCounts equal census counts for all 40 draft files
+  (asserted by verifier against a doc-side census copy): 10,207 rows ✓.
+- Whole-file closure: draft 10,207 + logic/constants.jsonl 1,266 =
+  **11,473 = the census grand total** — every inline CDB row now exists
+  in an emitted dataset ✓.
+- Relinks: 51 files, 19,130 edges = dig-1 6,636 (unchanged, re-checked
+  against dig-log table) + wave-2 12,494 ✓; emitted multiset == raw
+  recount ✓; dangling 0 ✓; valid-flag mismatches 0 ✓; unverifiable 72
+  (`env→place` 61, `frescos→place` 9, `fiefGoal→element` 2 — all
+  datafile-backed targets).
+- Bridge coverage: every textKey sheet referenced by any emitted kind
+  (27 of them) is present in `export_en.xml` (35 sheets) — zero
+  drift-absent sheets among emitted kinds; E7 route open at addressing
+  level for wave-2 locales.
+
+**Deferred kinds (rule 5), with reasons**
+
+- location-place (`place`), npc-vendor/dialogue/recruits (`element`),
+  unit-enemy roaming groups (`group`), poi/battle-scene vocabulary
+  (`levelProps`): datafile-backed — zero inline rows, payloads are the
+  HBSON `.prefab`/`.l3d` prefab corpus; unblock = HBSON decode (dig
+  queue #3). CDB side ships their schema via hidden sub-sheets.
+- achievements: not a CDB sheet — Steam GetSchemaForGame surface (spec);
+  client half ships inside counter.jsonl incl. the
+  `counter@props.achievements` subtree.
+- constant: already emitted (dig 2, `extracted/logic/constants.jsonl`,
+  1,266 rows) — not duplicated into _draft.
+- Brief-listed potion/food, trade-good/price, path/title and ghost/curse
+  kinds are **subset views over emitted datasets, not separate sheets**
+  (evidence: itemType ids Food/CookedMeat/CookedFish/CookedMeal/
+  TradeGoods/Recipe; traits RawFood/Trader/Cook/SonOfTrader;
+  bonus family FoodConsumption/TaxesOnTradingGoods;
+  constants TradeGood*; unitClass Ghost* ×6 + groupType GhostPack* +
+  status GhostLeader*; path/title vocabulary = counter.path→icon +
+  counter.props.title/titleWoman). All derivable by joins on shipped
+  files; no separate emission owed.
+
+**Next dig queue additions**
+
+1. Locale overlays for the 37 new kinds once export parsing generalizes
+   beyond item/skill/class (bridge presence proven above).
+2. HBSON decode — now gates 72 unverifiable edges + 4 deferred kinds.
+3. Relink layer upgrade: fold wave-1+2 seeds toward the full ordered-pair
+   matrix per doctrine Principle one (logic/inferred edges next).
+
+## 2026-08-25 — Dig 4: icons export to CDN set v20318128
+
+Brief: `docs/briefs/dig-icons-export.mdx`. Full coverage report:
+[icons-export.mdx](icons-export.mdx). Tool:
+[pipeline/tools/icon_export.py](../pipeline/tools/icon_export.py).
+
+**Resolution mechanism pinned.** A CDB type-14 `icon` value is an atlas
+descriptor `{file,size,x,y[,width,height]}`; `file` resolves under the
+assets.pak root (harvest: `extracted/harvest/assets/`), pixel rect =
+`(x·s, y·s) → ((x+w)·s, (y+h)·s)` with tile spans defaulting 1×1.
+`.asl` files are Photoshop layer-style binaries, not an addressing layer;
+`style.css` `background-tile-pos` corroborates tile-index addressing.
+All 36 referenced atlases are magic-verified genuine PNG → Pillow direct,
+texconv not needed on this set.
+
+**Gotchas that changed the output**
+
+- Tile spans are real: 787/3,248 refs (24.2%) span >1 tile (`(1,2)` gear
+  icons are tall) — a naive 1-tile crop silently halves them. Caught by a
+  full-corpus roundtrip check, not by spot samples.
+- libwebp lossless zeroes RGB under fully-transparent pixels unless
+  `exact=True` — first run failed pixel-exact verification on 2,528 files
+  with visually identical images; re-run bit-exact.
+
+**Results** (buildid 20318128, `output/cdn/v20318128/`)
+
+- item 2,125 rows: 2,098 icon-bearing, **100% ref resolution**, 2,049 real
+  crops + 49 explicit-missing; skill 1,373 / 1,093 bearing / 100% /
+  1,093 crops; class (unitClass) 281 / 57 bearing / 100% / 57 crops.
+- 3,779 `{kind}/{id}.webp` files, one per entity id; 3,199 real crops
+  verified byte-exact against source pixels after webp roundtrip (0
+  mismatch); 580 named placeholders + `misses.jsonl`; Σ 37,032,616 B.
+- Atlas-vs-loose: 0 loose — every ref is an atlas cell across 36 atlases;
+  largest Icons_Resources.png 614 refs · BattleIcons_03_96PX 393.
+- Misses character: `no-icon-ref` 531 (item base/family rows, system +
+  spe-sub skills, enemy/NPC classes whose identity is CHARS portraits);
+  `resolved-empty-cell` 49 (45 `Bundle*T1` sharing one 1×1 transparent cell
+  at (4,1918) in Icons_Resources_02.png — bundle art is logic-composed from
+  member items; 4 camp props on an empty 2×2 cell in Icons_Camp.png).
+- Tools: Python 3.14.7, Pillow 12.3.0, lossless webp `exact=True`, original
+  pixel sizes preserved (incl. 96×192 spans); `_tool.json` beside the set.
+
+## 2026-08-25 — Dig 5: map imagery pipeline — CODE-side digs D1/D2/D3/D4/D7 + albedo webp pyramid + maps.json
+
+Brief: [briefs/codewriter-map.mdx](briefs/codewriter-map.mdx) against the
+arbiter-approved [spec-map-pipeline](spec-map-pipeline.mdx)
+(APPROVE-FOR-BUILD). Tool:
+[pipeline/map_tiles.py](../pipeline/map_tiles.py) (usage:
+[pipeline/README-map.mdx](../pipeline/README-map.mdx)). Inputs: real
+`map.pak` on `A:\` + harvest tree `extracted/harvest/map/`; Python
+3.14.7, numpy 2.5.2, Pillow 12.3.0, jsonschema 4.26.0; buildid
+**20318128**. D5 (HBSON) and D6 (transform fit) stay open per spec gates.
+
+**Run numbers** (full `run`, wall ≈ 4.5 min)
+
+- classify (AC1): 6,886 entries / 8 dirs, Σ 27,888,786,275 B, **Δ=0**;
+  per-class 1,377×5 + 1 with the spec §1 byte sums to the digit; bbox
+  x[−8..43] y[0..39] re-derived; duplicate families reconcile — albedo
+  `0ff430e9` ×276, splat `78c858d4` ×273, splat `782458d4` ×2,
+  **`db05e56a` ×2 lives in the `_s` class** (height_x0_y0_s +
+  height_x4_y0_s; the spec §1 table's "height" label is loose); five-class
+  cell-set identity asserted; recon-TSV bijection 6,886/6,886 on
+  path/size/hash.
+- extract (AC2): **6,886/6,886 adler-MATCH** in 12.7 s, 0 pulled fresh
+  (harvest tree intact); manifest re-emitted in the harvest
+  `map.manifest.jsonl` shape; detect census reproduces the spec §2
+  false-positive mode exactly (json 7 = 6 raw + textures.json, xml 10).
+- D1: 4,131/4,131 DDS headers match the §2 class triples (albedo 512²
+  DXT5, normal 2048² DXT1, splat 2048² RGBA8); outliers 0;
+  `format-census.jsonl` (4,131 rows) in `output/_dig-map/`.
+- D2: `.raw` = headerless **little-endian float32 scalar elevation grids,
+  row-major** (full 512² = 1,048,576 B, `_s` 128² = 65,536 B); 100%
+  finite asserted on every sample; range −5.916..21.344; horizontal
+  neighbor-edge mean |Δ| **0.0009** (1,332 pairs, p95 0.0012) vs
+  within-tile gradient ~0.029 — edges ~30× tighter than interiors, which
+  is the row-major + assembly-order proof. `waterHeight` pin test:
+  **REFUTED** as a global sea level — zero plateau within ±0.01 of
+  −0.4 (CDB Belerion_1) in any tile; ocean-mask cells cluster at mean
+  ≈ −5.0 ± 0.7 (terrain-floor elevation; the water surface is
+  engine-side). `height_x0_y0.raw` 4 MiB = **1024×1024 single-layer f32**
+  — a double-resolution LOD of the origin cell (smoothness sweep 0.0123
+  vs 0.0188/1.5806 alternates); it does NOT follow the shared `_s`
+  relation (own-`_s` corr 0.4496, quadrant hypothesis refuted) — its `_s`
+  tile must not be treated as its downsample.
+- D3: shared cell map emitted — 1,377 present / **703 holes** of 2,080
+  bbox cells ×5 layers → `extracted/data/cells/*.json`; subset assertion
+  **`78c858d4` ⊂ `0ff430e9` holds (overlap 273)**; the 3-cell residue
+  (x7 y27, x7 y28, x28 y24) measured: varied splat channel stds + flat
+  albedo → coastal-shelf cells with real terrain weights under a flat
+  texture; nothing deleted.
+- D4: `textures.json` = **43-entry splat material palette** (region-named
+  grass/rock/snow + debug hex colors), NOT a tile index — zero entries in
+  tile-name vocabulary, so the bijection is a documented divergence; key
+  is index position (`snow_harag` appears twice with different colors).
+  Decodes splat-channel semantics for later ground-type overlays.
+- D7: `_s` = **box-mean downsample of full** — corr mean 0.99935,
+  1,376/1,377 cells ≥ 0.99; the single divergent cell is the measured
+  origin-cell exception (see D2).
+- tiles: **1,836 webp tiles, 82 MB** (`z3` 1,377 / `z2` 345 / `z1` 87 /
+  `z0` 27) under `output/map-tiles/v20318128/albedo/{z}/{x}/{y}.webp`,
+  quality 90 + alpha; 81 s. Mosaic: `overview-z0.png` 3328×2560 with hole
+  cells alpha==0 asserted exactly on the 703-hole set; placeholder
+  pixels stay where the pack ships them. Albedo seam metric recorded
+  (1,332 pairs, mean |Δ| 5.78/255, p95 14.2) — the assembly off-by-one
+  falsifier.
+- registry: `extracted/data/maps.json` (canonical) validated against
+  `contracts/maps.schema.json` (jsonschema): 6 layers (world-strategic
+  tiles + height grid + 4 gated D5/D6 vector/marker layers), 13 typed
+  marker kinds with carriers + gates (zero pins), 13 CDB region rows
+  (polygonRef/bounds null until D5), seven-field geometry vocabulary,
+  storage/publication planes block. tileSizePx pinned 512 + format webp
+  (the D1/export decision the sample reserved).
+
+**Gotchas that changed the output**
+
+- The recon TSV's flag-2 offset column is superseded by the resolved f64
+  dataPosition semantics (spec-harvest §2.1): 2,636 flag-2 rows carry the
+  region base where wtpak carries the true position. Bijection therefore
+  asserts path/size/hash always, offsets only on flag-0 rows.
+- `dwMipMapCount` reads 1 with `DDSD_MIPMAPCOUNT` (0x20000) **set** —
+  "one mip level", i.e. the single-surface payload §2's arithmetic
+  proved; recorded as effective surfaces 1, not 0.
+- Orientation probe vs INDEX: **inconclusive from captured evidence** —
+  shot-05/shot-04 are region-level dialogs (Strategic Map fiefdom view,
+  Hunt Map) with no world coastline, so the spec §2 comparison cannot
+  close from INDEX captures alone. `yAxis`/`d` stay **null** in
+  maps.json (null beats guesses); D6 resolves them from D5 anchors or a
+  whole-world strategic-map capture. Side-by-side artifact stored:
+  `output/map-tiles/v20318128/review/orientation-vs-shot05.png`.
+- Windows cp1252 stdout cannot print `Δ` — stream reconfigure to UTF-8
+  added (same treatment harvest.py applies).
+
+**Reconciliation statement**
+
+- Σ(class bytes) + textures.json = 27,888,786,275 = pak data span (Δ=0) ✓;
+  per-class counts/bytes = spec §1 table to the digit ✓; duplicate
+  families reconcile inside those sums ✓; five-class cell-set identity ✓;
+  1,377 present + 703 holes = 2,080 bbox cells ✓; 273 ⊂ 276 with the
+  exact 3-cell residue ✓; pyramid 1,377+345+87+27 = 1,836 tiles ✓;
+  registry layer bounds within measured bbox (schema-asserted) ✓.
+
+**Next dig queue**
+
+1. D5 HBSON decode (`worldmap.l3d`, `wmap_current.prefab`, REG
+   POI/Towns/Secrets) — gates region polygons, all marker coordinates,
+   and D6's strong form; H-POI name-vocabulary typing confirm/refute;
+   `samePosAs` aliasing.
+2. D6 transform fit + orientation once anchors exist (budget frozen
+   before the run; roundtrip = AC9).
+3. TestWriter suite (`pipeline/tests/test_map_tiles.py`) against these
+   artifacts — numeric fixtures committed, TSV-gated property tests
+   local-only.
+
+---
+
+## 2026-08-25 — Dig 6: world orientation evidence — D6 axis verdict reached
+
+**Agent:** fresh data-layer dig agent (brief
+[briefs/dig-orientation.mdx](briefs/dig-orientation.mdx)). Read-only on the
+client (`A:\SteamLibrary\steamapps\common\Wartales\hlboot.dat` + harvest
+tree); no subagents; no commits. Deliverable:
+[orientation-evidence.mdx](orientation-evidence.mdx) — full threads,
+confidence, and proof chain; this entry records only deltas.
+
+**Verdict:** `yAxis: "north-up"`, `transform.d: −1` (`a:+1`, no mirror).
+Stored plane: north = small y, east = +x. Proof: locale-bridge region names +
+client directional lore (Ludern north of Tiltren; Alazar/Drombach = "Northern
+Kingdom" with mountains; Belerian wreck on Tiltren's *southern* coast) vs
+measured mean-elevation per cell over all 1,377 height grids — the sole massif
+sits at y ≈ 0–13 (small-y), sea + archipelago at large y. Registry pin lands
+on next `map_tiles registry` rerun; AC9 roundtrip budget still gated on D5.
+
+**New fork-bytecode facts (verified against known-semantics functions)**
+
+- Field ops carry flattened per-type field ordinals (root→leaf), not string
+  indices: `h2d.Camera.set_x/y/anchorX` → 0/1/6; `$Math.PI` at ordinal 8 via
+  the `hl.BaseType→hl.Class→$Math` chain.
+- Jump targets are signed offsets, destination = `pc + 1 + t`.
+- Call-family op 28 has a fixed 6-operand layout — left undecoded (not
+  needed for any conclusion drawn this dig).
+
+**Client frame uniformity (all unflipped, one shared orientation):**
+`WorldMesh.getFow` (row = y), `Layers2D.getLayerColor`
+(`int((y−offsetY)/layerScale)` rows top-down), `MiniMap.getPlayerPosition`
+(= world xy), `getInitialPanning` (×zoom, no negation), update's scroll
+application (symmetric −panning). The strategic map ROTATES its content
+container by `atan2(dy,dx)` toward the camera target — players see a
+camera-relative view; the stored plane never flips.
+
+**Compass widget caveat:** `ui.comp.Compass.sync/setAngleData` decoded
+(yaw = ±acos(f·X̂); bearing windows N(0,π) E(+π/2,−π/2) W(−π/2,+π/2)
+S(−π,0), K = Math.PI) but read literally it binds North=+Y — contradicted by
+the terrain+lore evidence and resting on two coupled sign choices (fork
+comparison-jump operand order × strip interpolation direction) not closed
+here. Recorded as ambiguous in
+[orientation-evidence.mdx §2b](orientation-evidence.mdx#2b-compass-widget-uicompass--decoded-then-discarded-as-tiebreak);
+not used as evidence.
+
+**Artifact discoveries**
+
+- `res.pak:/content/prefabs/lighting/worldmap.dat/layers2D/*.png` —
+  region/island/biome/subregion/difficulty/env/gameplay indexed masks,
+  2048² L-mode PNGs sampled per world position. Value→CDB-id index table
+  rides `worldmap.dat` HBSON (D5); masks readable now and already used as
+  geographic evidence.
+- Placeholder albedo cells are byte-identical clones: **276 cells share hash
+  `0ff430e9` (262,272 B each)** — supersedes the spec's "273⊂276 subset"
+  residue reading; the placeholder set is now measured exactly, and it fills
+  the un-authored open-sea band at large y.
+- hscript layer re-read in full for this dig: zero camera/coordinate logic
+  anywhere in the 12 sources (measured negative; they are quest/world state
+  tables). Geographic payload limited to World.hx border-post adjacency
+  flags.
+
+**Findings / gotchas**
+
+- Fandom corroboration attempt (community-hypothesis slot): 403 bot wall,
+  single attempt per AGENTS.md rule 10 — finding recorded, page abandoned;
+  verdict unaffected (client-only evidence chain).
+- Scratch tools left local under `output/_dig-map/`
+  (`orientation_disasm.py` v1 superseded by `orientation_disasm2.py`,
+  `albedo_means.pkl`, `placeholder_cells.pkl`) — promote `disasm2` into
+  `pipeline/tools/` if bytecode reading becomes a standing capability.
+
+---
+
+## 2026-08-25 — Dig 10: Steam achievements dataset — keyless route, join solved, locale negative proven
+
+**Agent:** fresh data-dig agent (brief
+[briefs/dig-steam-achievements.mdx](briefs/dig-steam-achievements.mdx);
+numbered Dig 10 per the brief — digs 7–9 were in flight concurrently).
+No subagents; no commits. Scratch + tools local under
+`output/_dig-achievements/` (fetch/parse/solve/emit/verify scripts, raw HTML/JSON).
+
+**Inputs (all keyless; no Steam Web API key exists)**
+
+- `steamcommunity.com/stats/1527950/achievements/` — full schema render:
+  **all 235 rows on one page** (no pagination), color icon + global-percent +
+  h3/h5 display text per row.
+- `api.steampowered.com/ISteamUserStats/GetGlobalAchievementPercentagesForApp/v2/?gameid=1527950`
+  — keyless, returns all **235 api-name slugs + percents**. Param is `gameid`,
+  not `appid` (`appid` → "Required parameter 'gameid' is missing").
+- `store.steampowered.com/api/appdetails?appids=…&l=english` — count
+  verification: **total == 235 ✓** (spec baseline reconfirmed), plus DLC census.
+- Legacy `?xml=1` rendering: param ignored (same HTML) — single attempt,
+  ledgered, abandoned.
+
+**The join problem, measured**
+
+Neither surface alone carries both halves: the community page has no api
+names, the percentages API has no display text. Positional alignment works for
+unique percents (**93 rows hard-pinned**) but **measurably FAILS inside
+equal-percent tie blocks** — 42 tie groups covering ~150 entries show stable
+adjacent swaps between the two surfaces' orderings (e.g. `comptoir_tiltren`↔
+codex-restoration row, `hunt_vertruse`↔Arthes tomb row). A positional join
+would have shipped ~40% wrong ids.
+
+**Solver** (`output/_dig-achievements/solve_join.py`): hard constraint =
+percent-group alignment in order (134=134 groups; tolerance absorbs a
+cross-surface rounding drift where the API prints `0.0` and the page `0.1%` on
+the two tail entries `a2_cure_companions`, `fief_caligula`). Inside each group:
+maximum-weight bipartite matching on a slug↔display semantic scorer (family +
+region lexicons, distinctive tokens, client threshold values from
+`counter.jsonl`). Residue adjudicated by hand with per-pair justification;
+every application asserted to stay inside its aligned group.
+
+**Result: 235/235 bound, zero ambiguous** — unique-percent 93 ·
+semantic-unique 118 · semantic-tied 11 · group-elimination 6 · adjudicated 7
+(`blackmarket_all_finished`→"Champions of the Black market" (all pits),
+`blackmarket_g2_finished`→Grinmeer pit, `rigel_ponies`→"Shepherd",
+`kill_beast_twice`→"The curse of Brigga", `rigel_cats`→"Soft kitty…",
+`cat_petted`→"Catperson", `brigga_beast_killed_no_trap`→"Perseverance is a
+quality" = sole unassigned row after 9 explicit pairs).
+
+**Steam locales: measured en-only negative.** First fetch round used `?l=`
+— it localizes **site chrome only**, achievement text stayed English in all
+9 pages. Cookie (`Steam_Language=<code>`) also returned English — control
+experiment: same carrier serves German achievement text for Witcher 3
+("Flieder und Stachelbeeren"), so the mechanism works and Wartales'
+**Steamworks strings are authored en-only**. Refetched all 8 non-en pack
+locales via cookie: **235/235 rows byte-identical English in every locale**
+(proven negative, not assumed). Per omit-until-translated, overlays ship for
+en only.
+
+**Emitted artifacts**
+
+- `extracted/data/_draft/achievement.jsonl` — `_meta` line + 235 rows
+  `{id, displayName, description, globalPercent, icon, iconGray, _join}`;
+  `iconGray: null` everywhere (locked-icon variant exposed by no keyless
+  surface; keyed `GetSchemaForGame` remains the upgrade path).
+- `extracted/locales/_draft-achievements/en.json` — pivot overlay ×235.
+- `extracted/locales/_draft-achievements/availability.jsonl` — 235 rows in the
+  `locale_availability.jsonl` schema with `"steamLocaleServed": false`;
+  kept beside the draft overlays because the client-side bridge tool owns
+  `relinks/locale_availability.jsonl` regeneration (merge step queued).
+
+**Join probe vs client half (`counter@props.achievements`, buildid 20318128)**
+
+- client ids 216 → matched **212** = 90.2% of the 235 Steam slugs / **98.1%**
+  of the client subtree.
+- api-only (23): the Curse-of-Rigel/Lombelle wave (`rigel_*` ×10, `comptoir_lombelle`,
+  `emergency_exit`-adjacent), Lombelle scenario pieces, the `a2_*` lycanthrite
+  set ×4, plus `general_song`, `stone_death`, `chicken_catch`, `codex_hermit`,
+  `save_civillians` — DLC-era achievements whose counters are absent from this
+  buildid's counter sheet; re-probe after TargetBuildID 21238928 lands.
+- client-only (4): `master_companion`, `master_labour`, `team_defeated_ormance`,
+  `walking_plague` — hooks with no live Steam schema yet (candidates for a
+  future update or platform-specific ids; some carry `id_xbl`).
+- Threshold corroboration: 32 descriptions embed the exact client value
+  (informational — most descs use flavor phrasing).
+
+**DLC apps: uniform negative fact.** All 8 content DLCs
+(3899740 Fief, 2903960 Tavern Opens!, 2692400 Pirates of Belerion,
+4165520 Curse of Rigel, 3112270 The Pits, 3335020 Skelmar Invasion,
+3559560 Beast Hunt, 4490120 Fires in the Capital) expose **no own
+achievement schema** — every content drop adds its achievements to the base
+app's 235 (visible as the DLC-era slugs above). Store `dlc` enumeration also
+yielded **3533110 = "Music: The Official Soundtrack"** (type music) — first
+enumerated non-content app, closing part of spec missing-data.
+
+**Findings / gotchas**
+
+- `?l=` on `/stats/<appid>/achievements/` localizes chrome only;
+  `Steam_Language` cookie is the text carrier — and proves EN-only authoring
+  when even it returns pivot text.
+- The two Valve surfaces sort identically by percent but break ties
+  differently — never join these surfaces positionally without percent-group
+  constraints.
+- WebFetch broken on host → plain `curl -s` fine throughout; single UA set,
+  zero blocked requests, zero fallbacks needed.
+- cp1252 console guard (`PYTHONIOENCODING=utf-8`) required again.
+
+**Reconciliation statement**
+
+- appdetails total 235 = community-page rows 235 = percentages-API entries 235 ✓;
+  overlay keys == dataset ids == availability ids (asserted) ✓; icons identical
+  across all 9 fetched pages ✓; availability cells 461/locale ×9 = 4,149
+  pre-correction, now en-only 461 ✓; verifier ALL PASS incl. 7 spot pairs and
+  percent monotonicity ✓.
+
+**Next dig queue**
+
+1. Re-run the join probe after buildid 21238928 lands — expect the 23
+   api-only ids to gain client counters (patch-diff freebie).
+2. Keyed `GetSchemaForGame` upgrade when `STEAM_WEB_API_KEY` fills: adds
+   `iconGray` + authoritative ordering to diff against this solver's output.
+3. Merge `availability.jsonl` into `relinks/locale_availability.jsonl`
+   regeneration (emitter extension), keeping the bridge tool idempotent.
+4. E6 unlock-condition graph: join resolved ids ↔ counter thresholds ↔
+   decompiled check sites once R3 decompiler lands.
+
+## 2026-08-25 — Dig 9: sdlboot.dat walk + element-wise diff vs hlboot
+
+**Agent:** fresh data-dig agent (brief delivered inline by the pack
+orchestrator). Read-only on the client (`A:\SteamLibrary\steamapps\common\
+Wartales\`); no subagents; no commits. Closes PROOF.md R6.
+
+**Inputs / method hygiene**
+
+- `sdlboot.dat` 16,100,863 B (sha256 `4f19503c…`) vs `hlboot.dat`
+  16,102,040 B (sha256 `135c36b1…`); buildid **20318128** re-read from
+  `appmanifest_1527950.acf` at run time (TargetBuildID still 21238928).
+- Walker `pipeline/tools/hlboot_probe.py` **byte-unmodified** (copies
+  sha256-verified against the original) run from mirrored scratch roots
+  `output/_dig-sdlboot/root-{sdl,hl}/pipeline/tools/` (+ `_refs/upstream/
+  opcodes.h`) so the tool's fixed `--emit` output dir resolves inside
+  scratch — `extracted/logic/hl-structure/` untouched (read-only this
+  dig). Baseline proof first: the same tool copy re-emits all 7 served
+  hlboot datasets **byte-identical** (opcodes.jsonl.gz equal after gunzip;
+  gzip mtime is the only container difference).
+
+**Walk result** — sdlboot.dat parses end-to-end under the same canonical
+HLB v4 layout **on the first attempt**: zero slack, consumed
+16,100,863/16,100,863 B, exit 0, 3.4 s. Section table: header 35 B · ints
+`0x23–0x1E8F` (1,947 × i32) · floats (579 × f64) · strings
+`0x30A7–0x22D3F6` · debugfiles (1,610) · types `0x237856–0x322804` ·
+globals · natives `0x32CF28–0x32F4AF` · functions
+`0x32F4AF–0xF19F80` · constants → EOF `0xF5ADFF`.
+
+**Verdict — the recon §5 reading is corrected by measurement.**
+"Same compiled program with alternate boot glue" ([client-recon
+§5](client-recon.mdx#5-hashlink-bytecode)) undersells it: the two images
+are the same game program **linked against two different render/input
+backends** — hlboot = DirectX (`dx.*` classes, `directx` natives, HLSL
+translator), sdlboot = SDL2 + OpenGL (`sdl.*` classes, `sdl`/`?sdl`
+natives incl. a full `gl_*` binding surface, GLSL translator). Header
+counts (hl→sdl): ints 1,600→1,947 · floats 580→579 · strings
+75,321→75,511 · debugfiles 1,609→1,610 · types 46,891→46,801 · globals
+34,258→34,162 · natives 569→658 · functions 52,114→52,089 · constants
+27,941→27,892 · entrypoint f#52,548→f#52,611 (both resolve to exact
+function matches: `fun$init` line 1, 139,443 vs 140,083 ops).
+
+**Element-wise findings** (harnesses + full outputs in
+`output/_dig-sdlboot/`: `diff_structs.py/.txt`, `diff_focus.py/.txt`,
+`diff_close.py/.txt`; raw ranges in `diff-summary.json`)
+
+1. **Per-source-file accounting is the shift-proof instrument** (raw
+   index positions shift between images from type #86 onward, so
+   positional compares are meaningless past the pools). Of **1,575
+   source files that are some function's primary debug path in BOTH
+   images**, **1,560 compile function-count- AND opcode-count-identical**
+   — **92.66% of opcode mass** (2,323,902 of 2,508,050 ops). Only 15
+   shared files change shape, all backend-coupled glue: `fun$init`
+   +640 ops · `hxd/Pad.hx` +536 ops/+2 fns · `hxd/Window.hl.hx` +251 ·
+   `hxd/System.hl.hx` +122 · `src/ui/comp/GraphicsOptions.hx` −31 ·
+   `shiro/debug/FpsGraph.hx` +16 · `shiro/online/Log.hx` +15 ·
+   `hl/UI.hx` −13 ops/−2 fns · `src/ent/Entity.hx` +9 · `src/Main.hx`
+   −6 · `h3d/mat/Texture.hx` −5 · `h3d/Engine.hx` +2 ·
+   `src/Console.hx` +2 · `src/gfx/PerfAnalyzer.hx` −2 ·
+   `src/gfx/GraphicsControl.hx` −1.
+2. **Backend file swap:** out `dx/{Cursor,Driver,Event,GameController,
+   Loop,Resource,Window}.hx` + `h3d/impl/DirectXDriver.hx` (68 fns /
+   4,673 ops) + `hxsl/HlslOut.hx` (51/4,969) = 10,893 ops; in
+   `sdl/{Cursor,Event,GL,GameController,Sdl,Surface,Window}.hx` +
+   `h3d/impl/GlDriver.hx` (80/5,326) + `hxsl/GlslOut.hx` (40/4,140) +
+   `h3d/mat/Texture3D.hx` (5/65, GL-only class) = 10,320 ops.
+   Reconciliation: −573 (backend swap) + 1,535 (shared-file deltas) =
+   **+962 = the measured total-opcode delta exactly**.
+3. **Natives table is where the biggest single block moves:** −101
+   entries (`directx` 93 + `?directx` 6 + `?ui.ui_{get,set}_clipboard_text`
+   — clipboard moves into the sdl lib) and +190 (`sdl` 163 incl. 130+
+   `gl_*` OpenGL bindings + `?sdl` 27). Every other lib is identical as
+   a multiset: `std` 220, `steam` 127(+8 soft), `ssl` 21, `fmt` 18,
+   `heaps` 14, `ui` 14, `uv` 4, `?std` 7, `?steam` 8, `?hlgog` 13,
+   `?hlwwise` 22. Net +89 ✓.
+4. **Types/globals/constants deltas are fully attributed:** named-type
+   census 11,021→10,958 with **10,926 name-identical**; −95 names are
+   all dx/DirectX/Hlsl family (+`h3d.impl.PipelineKind/PipelineState`,
+   `hxsl.Samplers`, an `[enum] String`), +32 are the sdl/GlDriver/GlslOut/
+   Texture3D family. Constants keyed by (owning global's type name,
+   nfields): **all 27,892 sdlboot constants exist identically in
+   hlboot**; the entire −49 = `(String, nfields=2)` constant objects of
+   the enum type present only in hlboot. Globals first diverge at #18
+   (same `$ShaderCache` resolved name, tref shifted by one removed
+   type).
+5. **Pools:** ints agree for the first **497 entries (bytes
+   `0x23–0x7E7`)** then diverge; sdl adds 354 distinct values
+   (SDL/GL-flag flavored), drops 7. Floats agree through index 252,
+   then diverge non-uniformly (hl carries `1e+30` sentinels sdl
+   lacks). Strings: common prefix 372, suffix 342, middle window
+   +920/−730 (= net +190 ✓) — SDL_WINDOW_*/GL/gamecontroller vocabulary
+   in, dx/DirectX vocabulary out. Cross-check: sdlboot still carries
+   **4 directx-flavored strings** (`dxgi`, `' has unsupported DXGI
+   format '`, `DXGI_ERROR`, `DirectX`) in shared engine error paths.
+6. **Function identity:** 51,883 of 52,114 hl functions (99.56%) match
+   a sdlboot function by (primary debug path, signature); 51,843 match
+   with opcode count too. The 231/206 unmatched concentrate entirely in
+   backend files (DirectXDriver 68, HlslOut 51, GlDriver 80, GlslOut 40,
+   …). Raw operand streams differ almost everywhere because string/type
+   indices shifted — count-shape equality above is the honest same-code
+   instrument at this dig's scope.
+7. **Raw bytes:** first differing byte `0x05` (header counts); bytes
+   equal to `0x7E7`; beyond that 15,547,594 of the 16,100,863
+   common-prefix bytes differ in 3 merged windows (everything shifts
+   once the int pool forks).
+
+**Consequence for the corpus:** hlboot.dat remains THE structure dataset
+(it is the shipped default-path image). sdlboot owes **no dataset of its
+own**: nothing game-mechanics-shaped exists uniquely in it — its unique
+payload is precisely the SDL/GL backend surface (classes, natives,
+window/pad glue), which no player-facing tool consumes. Measured
+subset-relation: every sdl constant exists in hl; function space matches
+99.56% by (path, signature).
+
+**Reconciliation statement**
+
+- Counts: strings +190 = +920−730 ✓ · debugfiles +1 = +10−9 ✓ ·
+  functions −25 = unmatched 231−206 ✓ · natives +89 = +190−101 ✓ ·
+  opcodes +962 = −573+1,535 ✓ · constants −49 = String-enum family ✓.
+- Tool fidelity: walker unmodified (sha256-pinned); hlboot re-emit
+  reproduces all 7 served datasets byte-exact ✓; both walks land on EOF
+  with slack 0 ✓; sdlboot section table sums to file size ✓.
+
+---
+
+## 2026-08-25 — Dig 8: operand disassembler — complete disassembly + CFG + formula probe
+
+Brief: data dig 8 (fresh subagent, no subagents, no commits). Inputs:
+verified structure layer only (`extracted/logic/hl-structure/`, buildid
+**20318128**) + one pool-extraction read of `hlboot.dat`. Tool:
+[pipeline/tools/hl_disasm.py](../pipeline/tools/hl_disasm.py).
+Findings doc: [disasm-formula-findings.mdx](disasm-formula-findings.mdx).
+This entry records only deltas.
+
+**Tool written (this dig)**
+
+- `pipeline/tools/hl_disasm.py` — operand-resolved disassembler + CFG
+  library. `--emit` renders all functions into mirrors of the debug source
+  paths; `--verify` reruns the role audit + known-semantics renders;
+  `--function N` / `--file path` render interactively.
+
+**Structure layer completed additively**
+
+- `extracted/logic/hl-structure/{ints,floats}.jsonl` (1,600 i32 / 580 f64)
+  — the constant pools were never emitted by Dig 6's walker; OInt/OFloat
+  literals are unreadable without them. Extracted by re-walking header +
+  pools with `hlboot_probe.Dig` (`--hlboot` once; afterwards cached files
+  are used). `hlboot_probe.py` itself untouched.
+
+**Emitted artifacts**
+
+- `extracted/decompiled/hl/**` — **1,584 `.dis.hx` module mirrors**
+  (= every function-bearing debug path; the other 25 of 1,609 table
+  entries carry no functions) covering **52,114 functions /
+  2,508,050 ops** in ~9 s wall. Text format chosen over jsonl: doctrine
+  wants readable decompile artifacts next to their original filenames and
+  formulas must be greppable; the machine layer already exists
+  (opcodes.jsonl.gz), and `_functions-index.jsonl` (52,114 rows: findex →
+  file/line/CFG shape) provides the join.
+- `extracted/decompiled/hl/_unknown-opcodes.jsonl` — unknowns ledger:
+  fork ops 99–101 pinned-but-unobserved, OBytes payload unproven (0
+  occurrences), plus honest counts of dynamic-receiver references.
+- `output/_dig-disasm/` — `cfg-stats.json` (504,298 blocks / 640,894
+  edges; mean cc 5.12; max cc 1343 = `src/battle/ai/AIDirector.hx`),
+  `cfg-spot-verify.mdx` (10-function verification record),
+  `_spotverify.py` + probe renders, scratch probes `_explore*.py`,
+  `_callmodel.py`, `_fieldmodel2.py`, `_globalfield.py`,
+  `_constconsumers.py`.
+
+**Measured semantics (cited in findings §1)**
+
+- Op 28 decoded as `OCall4(dst=reg, fun=findex, arg0..3=reg)`:
+  15,858/15,858 sites consistent, fun always an exact function/native
+  findex.
+- Field ordinals = flattened root→leaf data fields of the receiver type:
+  317,945/317,945 in range on declared obj types; virtual receivers use
+  the virtual type's own field list (95,929/95,929).
+- CallMethod/CallThis ordinals = proto vtable pindeXes: 799 (hierarchy,
+  name) pairs, 0 same-name collisions, 0 above-max-pindex.
+- Receiver resolution MUST use declared register/global types: declared
+  global-type chain fits 17,639/17,639 GetGlobal→Field pairs while
+  claimed-class overrides fit only 32% (abstract-impl ambiguity). Two
+  renderer defects found via spot-verification were fixed en route
+  (g_owner override poisoning receivers; missing sequential-fallthrough
+  CFG edges).
+
+**Formula probe highlights** (full detail with op ranges in the findings
+doc): capture odds fully decoded (`battle.Unit.getCaptureChance` f#7774 —
+health-clamped lerp then sqrt(t), ×5 modifiers); spawn-side prisoner roll
+(`ent.p.Npc.getUnit` pcs 502–540); combat XP composition
+(`battle.Debrief.addXP` f#25108); trade distance gradient
+(`st.Item.getLocalPriceFactor` f#6543 — nearest producer, 50-unit free
+radius, pow gradient); guard cap/pierce/backstab
+(`SkillTargetPreview.calcDamages` pcs 60–115); `MaxLevelLock`=15 pinned as
+a generated-item-level CAP (not a player-level lock). Constant access
+chain measured end-to-end: boot registers all 1,266 CDB constants on
+`_Data.$ConstantKind_Impl_`; consumers load name globals `g#N<String>`
+into name-keyed resolvers (`f#12949@Const.hx`, getBonusPercent variants).
+
+**Reconciliation statement**
+
+- Emitted ops 2,508,050 = structure-layer total ✓; functions 52,114 ✓;
+  modules written 1,584 = distinct `debug_file` values among functions ✓
+  (1,609 − 25 functionless header entries); index rows 52,114 ✓; dataset
+  alignment asserted line-by-line at emit ✓; pools 1,600+580 = header
+  counts ✓ (strict-walk boundaries).
+- Verification: `--verify` PASS (role audit 100% on every call/jump
+  family; known-set renders reproduce Dig 6 documented behavior);
+  spot-auto PASS on 10 control-flow shapes; unknown ledger kinds reduced
+  from model failures to genuinely dynamic receivers only.
+
+**Next dig queue additions**
+
+1. Structured-text step (plan §3 step 5): expression folding + dominator-
+   based if/while reconstruction over the emitted blocks — precise open
+   list in [disasm-formula-findings §4](disasm-formula-findings.mdx).
+2. Fold formulas.jsonl [MIXED] rows to composition-read status citing
+   this dig's op ranges; upgrade PROOF R10 relink matrix with the new
+   code-side edges (skill↔unit-class capture chain etc.).
+
+## 2026-08-25 — Dig 7: HBSON prefab decode — format reversed, R1 closed
+
+**Agent:** fresh data-layer dig agent (brief
+[briefs/dig-hbson-decode.mdx](briefs/dig-hbson-decode.mdx)). Read-only on
+the client; no subagents; no commits. Deliverables:
+[hbson-format.mdx](hbson-format.mdx) (full grammar + evidence),
+[`pipeline/tools/hbson_decode.py`](../pipeline/tools/hbson_decode.py),
+`pipeline/tools/hbson_emit.py`, datasets + proofs listed below.
+
+**Format reversal — three oracles, one grammar**
+
+- Bytecode oracle first: `hxd.fmt.hbson.Reader.read/readString` +
+  `Writer.writeRec/writeString` disassembled from hl-structure with the
+  dig-6 fork decoder. The writer's tag writes pin every value form; the
+  reader's string-word masks (`0xC0000000/0x40000000/0x3FFFFFFF`,
+  ints-pool entries 702/179/100) pin the string encoding.
+- Grammar in one line: magic `HBSON\0` + one tagged value; tags 0x00–0x0D
+  = int0/u8/i32/f64/true/false/null/empty-object/object(u8/i32
+  count)/string/array(u8/i32 count); **field keys are bare strings (no
+  0x0A tag)**; strings = i32 word `form<<30 | len_bytes` where form 1 =
+  inline ASCII + table-push, 2 = inline UTF-8 no-push, 0 = back-reference
+  into the running dedupe table (20,614,979 refs corpus-wide).
+- Gotcha that cost the longest loop: the leading byte of each length word
+  (`0x40`/`0x80`) reads as an `@`/control character in hexdumps and
+  masqueraded as a marker byte until the i32 reading fell out of the
+  bytecode.
+- Second gotcha: whether bit-31 strings push to the dedupe table is
+  invisible in zero-slack terms; settled by a key-sanity experiment
+  (b31-push ⇒ 1.56 M prose keys out of 6.29 M; no-push ⇒ 2,111) plus the
+  reader branch order.
+
+**Proofs (all green, buildid 20318128)**
+
+- Strict decode: **3,536/3,536 blobs, 307,768,190/307,768,190 B,
+  slack 0, 28 s** (res 727 + content 2,674 + assets 135 — assets.pak's
+  HBON population is recorded here for the first time).
+- Byte-exact re-encode from (value + form trace): **3,536/3,536 files
+  reproduce their original bytes** (`output/_dig-hbson/
+  fullcorpus-reencode.json`) — the strongest possible closure for a
+  container format.
+- Stratified 225-blob sample (27 B → 4,457,124 B): strict decode /
+  byte-exact / re-decode equality / independent second implementation all
+  **225/225** (`output/_dig-hbson/roundtrip-proof.json`). The second
+  implementation shares no code and caught nothing the first missed after
+  fixes — it had been one of the catchers earlier (backref handling).
+
+**Emitted artifacts**
+
+- Datasets `extracted/data/_draft/{place,group,element,levelProps}.jsonl`
+  — rows harvested from `$cdbtype` objects (CastleDB datafile semantics):
+  place 539 occ → **536 distinct payloads** (534 ids) · group 797 →
+  **791** · element 6,306 → **5,180** (5,078 ids) · levelProps 5,982
+  occurrences → **235 distinct payloads**, occurrence-keyed `lp-NNNN`.
+  Same-id re-declarations across carriers are real scene-local variants
+  (e.g. `Bridge_group` disabled per building) — every distinct payload is
+  kept with `_carrier/_path/_variant`; exact duplicates merged. Schemas =
+  data.cdb hidden sub-sheets, shipped in `_meta.hiddenSubSheets`;
+  textKey routing confirmed against export_en.xml (`place`, `group`,
+  `element` sheets present; dotted column paths like `world.name`).
+- `extracted/relinks/_draft/poi_coordinates.jsonl` — **607 rows**
+  (carrier A2 contract): 322 poi + 66 town + 210 secret/secret-entry
+  placements + 9 region anchors. Placement model discovered this dig:
+  each `Region*.prefab` self-places via a `Content` node whose x/y IS the
+  world anchor (== wmap_current.prefab placement); deeper positions are
+  local offsets composed along reference chains with full rotationZ
+  handling (translation-only paths flagged `exact:true`; rotated chains
+  keep raw locals). POI markers ride `props.world.prefab`, not `source`
+  (which points at the visual building prefab). Hand-verified:
+  A1Arena chain composes exactly; T4 through rotationZ=117.6. 89 REG
+  prefabs are cited by no edge (cut-content/DLC-leftover candidates,
+  null coords, never invented).
+- `extracted/data/_draft/worldmap_overlays.json` — worldmap.l3d scene
+  census (level3d root; camera at 137.8/119.9/108.2 rotZ −90; hero
+  gamectrl anchor 2400.15/1918.05; 70 decals; 151 sounds), wmap_current
+  edit-session payload, and the **layers2D value→CDB-id tables recovered**
+  from `prefabs/lighting/worldmap.prefab` (`layers` node: difficulty/
+  region/biome/env/gameplay/island/subregion × color+index+name;
+  `layerScale: 4`) — closes the Dig 6 §3 open item on mask semantics.
+- `extracted/logic/basePrice_carriers.jsonl` — measured negative:
+  `itemType.props.basePrice` occurs **nowhere** (0 hits in data.cdb raw,
+  96/96 itemType props cells inline without it, 0 in all 3,536 HBSON
+  blobs, and `_Data.ItemType_props` has no such field). The formulas.hx
+  fallback path resolves null→NaN on shipped data; join key documented.
+
+**Relink closure (R1 gate)**
+
+The 72 unverifiable edges flipped `valid:null → valid:true` against the
+decoded id sets: env→place 61/61 · frescos→place 9/9 · fiefGoal→element
+2/2. Zero dangling introduced. Files updated in place with
+`verifiedBy: "Dig D7"` notes.
+
+**Findings that change the spec picture**
+
+1. R1 is CLOSED end-to-end: decoder + proofs + the four deferred kinds'
+   rows now exist as datasets; POI/town/secret coordinates exist as
+   relink rows; world↔tile transform anchors (region Content x/y vs map
+   tiles) now exist for spec-map-pipeline D6.
+2. REG tree counts corrected: the "724 prefabs" figure counted ALL files
+   under regions/<tree>/<dir>/ (POI 453/Towns 156/Secrets 115 incl.
+   .l3d/.bin/.dds companions); actual `.prefab` count is 512 (POI 331 /
+   Towns 66 / Secrets 103 + Secret 12), all present in harvest.
+3. assets.pak carries its own small HBON population (135 blobs /
+   163,613 B — interior/chars models) — first recorded.
+4. element rows number ~5.1 k distinct payloads across buildings/
+   cutscenes/dioramas: the npc-vendor/dialog corpus is an order larger
+   than the CDB-inline picture suggested; locale overlays for place/
+   group/element can now follow the wave-2 route.
+5. levelProps payloads are almost-all-shared vocabulary (235 distinct of
+   5,982 occurrences) — battle-scene/poi variety lives in the SCENE
+   composition, not in per-node payload novelty.
+
+**Next dig queue additions**
+
+1. Locale overlays for place/group/element (bridge presence proven; same
+   parser route as wave 2) — completes E7 for the deferred kinds.
+2. D6 transform fit from the new anchors (poi_coordinates ↔ map tile
+   grid) + orientation re-check per spec-map-pipeline AC9 budget.
+3. Relink wave 3: hard edges FROM the decoded rows (element@npc.unit →
+   unitClass, props.linkedPlace/refCity → place, levelProps@spawnData →
+   unitClass, group@units@classes → unitClass, …) using the emitted
+   schemas.
+
+## 2026-08-25 — Dig 11: world↔tile transform fit — D6 strong form CLOSED
+
+**Agent:** fresh data-dig agent (brief "Data dig 11", R8; a prior launch had
+died silently leaving an empty `output/dig-xform.log`). No subagents; no
+commits. Tools: [`pipeline/tools/fit_world_transform.py`](../pipeline/tools/fit_world_transform.py)
+(validation battery) + [`pipeline/tools/emit_tile_coords.py`](../pipeline/tools/emit_tile_coords.py)
+(tile join); residual report
+`output/_dig-xform/RESIDUALS.mdx` (local-only). Python 3.14.7,
+numpy + Pillow; buildid **20318128**.
+
+**The transform (single global axis-aligned affine — no rect-per-region
+fallback needed):**
+
+- stored-plane mosaic pixels: `px = wx·4`, `py = wy·4`; origin = top-left
+  corner of tile column x0 / row y0; row index grows with world y (north =
+  small y at image top, per Dig 6).
+- cell lattice: `(floor(wx/128), floor(wy/128))`; served z3 URL index =
+  `(cx − xMin, cy − yMin)` rebased — A1 served-tile shape untouched.
+- **The scale was never fitted from rasters — it is carrier arithmetic.**
+  Two independent authored carriers agree on the same 128-unit lattice:
+  `worldmap.prefab $.children[layers2D]` carries `offsetX −1536`,
+  `layerScale 4`, `worldSize 8192` (= 64×128), and `$.children[heightmap]`
+  carries `sizeX 60 / sizeY 48 / minTileX −12` (`offsetX == minTileX·128`
+  exactly). The client's own sampler (bytecode f#11253
+  `Layers2D.getLayerColor`: `col=int((x−offsetX)/layerScale)`, out-of-bounds
+  ⇒ −1) closes world→mask semantics with no free parameters.
+
+**Validation battery** (gates frozen before running; full tables in
+`output/_dig-map/coordinate-transform.json`):
+
+- POI/town/secret/anchor region labels vs `layer_region.png` through the
+  client's own arithmetic: **509/518 = 0.9826** (gate 0.97); towns 61/61 and
+  secret-entries 29/29 = 1.0000. All 9 mismatches classified, none dropped:
+  paired-region roots sharing exact positions (Edoran_2↔Edoran_1,
+  InterRegion_2↔InterRegion_1), one anchor above the authored band
+  (Gosenberg_1 root at y=−497.5), boundary markers ON borders.
+- Land/sea shape vs tile payload-hash geography: collide mask
+  `assets/worldmap/collides/global.png` (`<128` = traversable) IoU **0.7988**
+  with land cells 1100/1104; union of authored layers2D paint IoU 0.6162
+  (gate 0.50 both).
+- **Label-shift curve** (the sharp registration instrument): sliding the mask
+  plane ±128 units, point-sampled agreement peaks exactly at (0,0) with
+  value-at-zero = curve maximum = 0.9826.
+- **Coastal polarity**: on land cells bordering water, the water-facing half
+  of the tile averages lower elevation on all four coasts — stored `.raw`
+  rows run north→south, columns west→east, closing the intra-tile direction
+  ambiguity D2's edge-continuity proof left open.
+- Elevation↔biome consistency (descriptive): blizzard blob mean elevation
+  11.397 (massif top decile ✓), Edoran_2 swamp 0.346 (lowland ✓).
+
+**Kind geography after projection** (distance-to-water in cells):
+towns **61/61 on land** · secret-entries 29/29 · poi 242/243 · crossings
+7/7 inland (median 10 cells to water) · fishing spots shore-side (min 3);
+the only sea-cell markers are Belerion boat/sea-secret content
+(`B1BoatGhost`, `B1SeaSecret*`) — sailable-DLC markers correctly in open
+water. `S1WreckBelerion` lands on Tiltren county's southern edge (cell
+17,17), matching the client lore that put the Belerian wreck on Tiltren's
+southern coast.
+
+**Retired instruments — measured reasons in RESIDUALS:** cross-pitch
+block-majority sweeps (granularity-biased: u=64 "wins" labels; shape flat
+across ±6 % pitch); mean-elevation-under-blob argmax (monotone, not peaked);
+splat nearest-debug-color matching (0.1179 = meaningless — splat channels
+are slot selectors + weights, not colors).
+
+**New measured facts en route**
+
+- Splat channel structure: per-cell local slot selectors (≤6/cell, two
+  encoder families: `index*16` vs raw ids 0..5), weights B/A with A=255−B.
+  The slot→material table is NOT carried by `worldmap.prefab` — micro-dig
+  unblock: terrain Surface/TerrainMesh material assignment.
+- Collide-mask polarity + plane alignment measured (above).
+- Feature spacing (AC9 input): town anchors nnMin 8.9 px / median 31.1 px /
+  max 3324 px stored; `D6_BUDGET_PX` frozen at **128 px** = registration
+  tolerance (32 units × 4 px/unit), which activates the suite's roundtrip
+  test (`76 passed` default, `93 passed` with `--run-integration`).
+
+**Emitted artifacts**
+
+- `extracted/data/maps.json` — registry rerun via `map_tiles.py registry
+  --y-axis north-up --d-sign -1` (the Dig 6 pin landed): `crs.yAxis
+  north-up`, `transform.d −1`, `originRebase.roundtripBudget 128.0`, plus
+  NEW declared `coordinateTransform` block (model/carriers/provenance/
+  validation summary citing this dig's measurement artifact); schema
+  extended additively (+40 lines in `contracts/maps.schema.json`);
+  marker-layers gains a `coordinateRows` pointer; pins stay 0 for the eleven
+  unseparated H-POI legend kinds.
+- `extracted/relinks/_draft/poi_tile_coords.jsonl` — 607 rows (608 lines
+  with `_meta`): every Dig 7 row verbatim + `tile` block (stored px/py,
+  owning cell, z3 tile index + URL, bbox membership, land flag by splat
+  hash). 517 inside bbox, 1 honest outside (the Gosenberg_1 root), 89
+  null-coordinate rows carried through with nothing invented.
+- `output/_dig-map/coordinate-transform.json` — the machine measurement the
+  registry cites (C4 pattern).
+
+**Reconciliation statement**
+
+- Registry cites only this-run measurements (rawproof/pyramid-ratio/
+  coordinate-transform all required present; verdict CONFIRMED required) ✓;
+  jsonschema validation of the emitted registry ✓; contracts diff additive
+  only ✓.
+- poi_tile_coords rows 607 == source rows 607 ✓; per-kind projected counts
+  243+176+29+61+9 = 518 == rows with coordinates ✓; 89+518 = 607 ✓.
+- Battery gates: labels 0.9826 ≥ 0.97 ✓; shapes 0.7988/0.6162 ≥ 0.50 ✓;
+  shift-curve argmax (0,0) within ±32 ✓ ∧ zero within 2 pts of max ✓;
+  coastal polarity 4/4 coasts ✓.
+
+**Next dig queue additions**
+
+1. Terrain Surface/TerrainMesh material assignment micro-dig → per-cell
+   splat slot→material table → named ground-cover overlays.
+2. H-POI name-vocabulary typing over `poi_tile_coords.jsonl` ids → split the
+   eleven typed marker layers out of generic poi rows (their pins are still
+   0 by design).
+3. Region polygons: layers2D `layer_region.png` now yields exact world-space
+   region shapes through the pinned sampler — emit polygonRef/bounds into
+   maps.json regions[] (retires more of the D5 vector gate).
+
+## 2026-08-25 — Dig 12: battle terrain grid decode — R7 closed
+
+**Agent:** fresh data-dig dig agent (brief: data dig 12). Read-only on the
+client; no subagents; no commits. Deliverables:
+[`pipeline/tools/battle_terrain_dig.py`](../pipeline/tools/battle_terrain_dig.py),
+[extracted/data/_draft/battle_scene.jsonl](../extracted/data/_draft/battle_scene.jsonl),
+`output/_dig-terrain/battle-bin-index.jsonl` (per-file shape index),
+`output/_dig-terrain/dig-report.json` (proof report).
+
+**Layout reversed — prefab declares, bytecode confirms, bytes prove**
+
+- Oracle chain: each owning scene prefab (`map_*.prefab`) carries a
+  `type:"terrain"` node declaring `vertexPerMeter`,
+  `weightMapPixelPerMeter`, `surfaceCount` + the splat `surfaces[]` table;
+  `autoCreateTile:true` means the tile set simply IS the `.dat/terrain/`
+  file population. Bytecode confirmation from the disassembled engine class
+  `hrt.prefab.terrain.Terrain.hx` (createTerrain ops 15–31/57–92):
+  `cellCount = ceil(tileSize·vertexPerMeter)`,
+  `heightMapResolution = cellCount+1`,
+  `weightMapResolution = round(tileSize·weightMapPixelPerMeter)`; the ctor
+  (f#9693) defaults `tileSizeX/Y = 64.0`.
+- Corpus shape: `prefabs/battle/**/<stem>.dat/terrain/<x>_<y>_{h,i,n,w}.bin`
+  — **97 scenes · 1,470 tiles · 5,880 files**, every tile complete with all
+  four roles. Tile indices span negative coords (e.g. beach x −2..1,
+  y −3..1).
+- Role table (all measured, then byte-proven):
+
+| role | layout | semantics |
+|---|---|---|
+| `h.bin` | f32 × side², side = cellCount+1 | heights in meters |
+| `n.bin` | RGBA8 × side² (same side as h) | per-vertex packed normals: ch0/ch1 = unorm8 normal x/y, ch2 ≈ nz, ch3 = binary flag channel |
+| `i.bin` | RGBA8 × wside², wside = round(64·wppm) | surface-index map, channels index the scene's `surfaces[]` |
+| `w.bin` | RGBA8 × wside² | blend weights, complementary across active channels |
+
+- **Tile size 64 m proven both ways in all 97 scenes** (h-side−1)/vpm ==
+  w-side/wppm == 64.0 exactly; density combos observed: (vpm 2, wppm 4)
+  ×91, (0.5, 4) ×3, (2, 6) ×1, (1, 2) ×1, (1, 1) ×1. Scenes whose prefab
+  lacks a terrain node (Ruins-style, 5) resolve to the engine defaults
+  (2, 4) — same formula.
+- Normal encoding proven statistically: regressing ch0/ch1 byte offsets
+  against heightfield-derived unit normals on beach tile (−2,−2) gives
+  slope 1.04, intercept −0.17, **R² = 0.997** over 32,258 samples
+  (unorm8 expectation ±63.75 B/unit; fitted ≈66.3 — seam smoothing +
+  quantization account for the residual). Pooled per-scene scales run
+  60–71 B/unit (median 68.9), flat scenes excluded.
+- `i`/`w` **alpha is an area mask**: 255 = painted/playable, 0 =
+  auto-created filler. Only 2 scenes use filler border tiles:
+  blizzard_alazar (16/22 tiles active), road_edoran (23/39). Weights never
+  exceed 255 summed across a pixel's channels (0 violations, 189 M px
+  checked).
+
+**Zero-slack proof (P1)**: predicted size == actual for **5,880/5,880**
+files under the derived layout — a layout explaining 100% of the corpus,
+not a sample (`dig-report.json:sizeOk`). Round-trip re-encode from decoded
+arrays: **240/240 byte-exact**. Independent second implementation
+(measure-then-validate against its own candidate table, shared nothing):
+**60/60**. Owner-prefab join evidence: same-stem 95 · strip-dot-variant 1
+(`map_pit_edoran01.1.dat` editor duplicate) · prefix-match 1
+(`city_poor_gosenberg.dat` → `_01.prefab`).
+
+**Scene semantics**
+
+- **CRS: local battle meters, independent family** — no anchor edge to the
+  worldmap exists in these prefabs (D6 world↔tile transform is a different
+  layer, unaffected). Heights corpus range −11.64 .. +9.30 m; dominant
+  extent 256×256 m (77 scenes), 128² ×13, largest 384×448 m.
+- **Tactical cell = 1 m, measured not assumed**: all 230 `ally`/`foe`
+  unit-marker polygons across 12 scenes are exactly 1×1 m squares;
+  deployment zones are scaled rects in the same meter space (Sport
+  `allyDeploy`/`enemyDeploy` 16×10 m at y ∓6). Spawn vocabulary: procedural
+  generation from the CDB `battle` sheet genSetting (the default), explicit
+  deploy-zone rects (13 scenes), arena selector presets (29 markers in
+  A1Arena alone), named spawner rects. Sanity: deploy centers 11/11 inside
+  tile-grid bounds; selector-points-inside-navmesh measured per scene
+  (A1/IR1 arenas 100%, B1/E1/G1/G2/H1 0% — those scenes gate movement via
+  other collision carriers).
+- Passability is NOT in the .bin: it rides `navmesh` polygons (10 scenes),
+  `obstacle`/`wall` nodes and `reachZone` decals, counted per scene in the
+  dataset.
+
+**Datasets**
+
+- `battle_scene.jsonl`: **97 terrain-backed rows + 15 terrainless stubs** —
+  together covering **all 108 CDB-referenced scene paths with zero missing
+  on disk** (join via `battle.mapPath`, multiple battle ids may share a
+  scene, e.g. ArenaE1/E2 → E1Arena). Stubs are the model-grounded scenes
+  (arenas' FBX grounds, prison, Celestium…) and carry full spawn/passability
+  extraction. Region attribution: token match against canonical region ids
+  (67/112 rows ≥1 region; canonical joins stay relink-wave-3 work).
+- `battle-bin-index.jsonl`: 5,880 rows — path, scene, tile, role, bytes,
+  layoutSide, dtype, sizeOk.
+
+**Findings that change the spec picture**
+
+1. R7 CLOSED end-to-end: the "raw float arrays" census entry resolves into
+   a fully keyed 4-role tiled format; `battle-scene` kind's primary source
+   moves readiness on-disk → decoded+proved.
+2. `maps.layers` battle-tactical "own CRS layer family" is CONFIRMED as
+   local-meter scenes (64 m tiles, 1 m cells); it does not participate in
+   the worldmap coordinate transform.
+3. The battle-scene kind is bimodal: 97 terrain-backed + 15 model-grounded
+   scenes; site rendering should treat them as two sub-shapes of one kind.
+4. `levelProps.props.gridSize:130` sits on the *lighting* exterior
+   reference node — unrelated to the tactical grid despite the name.
+5. Open residue (ledgered): exact engine meaning of `n.bin` ch3 flags
+   (binary, 557,827 flagged vertices, ~50% coinciding with the tile's last
+   row/col) — needs a TerrainMesh seam-handling read; does not block any
+   consumer of heights/indices/weights.
+
+## 2026-08-25 — Dig 13: structured-text decompiler — R3 step 5 landed, full corpus
+
+Brief: data dig 13 (fresh subagent, no subagents, no commits). Scope
+contract: [disasm-formula-findings §4](disasm-formula-findings.mdx) open
+list on top of the Dig 8 operand layer. Tool:
+[pipeline/tools/hl_decompile.py](../pipeline/tools/hl_decompile.py).
+This entry records deltas; verification numbers are final-emit facts.
+
+**Models measured this dig (full corpus, cited where used)**
+
+- **Debug assigns table decoded.** hlboot.dat carries per-function
+  `(variableNameStringRef, pc)` debugger variable-tracking pairs the
+  canonical loader skips unread and Dig 6 never emitted. Model: `pc < 0`
+  -> parameter slot `(-pc - 1)` (13,110/13,110 fit); `pc >= 1` ->
+  variable live at pc, i.e. dst(op[pc-1]) takes the name (104,555/105,139
+  land on dst-writing ops; 584 exceptions + 46,309 pc==0 markers ledgered
+  unused). Extracted by a strict zero-slack walk of the client's
+  functions section via `hlboot_probe.Dig` (`--extract-assigns`,
+  read-only; emitted as
+  [`extracted/decompiled/hl-src/_variable-names.jsonl`](../extracted/decompiled/hl-src/_variable-names.jsonl)).
+  Gives real local/param names (`proba`, `healthLimit`, `isLeaderToCapture`)
+  in the structured text.
+- **Constant-object globals decode FULLY** (closes findings §4 item 4):
+  `constants.jsonl` fields[j] are pool indexes keyed by the global's
+  DECLARED type field[j] kind — HBYTES(8) → strings[idx], HI32(3) →
+  ints[idx]; String globals additionally satisfy
+  `ints[length] == len(bytes)`. **27,941/27,941 rows decode**, every pool
+  ref in range; independently reproduces Dig 8's hand-decoded constant
+  names (`KnockOutChanceMinHealthPercent`, `Fierce`, `Pony`, …), so
+  consumers render `"KnockOutChanceMin"` instead of `g#4221<String>`.
+- **Bounds-checked array access idiom** fused structurally:
+  `[JULt idx<len -> ok | __expand(arr,idx) | ok: bytes=arr.bytes;
+  off=idx<<C; Get/SetMem]` renders `arr[idx]` / `arr[idx] = v`
+  (counted per function in each emitted header).
+
+**Emitted artifacts**
+
+- `extracted/decompiled/hl-src/**` — **1,584 module mirrors / 52,114
+  functions / 2,508,050 ops as readable `.hx` text**: expressions folded
+  from register defs (single-use inlining with an evaluation-order guard),
+  if/else + early-return guards, top-tested while loops, switch dispatch,
+  inline try/catch from trap/endtrap pairs, calls resolved to names,
+  materialized constants, assign-derived variable names. Unresolved ops
+  (9,035 — of which 8,964 are OCallClosure, i.e. findings §4 item 3)
+  render verbatim with `/* unresolved */`.
+- Sidecars: `_functions-index.jsonl` (function → BOTH layers: src
+  file:line + dig-8 `.dis.hx` file:line), `_unresolved.jsonl` (grows-only
+  ledger carrying Dig 8 kinds forward + decompile-layer kinds),
+  `_variable-names.jsonl`.
+
+**Verification (brief gates)**
+
+- (a) Op-range partition checked per function at emit: **2,508,050 /
+  2,508,050 ops tile exactly, no gaps/overlaps, 0 modules skipped,
+  0 render errors**.
+- Determinism: two independent full emits diffed recursively — **0
+  differences across 1,584 files + sidecars**.
+- (b) Known-semantics set PASS: getFow reproduces
+  `col=floor((x−minX)/fowScale)`, `row=floor((y−minY)/fowScale)`, guard
+  returns 1.0, `Bytes.get(fow, row·fowSize+col)/255` row-major;
+  getPlayerPosition/getLayerColor/Compass.sync partition ok and match
+  their documented behavior (renders under `output/_dig-decomp/
+  known-set/`).
+- (c) Hand audit: 24-function deterministic sample (seed 20260825,
+  stratified ≥½ from `src/`), 22 traced line-by-line against the disasm
+  layer — verdicts in
+  [`output/_dig-decomp/audit-sample/audit-sample.mdx`](../output/_dig-decomp/audit-sample/audit-sample.mdx).
+  The audit caught three real defects, all fixed before the final emit
+  and re-verified corpus-wide: stale-live condition building (f#7930),
+  result-discarded side-effectful calls dropped (f#8272's
+  `networkSetBit`), and single-use call inlining floating past
+  intervening field writes (f#23716). A machine scan now proves **0
+  undeclared temporaries across all 52,114 functions**.
+
+**Findings that change the spec picture**
+
+1. R3 step 5 is LANDED for the whole corpus, not just priority modules:
+   capture odds (f#7774), trade prices (f#6543/6544), XP (f#25108,
+   f#6040), damage preview (f#8320) now exist as readable structured
+   text alongside their measured op ranges — the calculator layer can
+   cite either.
+2. The decompile layer is a relink surface: constant-name strings join
+   code ↔ data.cdb ConstantKind rows directly (grep `"TradeGoods"` finds
+   every consumer site).
+
+**Remaining open list (honest, replaces findings §4)**
+
+1. OCallClosure targets (8,964 sites): closure call-typing through
+   OStaticClosure/OInstanceClosure producers — the one large unresolved
+   family left; renders verbatim today.
+2. Ternary/coalesce diamonds render as if/else, not `?:` sugar — exact
+   but verbose; folding is a readability-only upgrade.
+3. Short-circuit `&&`/`||` chains render as nested ifs, not compound
+   conditions.
+4. do-while/bottom-tested loops fall back to labeled-goto form
+   (`loop-goto-form` counter in headers).
+5. ArrayObj bounds guards (non-mem forms like f#47685) render unfolded;
+   fusion covers the ArrayBytes GetMem/SetMem family.
+6. 584 assign markers land on non-dst ops and name nothing (ledgered);
+   46,309 pc==0 markers unused by design.
+7. Environment note: C: hit 100% mid-dig (another pack's footprint);
+   heavy emits were staged on D:
+   (`D:/game-databases-media-offload/wartales-hl-src-stage`) and shipped
+   to `extracted/decompiled/hl-src/` only after space reappeared. The
+   staging dir is disposable — `--emit --out` regenerates it in ~57 s.
+
+**Next dig queue additions**
+
+1. Closure call-site typing (resolves the 8,964 OCallClosure sites;
+   unlocks readable event/callback wiring).
+2. Formula-layer pass: fold formulas.jsonl [MIXED] rows citing hl-src
+   line numbers instead of op ranges; upgrade PROOF R10 relink matrix
+   edges with code↔cdb constant joins.
+3. Locale overlays for place/group/element (Dig 7 queue item 1) still
+   open.
+
+<!-- END OF wartales/docs/data-dig-log.mdx -->
+

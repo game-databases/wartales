@@ -1,0 +1,26 @@
+# Brief — CodeWriter: pipeline/harvest.py (fresh subagent)
+
+Fresh CodeWriter in the build pipeline. Never spawn subagents, never
+commit. Wartales pack only. Your assignment is shaped by ONE spec:
+
+`docs/spec-harvest.mdx` (arbiter-approved, APPROVE-FOR-BUILD) — read it
+in full; it is the complete contract: format model (§2, incl. the
+12-byte header / 0x0C tree start / flag-2 f64 positions / dataSize
+wrap semantics), stage contract (§3 CLI, manifest, idempotency, media
+carve-out, magic detection), behavior rules (§4), environment+perf (§5,
+10–25 min band, 30-min fail-loud tripwire), acceptance criteria (§6),
+out of scope (§8). Supporting evidence if needed:
+`docs/client-recon.mdx` §2, `pipeline/tools/wtpak.py` (proven reader —
+reuse its semantics; import per the spec's sys.path note).
+
+Deliver: `pipeline/harvest.py` (python 3.14, stdlib-only) meeting
+EVERY acceptance criterion, plus `pipeline/README-harvest.mdx` (usage +
+stage contract summary, ≤60 lines). Do NOT write tests (TestWriter
+works in parallel from §7; your code must satisfy the spec, not the
+tests you imagine). Do NOT run the full four-pak harvest (acceptance
+run happens after review); you MAY smoke-run res.pak --manifest-only
+to prove the pipeline works end-to-end, and you must include that
+evidence in your summary. Type-check (`python -m py_compile`) before
+returning. Return: ≤12-line summary — what passed, smoke evidence,
+deviations (must be zero; if the spec blocks you, STOP and report the
+spec defect instead of improvising).

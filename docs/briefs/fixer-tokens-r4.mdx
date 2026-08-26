@@ -1,0 +1,16 @@
+# Brief — CodeFixer: F1 tokens carried items (fresh subagent, small)
+
+Fresh CodeFixer. Never spawn subagents, never commit. Wartales pack
+only. From `docs/critique-tokens-r4.mdx`, close the two carried items:
+1. `--tex-list-header`/`-highlight` point at `/assets/ui/ListHeader*.png`
+   which exist NOWHERE on disk (latent 404) — either find the real
+   extracted equivalents (grep design/extracted-ui/ + harvested
+   assets/ui/ for the actual header-band textures the preview uses —
+   the r3 chrome used HeaderBg; align the tokens to files that exist)
+   or remove the dead tokens. Preview must render with zero missing
+   refs (verify: no 404 in a headless render log / all url() targets
+   exist on disk).
+2. Add the shot-20 test for `--panel-alpha` the critic noted (sample
+   the camp-firelight shot's panel region vs the token value; assert
+   within tolerance).
+`npm test` green after. Return ≤6 lines.

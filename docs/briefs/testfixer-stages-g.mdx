@@ -1,0 +1,26 @@
+# Brief — TestFixer r2: suite hardening G1–G3 (fresh subagent)
+
+Fresh small TestFixer agent. **Never spawn subagents**; never commit;
+Wartales pack only. Headless: stdout → log; end with suite results
+verbatim.
+
+Read first: `wartales/docs/review-stages-tests-r2.mdx` (items G1–G3 are
+your entire scope); `pipeline/tests/test_stages_datasets.py` (the md-leg
+and FAULTS chain live there); the r2 reviewer's notes section.
+
+## Task
+
+1. **G1**: the RELATIONS.md tamper leg's backup write must not be able
+   to destroy the intact shared file on ENOSPC mid-backup — publish the
+   backup atomically (write sibling + length-verify + os.replace) so a
+   partial backup can never be restored by `finally`.
+2. **G2**: add the missing `else` guard to the parametrized FAULTS chain
+   so an unknown future fault id fails loudly instead of passing
+   vacuously.
+3. **G3**: initialize/guard `tampered` so pre-tamper exceptions surface
+   their true cause instead of NameError.
+
+Nothing else — no new cases, no tool edits, no other files. Prove each:
+simulate an interrupted backup (inject short write), unknown fault id,
+pre-tamper raise; then full default suite + both stage files standalone
+(`--basetemp` on D: given C: pressure). Report verbatim counts.

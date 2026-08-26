@@ -1,0 +1,41 @@
+# Brief — CodeFixer r1: stages build fixes W1–W4 (+W7) (fresh subagent)
+
+Fresh small CodeFixer agent. **Never spawn subagents**; never commit;
+Wartales pack only. Headless: stdout → log; end with per-item proofs.
+You are NOT any previous agent on this piece — work only from the ruling.
+
+Read first, in full: `wartales/docs/arbiter-stages-build-r1.mdx` (your
+exact work order — items W1, W2, W3, W4, W7); the findings it cites
+(`docs/review-stages-code.mdx`, `docs/review-stages-tests.mdx` sections
+referenced by each item);
+`wartales/docs/spec-stages-datasets.mdx` §3–§5 (contract you must not
+weaken).
+
+## Task
+
+Apply the arbiter's ordered items to the named files exactly as ruled:
+
+- **W1** validate_all.py — managed-kind census filtering, extras routed
+  to `hbson-independent` as report records (never crash), pruned
+  recursion, §3.5 freeze inline, modeled-cell parse-and-compare parity,
+  measured bimodal locale law (∈ {∅, exact-9}), PACK_ROOT anchoring
+  (finding A).
+- **W2** cdb_verify.py — dangling>0 ⇒ fail() gate (F6 escalation);
+  pair-file `_meta.buildId == --buildid` enforcement (R5).
+- **W3** promote_drafts.py — byte-exact payload equality (R2);
+  argparse + usage exit 2 (R3); universe-completeness precondition
+  exit 2 (R4); enumeration ledger + subdir handling incl.
+  battle_scene.jsonl / poi_tile_coords.jsonl (R9 as extended).
+- **W4** relink_catalog.py — zero-edge guard only (R11), nothing else.
+- **W7** refresh the §2 sha256+byte pins in `EXTRACTION-LOG.md` for
+  every file you edited + append the dated §6 history entry.
+
+Each item needs its arbiter-specified acceptance proof executed and
+quoted in your report (intruder-run report shape, T2b hard-arm green,
+CRLF twin, truncated-drafts exit 2, synthetic zero-edge render, live
+stages still PASS). Run the live stages (`run_all.ps1 datasets|relink|
+emit`) at the end — all must PASS with byte-stable reruns.
+
+Do not touch tests (`pipeline/tests/**` — TestFixer owns them next),
+site/, map_tiles.py, or anything outside the four tools +
+EXTRACTION-LOG.md. No refactors beyond the ruled items.

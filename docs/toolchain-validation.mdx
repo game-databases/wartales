@@ -1,0 +1,184 @@
+# Wartales toolchain validation — R2 scout report
+
+Round-2 continuation of the toolchain scout (R1 died mid-task; its
+artifacts were verified and extended, not assumed). Client: Heaps.io /
+HashLink, `A:\SteamLibrary\steamapps\common\Wartales\`, Steam appid
+`1527950`, buildid `20318128`. All numbers below were produced on this
+machine on 2026-08-24 by the tools under `pipeline/tools/`; raw evidence
+logs live in `pipeline/tools/_verify/`.
+
+---
+
+## 1. Pak reader verdict
+
+**wtpak.py reads all four Wartales paks fully. It is the primary tool.**
+
+R1's desync diagnosis was correct and is now closed: entry flags bit `2`
+means *dataPosition stored as f64* (needed because three of four paks
+exceed the 32-bit offset space). With that handled, every pak parses to
+an exact tree with zero slack.
+
+| pak | files | dirs | Σ entry sizes (B) | file size (B) | vs recon TSV |
+|---|---:|---:|---:|---:|---|
+| res.pak | 936 | 127 | 767,068,478 | 767,099,483 | 0 mismatches / 936 rows |
+| assets.pak | 17,131 | 724 | 9,216,734,007 | 9,217,464,877 | 0 mismatches / 17,131 rows |
+| content.pak | 15,248 | 1,225 | 7,366,372,942 | 7,366,857,765 | 0 mismatches / 15,248 rows |
+| map.pak | 6,886 | 8 | 27,888,786,275 | 27,890,157,981 | 0 mismatches / 6,886 rows |
+
+Reconciliation = path+size+adler32 per entry against R1's TSVs in
+`output/_recon-scratch/` (40,201 rows total). The header `dataSize`
+i32 field **wraps** on the three paks >4 GiB (delta exactly −2^33 or
+−3×2^33); entry sums are authoritative. Extraction proof — one real
+file per pak, magic bytes + recomputed adler32:
+
+| pak | extracted | size | magic | adler32 |
+|---|---|---:|---|---|
+| res.pak | `content/systemic/maps/sealords/sealordMap10Placeholder.png` | 1,935,486 B | PNG ✓ | MATCH |
+| assets.pak | `assets/interior/deco/assetPack/Bag_MetallicGloss_Ao.png` (DDS payload) | 699,192 B | DDS ✓ | MATCH |
+| content.pak | `prefabs/battle/Arena/map_Arena_01.dat/lightProbe_0/envs.dds` | 33,554,528 B | DDS ✓ | MATCH |
+| map.pak | `assets/worldmap/data/albedo/albedo_x-1_y11.dds` | 262,272 B | DDS ✓ | MATCH |
+
+map.pak additionally verified **past the 4 GiB boundary**: 1,612 entries
+sit above 2^32; three sampled (positions ≈ 4.295–4.300e9) all adler-MATCH.
+`res.pak data.cdb` also extracted (6,088,918 B, adler MATCH).
+
+Cross-checks:
+
+- **PAKTool** (N3rdL0rd's PakTool v0.2, based on ModTools v1.7.0;
+  source `https://github.com/N3rdL0rd/alivecells/releases` tag
+  `paktool-v0.3` shipped as `paktool-0.0.3-win-x64.zip`; .NET 9,
+  license tag not captured) `expand`s res.pak to exactly 936 files, and
+  the PNG is byte-identical (sha256) to wtpak's. Good independent
+  verifier; >4 GiB paks untested with it, so it stays the secondary.
+- **QuickBMS**: not needed; not tested.
+
+Format census (6-byte peeks, full extension coverage, `_verify/run-log.txt`):
+
+- `.png` in assets.pak is **mostly DDS payloads** (7,769 of 8,447); only
+  676 are real PNG. In content.pak the split is 732 PNG / 146 DDS. Trust
+  magic, never extension, when routing textures.
+- `.fbx` entries are **all HMD models** (Heaps native model format,
+  `HMD` magic) — 6,946 in assets.pak. No FBX parsing needed.
+- `.prefab` (635 in res.pak) and `.l3d` (303 in content.pak) are HBSON
+  (`HBSON\0` magic) — Heaps binary object notation.
+- `.envs`, `.envd` = environment/probe data wrapping DDS; `.tx` starts
+  `76 2f 31 01 02 02` (68 files, 420 MB — Heaps atlas/format TBD at
+  harvest); content `.bin` (10,204 files) = raw float vertex/color/
+  splat-style arrays; map `.raw` (2,754) = float coordinate pairs;
+  `.dat` (88) start with float pairs too (prefab terrain/model libs).
+- No encryption, no compression layer, no crypto gate observed anywhere:
+  every sampled payload shows a plaintext known magic at its absolute
+  offset, and adler32 is the only integrity mechanism.
+
+## 2. HashLink bytecode verdict
+
+> **Superseded 2026-08-24** by [decompile-dig-1](decompile-dig-1.mdx):
+> the types walk completed over all 46,891 types with zero slack and an
+> independent cross-check; the "fork kinds ≥19 / observed 22–31+" below
+> were desync artifacts of walking from a misaligned offset (the canonical
+> debug-files block sits between strings and types). Kept for the record.
+
+**hlbc fails on this build. Plan B (hand parser from engine sources)
+is seeded and already delivers the counts.**
+
+- File: `hlboot.dat`, 16,102,040 B, magic `HLB\x04` → HashLink bytecode
+  **format version 4**, `flags=0x1` (hasdebug bit set).
+- Tool: `hlbc.exe` = hlbc-cli **0.5.0** (Guillaume Anthouard,
+  `https://github.com/Gui-Yom/hlbc`, crates.io `hlbc-cli`; MIT).
+  Exact failure: `Error: Malformed bytecode (Invalid type kind '22')`.
+  Its latest tagged release (gui-v0.3.0) is older than this binary, so
+  there is no newer drop to swap in.
+- Root cause localized: public HashLink type-kind tables stop at 19–24
+  depending on release (checked upstream 1.12/1.13/1.16/master — master
+  renumbers the whole enum, so none match); this build emits kinds ≥19
+  (observed 22–31+, histogram in `_verify/run-log.txt`). Wartales ships
+  a HashLink fork whose type stream hlbc cannot read.
+
+Plan B seed — `pipeline/tools/hlboot_probe.py`, written directly from
+the canonical reader semantics (`_refs/`: Reader.hx-equivalent C loader
+`hl_code.c` fetched from `HaxeFoundation/hashlink`):
+
+- Header parses cleanly and strictly: nints 1,600 · nfloats 580 ·
+  **nstrings 75,321** · ntypes 46,891 · nglobals 34,258 · nnatives 569 ·
+  **nfunctions 52,114** · nconstants 27,941 · entrypoint f#52,548
+  (> nfunctions — flagged as a fork quirk worth one look later).
+- Strings section decodes **75,321/75,321** with strict NUL-separator
+  checks, blob fully consumed; contents are unmistakably the real thing
+  (`baseShaderList`, `res/assets/worldmap/collides/navmesh.dat`).
+- This build has **no top-level debug-files block** despite the flag:
+  types begin immediately after the strings blob. ~1,610 debug source
+  paths (`hxd/App.hx`…) sit later as a raw NUL-name blob (~0x22E000–
+  0x23845C).
+- Types walk (classic kind numbering): first 26 types parse cleanly,
+  4,220 before drift — blocked only on per-kind payload semantics for
+  the novel kinds ≥19. Continuation is mechanical: capture each novel
+  kind's payload shape (several behave as single-type-ref wrappers),
+  then validate against globals/natives index ranges. No blocker beyond
+  iteration; nothing encrypted.
+
+Counts the brief asked for: functions 52,114 · strings 75,321. "Module"
+count: HashLink v4 has no module table; nearest proxies are the ~1,610
+debug source files and the unique-Haxe-module count derivable from the
+46,891 type names once the type walk completes.
+
+## 3. Texture path
+
+Pak texture inventory (by extension × true magic): DDS dominates bytes —
+map.pak 24.5 GB of `.dds` tiles (albedo/normal/splat grids), content.pak
+4.4 GB DDS + 146 DDS-payload `.png`s, assets.pak 7,769 DDS-payload
+`.png`s + 17 `.envs` cubemaps; genuine PNG/JPEG ≈ 1,900 files, mostly UI
+scale (res.pak, assets UI dirs).
+
+Conversion plan to webp:
+
+1. Route by magic at extraction time (not by name): `DDS ` → decode
+   branch; `\x89PNG` / `\xff\xd8` → direct transcode branch.
+2. DDS decode via Microsoft **texconv** (DirectXTex) `-ft tga/png`
+   batch (handles BC1/BC3/BC5/BC7 used here), preserving mip-less
+   top-level for tile sets; cubemaps (`envs`) decoded face-wise.
+3. Transcode everything to webp with `cwebp`/Pillow; catalogue-first
+   per doctrine media carve-out — the 31.7 GB map tile set gets a
+   MEDIA-CATALOGUE.md row (bytes + counts + derived webp policy) for an
+   owner call before bulk conversion.
+
+## 4. Fallback plans A–D (format level)
+
+- **A (primary, validated)**: wtpak.py harvest of all four paks +
+  Plan B bytecode dumper (header/counts/strings done; type-walk
+  continuation defined in §2). No crypto gate exists to plan around.
+- **B (cross-check/rebuild)**: PAKTool expand (proven on res.pak,
+  byte-identical) as an independent extractor; CDBTool v1.7.0 (same
+  ModTools family) reads/edits CastleDB files if a cdb round-trip ever
+  beats direct JSON handling.
+- **C (generic)**: QuickBMS Heaps-pak script if a future patch changes
+  the container again — the format is small and PAK.txt pins it.
+- **D (runtime)**: if static bytecode parsing stalls on the fork's type
+  kinds, build the matching HashLink runtime (source tags up to 1.16 +
+  fork deltas) and let `libhl.dll`'s own module loader dump structures
+  at runtime; last resort is memory inspection of the running client.
+  None of these are needed today for the pak layer.
+
+## 5. Full-deconstruction scope mapping
+
+- **Data layer** = pak trees + structured tables: `res.pak` carries the
+  game brain — `data.cdb` (CastleDB JSON, 386 sheets incl. `icon` 801,
+  `notify` 482; `customTypes`; compress flag) + `formulas.hx` + hscript
+  sources + `names.yml` (per recon); locale bridge = root
+  `texts_en.xml`/`export_en.xml` (35 sheets / 9,912 text leaves);
+  prefabs/HBSON scenes in res+content; terrain `.bin`/`.raw` floats in
+  content+map; textures per §3; loose Wwise audio stays catalogued
+  off-corpus per doctrine.
+- **Logic layer** = `hlboot.dat` decompile: 52,114 functions /
+  46,891 types / 34,258 globals / 569 natives / 27,941 constants to be
+  recovered raw via Plan A/B, plus logic-in-data already identified
+  (formulas.hx, hscript). Structural artifacts (type graph, native lib
+  list, string registry) fall out of the same walker.
+- **Relink layer** = id registries across both: cdb sheet ids ↔ prefab
+  paths ↔ texture paths ↔ string-table ids ↔ HL type/global references;
+  export_en.xml leaves ↔ cdb text columns as the entity↔text join.
+  The string table (75,321) doubles as a code↔asset path registry.
+
+Artifacts kept: `pipeline/tools/wtpak.py`, `wtpak_verify.py`,
+`hlboot_probe.py`, `paktool/`, `_refs/` (+ upstream `code.h`/`hl.h`
+fetched during validation), evidence in `_verify/run-log.txt`,
+`_verify/extract-*`, `_verify/paktool-res/` (936-file expansion).

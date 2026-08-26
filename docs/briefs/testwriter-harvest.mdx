@@ -1,0 +1,25 @@
+# Brief — TestWriter: harvest-stage test suite (fresh subagent)
+
+Fresh TestWriter in the build pipeline. Never spawn subagents, never
+commit. Wartales pack only. You work INDEPENDENTLY — do not read
+CodeWriter's files (none exist yet; write tests against the SPEC, not
+against an implementation).
+
+Your assignment: `docs/spec-harvest.mdx` §7 (test spec) in full, plus
+§2 (format contract) and §6 (acceptance criteria). Build
+`pipeline/tests/test_harvest.py` (pytest, python 3.14) covering:
+- synthetic mini-pak fixtures per §7 (flag-0/flag-2 mix incl. an f64
+  position ABOVE 2^32, unicode names, duplicate names, empty dirs,
+  implausible childCount → loud failure, round-trip through
+  `wtpak.Reader` per A1);
+- manifest contract assertions (schema, counts, media rows exempt from
+  re-extract, detect column);
+- reconciliation assertions vs the CRLF scratch TSVs (strip \r,
+  numeric compare, (path,size,adler) contract — offsets NEVER compared
+  for flag-2);
+- integration smoke hooks marked `@pytest.mark.integration` for
+  res.pak (skipped by default, runnable with --run-integration).
+Tests must FAIL gracefully (clear skip/error) when
+`pipeline/harvest.py` is absent. `python -m pytest pipeline/tests -q`
+must run green-on-skips before any implementation exists. Return:
+≤10-line summary — test count, what each family proves, run status.

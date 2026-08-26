@@ -1,0 +1,36 @@
+# Brief — Data dig 9: sdlboot.dat walk + diff (fresh subagent)
+
+Fresh small data-dig agent. **Never spawn subagents**; never commit;
+Wartales pack only. Headless: stdout → log; end with verification results.
+
+Read first: `wartales/extracted/logic/hl-structure/WALK-PROOF.mdx` (method +
+cross-check standard); `wartales/docs/decompile-dig-1.mdx`;
+`wartales/pipeline/tools/hlboot_probe.py` (--emit CLI);
+`wartales/extracted/PROOF.md` R6 row.
+
+## State (verify, don't trust)
+
+- Client root `A:\SteamLibrary\steamapps\common\Wartales\`. `hlboot.dat`
+  (16,102,040 B) fully walked, zero slack, 7 datasets emitted.
+  `sdlboot.dat` (16,100,863 B) differs by 1,177 B — same program,
+  SDL boot glue, never walked.
+
+## Task
+
+1. Walk `sdlboot.dat` with `pipeline/tools/hlboot_probe.py --emit`
+   into a SCRATCH dir (`output/_dig-sdlboot/`, not extracted/) — this
+   is a diff probe, not a served dataset.
+2. Diff element-wise against the hlboot structure datasets
+   (`extracted/logic/hl-structure/*.jsonl`): functions/types/globals/
+   constants/strings/natives counts + which elements differ. Expected
+   shape per client-recon §5: boot-glue deltas only. Measure precisely
+   which entries differ and why (entry point? natives table?).
+3. Write findings to `docs/data-dig-log.mdx` as **Dig 9** (facts only),
+   and close PROOF.md R6 with measured numbers (edit just that row).
+
+## Constraints
+
+Python `C:\Python314\python.exe`; stdlib only; do not modify
+hlboot_probe.py unless it cannot read sdlboot (then extend minimally +
+record). Never invent conclusions from absence — measure. Do not touch
+`extracted/logic/hl-structure/` (read-only for this dig).

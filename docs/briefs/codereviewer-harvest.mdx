@@ -1,0 +1,27 @@
+# Brief — CodeReviewer: pipeline/harvest.py (fresh subagent)
+
+Fresh CodeReviewer. Never spawn subagents, never commit, never edit —
+findings only. Wartales pack only. Read `docs/spec-harvest.mdx` in
+full (the arbiter-approved contract), then `pipeline/harvest.py` in
+full, then `pipeline/tools/wtpak.py` (proven reference reader).
+
+Mission: find bad code and holes — prove the implementation wrong:
+1. Contract violations: CLI shape, manifest schema fields, media
+   carve-out behavior, detect column, --list order, exit codes
+   (esp. peek-past-EOF → exit 3 naming the entry), idempotency
+   (hash-skip), resume, RNG seed in report.
+2. Format correctness: 12-byte header, 0x0C tree start, DATA marker,
+   flag-0 raw vs flag-2 f64 positions (ABOVE 2^32!), dataSize wrap
+   handling, adler32 verify, long-path (\?\) policy, CRLF-TSV
+   reconciliation (path,size,adler — NEVER flag-2 offsets).
+3. Real bugs: off-by-ones, unguarded loops (childCount!), unicode
+   path handling on Windows, partial-write safety, error paths that
+   swallow, perf traps (per-entry stat calls, memory growth on 40k
+   entries / 44 GB streaming).
+4. You MAY run: `python -m py_compile`, `--help`, `--manifest-only`
+   on res.pak, `--list | head`. Do NOT run the full harvest.
+5. Over-engineering hunt per arbiter standards.
+
+Write `docs/review-harvest-code.mdx`: numbered findings w/ severity
+(blocker/major/minor) + exact line refs + concrete fix. Verdict line:
+CLEAN or NEEDS-FIXES. Return: ≤10-line summary.

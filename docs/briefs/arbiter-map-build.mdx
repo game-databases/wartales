@@ -1,0 +1,12 @@
+# Brief — Arbiter: map build round 1 (code + tests) (fresh subagent)
+
+Fresh Arbiter. Never spawn subagents, never commit. Wartales pack
+only. Read `docs/spec-map-pipeline.mdx`, `docs/review-map-code.mdx`,
+`docs/review-map-tests.mdx`; verify findings yourself against
+`pipeline/map_tiles.py` + `pipeline/tests/test_map_tiles.py` (run the
+suite; spot-check the C1 contract-adapter claim and the M1-M3 test
+gaps). Rule ACCEPT/REJECT/MODIFY per finding (existing code can win
+with receipts); hunt reviewer errors; over-engineering check.
+Deliverable: `docs/arbiter-map-build-r1.mdx` — rulings + verdict per
+artifact (map_tiles.py: APPROVE or FIX with ordered list;
+test_map_tiles.py: same). Return ≤8 lines.

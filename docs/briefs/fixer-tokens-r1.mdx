@@ -1,0 +1,26 @@
+# Brief — CodeFixer: F1 tokens round 1 (fresh subagent)
+
+Fresh CodeFixer. Never spawn subagents, never commit. Wartales pack
+only. Two work clusters, in order:
+
+**A. Review fixes** — read `docs/review-tokens-code.mdx` and apply
+T1 (uncommon card wearing rare's tier class — one-line),
+T2 (deduplicate declarations the tests edit), T3 (12px floor test
+enumerates the token set structurally, not five hardcoded names).
+T4 is decided by the orchestrator: keep tests at the current path;
+add ONE spec line in `design/spec-tokens.mdx` §6.1 noting the actual
+path so spec and reality agree.
+
+**B. Preview anatomy upgrade** — read `docs/critique-tokens-r1.mdx`
+in full and rebuild `site/src/styles/tokens-preview.html` from
+swatch-boards into PANEL COMPOSITIONS using only the existing
+tokens.css: (1) an inventory-style panel (quilted near-black surface,
+beveled item slots in a grid, one empty well, rarity tints on slot
+backgrounds); (2) an entity tooltip card (icon, name in rarity color,
+3-4 stat rows with the game's row rhythm, gold selection state on
+exactly one element); (3) a type-scale specimen (flavor serif vs UI
+sans at real sizes). No new colors, no new fonts, no JS frameworks —
+pure HTML/CSS from the token set. Re-run `npm test` (expect 20
+passed) after changes.
+
+Return: ≤10-line summary — A items ✓/✗ + B composition notes.

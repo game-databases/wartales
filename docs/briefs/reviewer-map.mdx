@@ -1,0 +1,25 @@
+# Brief — Reviewer: docs/spec-map-pipeline.mdx (fresh subagent)
+
+Fresh Reviewer (PrepareTask). Never spawn subagents, never commit,
+findings only. Wartales pack only. Read: root AGENTS.md; FRAMEWORK
+§2.6; foundation-guide §11; `docs/client-recon.mdx` §2/§7; the
+map-pak TSV header+samples (`output/_recon-scratch/map-pak-entries.tsv`);
+`docs/cdb-census.mdx` region rows; then `docs/spec-map-pipeline.mdx`
+in full.
+
+Mission — holes before CodeWriter builds:
+1. Tile classification: are the path-pattern classes + counts
+   MEASURED from the TSV (spot-check 3 classes by grep) or guessed?
+2. Format handling: DDS variants + .raw layout hypothesis testable?
+   Is the verification dig step concrete (input, command, expected
+   output)?
+3. Derived geometry (rule 8): bounds/transform derivation plans
+   present and falsifiable? coordinate-sources table complete per
+   marker kind?
+4. maps.json schema covers world/regions/instances; marker plan
+   matches census reality (POI 453, Towns 156).
+5. Acceptance criteria measurable; test spec catches the real traps
+   (tile off-by-one, transform sign errors, placeholder handling).
+6. Over-engineering hunt.
+Write `docs/review-spec-map.mdx`: numbered findings w/ severity +
+verdict READY-FOR-ARBITER or NEEDS-REVISION. Return ≤8-line summary.

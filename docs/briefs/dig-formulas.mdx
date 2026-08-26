@@ -1,0 +1,38 @@
+# Brief — Data dig: formulas + hscript logic layer (fresh subagent)
+
+Fresh data-layer dig agent. Never spawn subagents, never commit.
+Wartales pack only. Read root AGENTS.md; `_foundation/extraction-doctrine.md`
+(logic layer = derived logic datasets traced to evidence).
+
+## Inputs
+
+- `res.pak:/data/formulas.hx` (687 B) + `/content/script/*.hx` (12
+  hscript sources incl. World.hx) — extract via
+  `pipeline/tools/wtpak.py` into `extracted/logic/hscript/` (verbatim,
+  byte-identical).
+- `extracted/harvest/_lang-bridge/` + `pipeline/tools/_verify/extract-res.pak-data.cdb`
+  (386-sheet CDB — formula/script columns live in sheets).
+- `docs/cdb-census.mdx` (sheet families), `docs/cdb-kind-map.mdx`.
+
+## Task
+
+1. Extract + preserve ALL hscript sources verbatim (principle zero).
+2. `docs/formulas-inventory.mdx`: every formula the game computes that
+   is visible in these sources + CDB script columns — trade price
+   gradients + caps, wages/upkeep, food consumption, XP curves,
+   capture/tame odds, arena odds, injury/death, morale, adaptive
+   difficulty params, crafting quality tiers, path perks, ghost
+   curses, level scaling. For each: source file/column, formula
+   verbatim, parameters table, what a player tool can compute with it.
+   Mark community-inferred vs confirmed-in-client (tools-plan §2
+   cross-ref).
+3. `extracted/logic/formulas.jsonl`: machine-readable rows (id, source,
+   formula, params, units).
+4. Cross-reference the hlboot types dig's outputs when they land
+   (extracted/logic/hl-structure/) — note which formulas also appear
+   in bytecode (double-confirmed) vs hscript-only.
+5. Append `docs/data-dig-log.mdx`.
+
+Rules: read-only on A:; no legality commentary. Return: ≤12-line
+summary — formulas found (count confirmed-in-client), biggest
+tool-enabler, surprises.

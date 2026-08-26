@@ -1,0 +1,30 @@
+# Brief — CodeReviewer r2 (delta): stages fix diff (fresh subagent)
+
+Fresh CodeReview agent. **Never spawn subagents**; never commit; Wartales
+pack only. Headless: stdout → log; end with verdict.
+
+Read first: `wartales/docs/arbiter-stages-build-r1.mdx` (rulings W1–W7);
+the fixers' reports (`output/codefixer-stages.log`,
+`output/testfixer-stages.log`) as CLAIMS to spot-check;
+`docs/review-stages-code.mdx` (round-1 findings — confirm each died);
+spec §3–§5.
+
+## Mission — delta review of the FIX diff only
+
+Files changed since round 1: `validate_all.py`, `cdb_verify.py`,
+`promote_drafts.py`, `relink_catalog.py`, `run_all.ps1`,
+`EXTRACTION-LOG.md`, both test files, spec §3.4/§4.2 amendments.
+(Tools are local-only; read them on disk.)
+
+1. Confirm every W-item's landed state matches its ruling (each had an
+   acceptance proof — re-run at least W1(i)/(iv), W2 both gates,
+   W4 byte-identity, plus any you doubt).
+2. Hunt NEW defects introduced by the fixes themselves: the census
+   filtering, pruned recursion, parse-and-compare parity cell grammar
+   (the `] · mech=` boundary fix), bimodal law enforcement, PACK_ROOT
+   anchoring, zero-edge guard, byte-exact equality split-after-meta.
+3. Regression sweep: live `datasets|relink|emit` PASS + rerun-twice
+   byte-stability on stable artifacts.
+4. Verdict per pipeline: CLEAN or NEEDS-FIXES (ordered, with proofs).
+
+Deliverable: `docs/review-stages-code-r2.mdx`.

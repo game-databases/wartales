@@ -1,0 +1,90 @@
+# TestReview R2 — test_harvest.py round-1 fixes (delta-only)
+
+Reviewer: fresh (ox-alpha) · 2026-08-24 · brief
+[`docs/briefs/review2-tests.mdx`](./briefs/review2-tests.mdx). DELTA-ONLY:
+round-1 review ([`review-harvest-tests.mdx`](./review-harvest-tests.mdx)),
+arbiter rulings
+([`arbiter-harvest-build-r1.mdx`](./arbiter-harvest-build-r1.mdx)), and the
+TestFixer delta (`git diff 11b6c76..9985bc4 -- pipeline/tests/test_harvest.py`,
+384 changed lines) judged; untouched tests not re-reviewed. Spec §2/§4/§7 and
+the landed `pipeline/harvest.py` seams read where new fixtures lean on them.
+
+Probe: `python -m pytest pipeline/tests -q -p no:cacheprovider` → **48 passed /
+0 failed / 3 skipped, 3.64 s** — matches the brief's expectation. No subagents,
+no commits, nothing on A: touched by the unit layer.
+
+## Per-fix verification
+
+| Fix | ✓/✗ | Evidence |
+|---|---|---|
+| Baseline green | ✓ | 48/0/3 live. Arithmetic closes: r1's 32 + B1/m1 turning the 3 reds green = 35, +13 new tests (matrix 5, multipak 2, seams 3, fingerprint 1, override-unit 1, AV-magic 1) = 48. |
+| M3t strictness matrix | ✓ | `CORRUPT_STRICTNESS_MATRIX` pins exactly the ruling table: bad_magic / size_lies / tampered_payload → **3 in both modes**; slack_junk, no_data_marker → **3 strict / 0 lenient** with a warning asserted to name the violation (`slack`, `trailer`) and to exist at all ("downgraded but silent" guard). Plus a no-Traceback check on every non-zero run. |
+| M4t AV-magic carve-out | ✓ | Six positive magics under benign names (OggS, fLaC, RIFF/WAVE, ftyp-isom, EBML, valid MPEG frame) → media:true, no file, `[media-hook]` stderr naming each row (tag verified at harvest.py:591), counts pinned. Two negatives extracted normally. |
+| M1t multi-pak | ✓ | Distinct-stem pair: both manifests, both summaries' `source` preserved (anti-clobber), payload bytes on disk, report carries exactly `{alpha, beta}` with int seeds. Same-stem pair: exit 2 naming BOTH paths, manifest and payloads absent. |
+| M2t gate seams | ✓ | In-process via monkeypatched module globals — **no CLI flag**, per ruling. Projection test scripts the clock and asserts the exact printed line, pinning the formula `Σwork × elapsed / calibrated` byte-for-byte against preflight_gates' format. Breach: rc 2, "STOP AND REPORT" + "spec-harvest §5" + projection cited (harvest.py:801), no manifest written. Space gate: inflated margin → rc 2 naming requirement and free bytes (:444–445), `<out>/fat` absent. `_FakeClock` fails loudly (StopIteration) on unscripted reads instead of silently passing. |
+| L1 exact wrap keys | ✓ | Summary contract now pins `wrap_delta_vs_sum_sizes == 0` and `sum_entry_bytes == info.total`; case 3 pins both key paths exactly instead of the old `"rawdata"` needle. |
+| L2 type pins | ✓ | `type(...) is int and not isinstance(..., bool)` added for `flag` and `size`, matching the existing offset pin. |
+| L3 value pins + fingerprint | ✓ | `measured_size == stat().st_size` pinned; `test_fingerprint_source_sha256_pins_whole_pak` compares summary sha256 against an independently computed hash of the whole pak file — previously zero coverage. |
+| L4 prereq landmarks | ✓ | Both `_verify/extract-res.pak-*` artifacts added to `_integration_prereqs`; false-red-on-partial-host becomes a skip. |
+| L5 override unit + docstring | ✓ | `data_size_override=-12345` unit: field verbatim, unsigned provenance, and wrap delta pinned at exactly **−12537** (= field − Σ, unmasked) — this assert kills any regression to the masked m1 arithmetic. Case-14 docstring rewritten to present tense. |
+
+## Delta beyond the arbiter's list (touched existing tests)
+
+- **case1/case2 stale constants corrected (12→13, 4→5).** Proven necessary:
+  the *committed* r1 versions fail standalone against their own writer
+  (reproduced live: `assert (2 == 2 and 5 == 4)`). The fixer's values are the
+  correct arithmetic (3+4+6=13; small_f64 follows b"flag0" → offset 5).
+  Sound corrections, not weakenings.
+- **res-reconciliation CRLF fix** (`read_bytes().decode()`): real bug — text-mode
+  read applies universal newlines and would make `"\r\n" in tsv_text`
+  unfalsifiable. Correct fix; only reachable once integration runs.
+- **case3 strengthened** from a substring needle to exact key-path pins. Good.
+
+## New-hole hunt (fixes only)
+
+No tautologies among the new asserts — every message needle was verified
+against a real implementation string (childCount :125, span :304,
+`[media-hook]` :591, STOP AND REPORT :801, space gate :444, projection :462),
+and the value-level asserts derive independently of the implementation. The
+AV-magic negatives are the sharpest part: decoded bit-field by bit-field
+against `_mpeg_audio_frame`, `ff fe 3c 00` (UTF‑16LE BOM XML) fails on
+sample-rate-reserved and `ff e0 …` fails on layer-reserved — so either
+negative fails the suite if anyone reintroduces the bare-sync branch. Fixture
+soundness per spec §2 rides the round-1-audited writer unchanged; all new
+fixtures tile honestly at KB cost.
+
+Findings:
+
+1. **N1 (recorded deviation, spec-owner item): tampered-source case narrowed.**
+   Round 1 demanded exit 3 when re-running over intact targets after source
+   corruption; that now completes rc 0 **by design** (§3.3 re-verifies TARGETS
+   against stored hashes — corrupted source bytes never flow), and the test
+   re-points detection at fresh-root extraction, documenting the behavior in
+   its docstring. Internally coherent, and the post-fix resume shape was ruled
+   correct under m7; but spec §7 case 8's letter ("adler mismatch detected on
+   re-run of a previously-good extraction") now conflicts with what the suite
+   pins. Needs a spec amendment (or an optional source-hash audit mode);
+   optionally pin the rc-0 resume behavior explicitly so the design decision
+   is mechanical, not docstring-only.
+2. **N2 (accepted): case8 size_lies entry-naming widened** to accept the span
+   reporter. Verified sound: with tiling + delta-0 enforced, entry-naming is
+   provably unreachable under strict mode, the "span" needle is real
+   (harvest.py:304), and the assertion still demands specificity. Within §7's
+   intent for this flavor.
+3. **N3 (cosmetic): stale comment "Σ = 197"** in the summary-contract test;
+   actual Σ is 192 (128+64). Assert is correct; comment only.
+4. **N4 (repo hygiene, pre-existing since r1 — route to orchestrator):
+   `pipeline/tests/conftest.py` has never been committed.** The committed
+   suite is not self-contained: without it the `integration` marker and
+   `--run-integration` opt-in don't exist, so on a fresh clone the 3 smoke
+   tests RUN instead of skipping and go red on any host without the client —
+   48/0/3 is not reproducible from git alone. Not introduced by this fix
+   round; needs one commit alongside the next suite touch (I commit nothing
+   per brief).
+
+## Verdict
+
+**CLEAN** — all ten arbiter-ruled fixes landed and bite; no regressions or
+false-confidence holes introduced by the fixes. N1 goes to the spec owner as
+an amendment item, N3 is cosmetic, N4 is an orchestrator commit item outside
+this review's authority.

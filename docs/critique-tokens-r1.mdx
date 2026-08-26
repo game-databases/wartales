@@ -1,0 +1,117 @@
+# Visual critic r1 — F1 design tokens: **SEND-BACK**
+
+Round 1 · 2026-08-25 · HARSH critic, per `docs/briefs/critic-tokens.mdx` and
+the pipeline law in [design/shadcn-adoption.mdx](../design/shadcn-adoption.mdx)
+("upgraded, not reskinned" — a round that reads as a palette swap fails).
+Graded from **rendered output only**, never builder summaries.
+
+**Evidence graded:**
+
+- Render: `design/critique/preview-r1.png` (1600×1000, the brief's shot) and
+  `design/critique/preview-r1-full.png` (full-height capture) — headless Edge,
+  `--headless=new`, local `file://` only, from
+  [site/src/styles/tokens-preview.html](../site/src/styles/tokens-preview.html)
+  over [site/src/styles/tokens.css](../site/src/styles/tokens.css).
+- Soul references, side-by-side: `design/sources/shot-02-inventory-trade-dialogue.jpg`,
+  `shot-03-character-panel.jpg`, `shot-20-camp-firelight-texture.jpg`
+  (per [design/sources/INDEX.mdx](../design/sources/INDEX.mdx)).
+- Bar: [_foundation/design-standard.md §5](../../_foundation/design-standard.md#5-look-feel-and-soul--grading-bar)
+  feel grade + [design/shadcn-adoption.mdx](../design/shadcn-adoption.mdx).
+
+## Verdict: SEND-BACK
+
+Not a redesign demand — the extracted token set is right and most of it is
+verifiably the game's. The send-back is: **the preview renders the palette
+half of F1 and suppresses every other soul carrier the tokens already
+declare.** What reached pixels is a flat dark style-guide in the browser's
+fallback serif — precisely the "shadcn with a palette swap" read this pack's
+adoption law names as the fail.
+
+### The four brief questions, answered
+
+1. **Wartales UI or palette swap?** The *color* is Wartales — warm
+   near-black browns, parchment ramp, antique golds held to
+   currency/selection, square corners, olive/violet/steel rarity tips. The
+   *UI* is not: no quilted/9-slice chrome, no translucent-glass panel over
+   art, no game face anywhere, emoji where the game paints icons. Palette
+   swap, with a hairline double border as the only chrome.
+2. **Blind verdict.** Same *product family*, not the same *product*: I'd
+   believe "dark medieval-themed dev tools", not "Wartales' own interface".
+   Single hardest illusion-breaker: **the type.** Every loudest element —
+   h1, the whole type-scale section — renders in Georgia fallback because
+   the font binaries were never staged for the shoot. Georgia reads
+   "2005 browser default", and it sits on the page's most-read pixels.
+3. **Wikily-grade polish?** Type sizes pass (14–25px, nothing under the
+   12px floor), the type-scale panel and rarity row are scannable. But:
+   swatch code labels wrap mid-hex (`#E496B` / `96B`), the 980px column is
+   stranded left on a 1600px canvas with ~750px of dead black, and the
+   uncommon rarity card renders with `box-shadow:none` and an
+   near-invisible fill — it reads as a rendering bug, not a tier.
+4. **Single biggest gap + fix:** the two carriers that make panels read as
+   *the game's panels* — the serif voices and the 9-slice textures — are
+   both contracted in the CSS and both absent from the render, while both
+   sit one step away (fonts: one fetch per
+   [site/public/fonts/README.md](../site/public/fonts/README.md); textures:
+   **already extracted**, sitting in `design/extracted-ui/` —
+   `dialogBg.png`, `HeaderBg.png`, `RarityBackground.png`, `buttonBg.png`,
+   `SmallEntryBG.png`). The `--tex-*` contracts point at
+   `site/public/assets/ui/`, which does not exist, so the preview silently
+   fell back to the box-shadow recipe and nobody rendered what was on disk.
+
+## Gap list, ranked (fix in this order for r2)
+
+1. **Type voice absent — Georgia everywhere.** Fetch the five woff2 per the
+   self-host contract and stage them where the preview's `@font-face` can
+   resolve them for the shoot (relative path or serve `site/public/`); IM
+   Fell English must carry h1/display, EB Garamond the ramp, italic at 19px
+   for the dialog line. Until this renders, "serif-first canon" is a claim,
+   not evidence. Hardest breaker — nothing else on the page is as loud.
+2. **Texture chrome suppressed.** Copy the five PNGs from
+   `design/extracted-ui/` to the contracted path and render them: `.wt-panel`
+   on the `dialogBg.png` 9-slice (slice 20 20), h2 section headers on the
+   `HeaderBg.png` band (h35), one button in its normal/hover/pressed frames.
+   The 3-ring box-shadow reads as a hairline at 1× — it does not carry the
+   quilted chrome the shots show on every panel frame
+   (`shot-02` inventory, `shot-03` character panel header bands).
+3. **Translucency over art unproven.** `--panel-alpha: 0.7` over keyart is
+   the game's defining surface move — every panel in `shot-02`/`shot-03` is
+   glass over the world. The preview composites over flat `--bg-1`, so the
+   token is untested. Composite one `.wt-panel` over `shot-20` firelight in
+   the preview and show the wash.
+4. **Rarity reads only through tip text.** Frame fills `#151A1E` (steel),
+   `#272310` (olive), `#251724` (violet) sit on the `#0C0B09` well and
+   nearly vanish — uncommon is indistinguishable from common at table
+   distance. In `shot-02`/`shot-03` the *slot tint* is the tier carrier at a
+   glance; here tier collapses to the name color. Render the real
+   `RarityBackground.png` frames (hgrid 3, on disk) instead of approximated
+   fills. Also: the legendary border gradient (`#FF88FF` stops) reads
+   neon-magenta at border scale — the game's violet is more muted; check the
+   frame texture against the gradient at 1× before r2.
+5. **Interaction vocabulary unrendered.** `--effect-hover-outline`,
+   `--effect-selected-glow`, `--effect-gold-highlight-ring` are tokenized
+   and never shown. "Gold = currency/selection" is half the pack's soul
+   claim and only the currency half is demonstrated — add one row/card in
+   selected state with the gold ring and one in hover with the white
+   outline.
+6. **Demo craft.** Segoe color emoji (⚔ 🧿 ⛑ 🗡) as item icons are modern,
+   toy-like and anti-medieval — use crops from the extracted atlases or
+   monochrome silhouettes; stop `word-break: break-all` from splitting hex
+   values; center the column or fill the canvas; fix or explain the
+   uncommon card's missing border; drop the stray "72" in the text-ramp
+   samples.
+
+## What survives r1 (so the builder doesn't fix what isn't broken)
+
+The extracted values are convincing and correctly disciplined: surfaces are
+the game's near-black browns, the parchment ramp is warm not grey, gold
+never leaks into body text, `--radius: 0` everywhere, the shadcn variable
+map is complete, the legendary `moveGradient` honors
+`prefers-reduced-motion`, and the contrast matrix is asserted in tests. The
+foundation is right. R2 is not a re-derivation — it is *rendering the
+tokens that already exist*, then re-grading against the same three shots.
+
+**Re-entry bar for r2:** with only the r2 preview on screen and no captions,
+the panel anatomy, type voice, and rarity slots must be attributable to
+Wartales before the palette is even considered — that is the
+"the game's panel on the web" test of
+[design/shadcn-adoption.mdx](../design/shadcn-adoption.mdx).

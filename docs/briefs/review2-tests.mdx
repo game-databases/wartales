@@ -1,0 +1,11 @@
+# Brief — Reviewer round 2 (delta-only): harvest tests (TEST side)
+
+Fresh reviewer, round 2, DELTA-ONLY. Never spawn subagents, never
+commit, findings only. Wartales pack only. Read round-1 test review +
+arbiter rulings + the TestFixer changes in
+`pipeline/tests/test_harvest.py`. Verify each fix landed, run the
+suite yourself (expect 48/0/3), hunt ONLY regressions/new holes
+introduced by the fixes (fixture soundness of new cases per spec §2,
+no tautologies among new asserts). Do NOT re-review untouched tests.
+Write `docs/review-harvest-tests-r2.mdx`: per-fix ✓/✗ + verdict CLEAN
+or NEEDS-FIXES. Return ≤8 lines.

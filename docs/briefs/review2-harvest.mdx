@@ -1,0 +1,15 @@
+# Brief — Reviewer round 2 (delta-only): harvest code (CODE side)
+
+Fresh reviewer, round 2, DELTA-ONLY per the arbiter's own law. Never
+spawn subagents, never commit, findings only. Wartales pack only.
+Round-1 state: `docs/review-harvest-code.mdx` (B1+M1-M5+m1-m10 fixed),
+arbiter rulings `docs/arbiter-harvest-build-r1.mdx`. Current:
+`pipeline/harvest.py`; suite at 48 passed/0 failed/3 skipped.
+
+Verify each round-1 code fix landed correctly in harvest.py (run
+py_compile, --help, one fresh-out --manifest-only res.pak smoke, the
+full pytest suite), hunt ONLY for defects introduced BY the fixes
+(regressions, new edge cases the fixes opened), confirm no untouched
+section drifted. Do NOT re-review the whole file. Write
+`docs/review-harvest-code-r2.mdx`: per-fix ✓/✗ + any regression
+findings + verdict CLEAN or NEEDS-FIXES. Return ≤8 lines.

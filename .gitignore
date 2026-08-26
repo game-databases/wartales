@@ -1,0 +1,22 @@
+# game-derived data stays local (AGENTS.md rule 5) until an owner carveout
+extracted/
+data/sources/
+design/extracted-ui/
+# output/ is scratch + agent logs + dig artifacts — local only (journaled in docs/data-dig-log.mdx)
+output/
+__pycache__/
+
+# font binaries are fetched at setup time, never committed (site/public/fonts/README.md)
+site/public/fonts/*.woff2
+# element textures staged from design/extracted-ui/, never committed (site/public/assets/ui/README.md)
+site/public/assets/ui/*.png
+
+# map pipeline outputs are game-derived (AGENTS.md rule 5) — local only
+output/map-tiles/
+output/_dig-map/
+
+# critic evidence renders stay local; findings MDX is tracked (design/sources INDEX convention)
+design/critique/*.png
+design/critique/_r3zoom/
+design/critique/_r4zoom/
+grep.exe.stackdump

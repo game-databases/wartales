@@ -1,0 +1,12 @@
+# Brief — TestReviewer: map pipeline suite (fresh subagent)
+
+Fresh TestReviewer. Never spawn subagents, never commit, findings
+only. Wartales pack only. Review `pipeline/tests/test_map_tiles.py`
+against `docs/spec-map-pipeline.mdx` §6+§7 (do NOT read the
+implementation). Mission: prove the suite incomplete — missing spec
+cases? tautologies? fixtures that can't fail? The 273⊂276 + residue
+assertions, hole-alpha set equality, transform sign traps, seam
+off-by-one detection, schema validation strictness, integration
+hooks. Run it (`python -m pytest pipeline/tests -q`). Write
+`docs/review-map-tests.mdx`: findings w/ severity + verdict
+SUITE-SOUND or NEEDS-FIXES. Return ≤8 lines.

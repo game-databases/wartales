@@ -1,0 +1,18 @@
+# Brief — CodeReviewer: F1 tokens artifact (fresh subagent)
+
+Fresh CodeReviewer. Never spawn subagents, never commit, findings
+only. Wartales pack only. Read `design/spec-tokens.mdx` (arbiter-fixed)
++ `design/shadcn-adoption.mdx`, then review `site/src/styles/tokens.css`,
+`site/src/styles/tokens.test.ts`, `site/src/styles/tokens-preview.html`.
+
+Mission: contract violations + bad code. (1) Every shadcn variable
+overridden — no defaults left (grep the stock shadcn palette values).
+(2) Rarity scale complete + light variants + animated-border recipe
+(reduced-motion). (3) Tests actually assert (would each fail on the
+bug it targets?); run `npm test` yourself (expect 20 passed).
+(4) Preview page self-contained, renders offline, shows swatches +
+rarity cards + type scale. (5) The two documented reconciliations
+(selection gold as --selection; disabled-text scoping) are sound and
+cited. (6) 12px floor on every font token. (7) Over-engineering hunt.
+Write `docs/review-tokens-code.mdx`: findings w/ severity + verdict
+CLEAN or NEEDS-FIXES. Return ≤8 lines.

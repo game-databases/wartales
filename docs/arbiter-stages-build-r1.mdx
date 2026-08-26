@@ -1,0 +1,365 @@
+# Wartales — stages 4–6 build: arbiter rulings on R1–R11 + F1–F15
+
+Status: FINAL r1 (2026-08-25). Verdict: **FIX** (ordered list at the end).
+Arbiter: fresh agent, no subagents spawned, nothing committed. Contract:
+[spec-stages-datasets.mdx](./spec-stages-datasets.mdx) REVISED r1. Ruled
+on: [review-stages-code.mdx](./review-stages-code.mdx) (CodeReviewer,
+R1–R11) and [review-stages-tests.mdx](./review-stages-tests.mdx)
+(TestReviewer, F1–F15). Doctrine inputs read in full: root `AGENTS.md`,
+`_foundation/extraction-doctrine.md`.
+
+**Terminology.** This file's R# = code-review findings, F# = test-review
+findings. The spec body cites a *different*, older `(arbiter FX)`
+namespace ([arbiter-stages-spec.mdx](./arbiter-stages-spec.mdx)) — e.g.
+spec "(arbiter F11)" is not TestReviewer F11. Where this file says
+"F6-tool" etc. the suffix disambiguates.
+
+## Method — every ruling re-grounded on disk this session
+
+Both reviews' claims were verified against the landed bytes, and every
+experiment a ruling depends on was re-executed (scripts under
+`D:\_rev-tmp\`; mine are `arb_check.py` / `arb_check2.py`, real tree
+READ-ONLY, all writes sandboxed in temp fakeroots):
+
+- Re-read in full: `validate_all.py`, `promote_drafts.py`,
+  `cdb_verify.py`, `relink_catalog.py`, `wave_kinds.py`, `run_all.ps1`,
+  `test_stages_toolchain.py`, `test_stages_datasets.py`, the spec.
+- Suite baseline re-run: `1 failed, 48 passed, 5 skipped in 28.43s` —
+  the one failure is the RED case (`test_t10…faults`, fault 5),
+  matching the TestReviewer's baseline digit-for-digit.
+- R1/F14 crash reproduced first-hand: planted `place.jsonl` in a
+  fakeroot canonical dir → `KeyError: 'place'` at
+  `validate_all.py:175`, exit 1, **no report written**; the identical
+  tree without the intruder writes a full report with per-check records
+  (so the record machinery itself works — only the intrusion path
+  crashes).
+- H-A re-run: mutant `meta_equal() -> True` → T5 + AC9 **2 passed**
+  (suite green under the mutant); positive control: the real promoter
+  *does* update on a buildId-only tamper.
+- H-B/H-C re-run fresh (`holes2.py`, fakeroot completed with all nine
+  bridge XMLs): falsified RELATIONS.md row (`modeled · E=4371 …` →
+  `missing · E=0 …`) → `catalog-parity pass=True`; truncated
+  availability row (9→3 locales) → `availability-regenerated
+  pass=True`. Both blindness holes are real.
+- E1/E2 re-run fresh: real-CDB × mini-drafts gate rc=1 (I1 dead);
+  `doc["header"]` → KeyError on the real matrix envelope.
+- My probes: promoter equality keeps stale CRLF/no-final-LF targets
+  (SKIP, bytes preserved — R2); truncated `--plane` value → IndexError
+  traceback exit 1, unknown `--plane` → exit 1 (R3); availability
+  per-row locale histogram (F4 correction, below); draft-dir census
+  (R9, below); sha256 audit: **all six** EXTRACTION-LOG §2 pins match
+  disk byte-for-byte (E2 claim holds).
+- reds.py battery re-run: R2–R6 legs all behaved as quoted; its R1 leg
+  and holes.py's pristine leg returned exit-2 in MY cwd — traced to a
+  real latent wart in the validator itself (finding A below), not a
+  reviewer error; my fakeroot repro supersedes it.
+
+## Rulings — code review (R1–R11)
+
+| # | Sev claimed | Ruling | Proof basis |
+|---|---|---|---|
+| R1 | BLOCKER | **VALID** | Reproduced first-hand (crash, no report); guard vacuity read at `validate_all.py:46–50` + `:59–68` (`extra` over a pre-filtered list is always empty); loop unfiltered at `:147–152` feeding `KIND_SHEETS[kind]` at `:175`. Masking note confirmed: `run_all.ps1:227–260` checks RAW names and catches the intruder at the stage boundary — the crash surface is isolated invocation, which is T10's surface. Fix direction (filter loops, route extras to `hbson-independent` as records, do not die on extras in the validator) is correct per §5.2 + T10. |
+| R2 | MINOR | **VALID** | Empirically confirmed (`arb_check.py` A4): CRLF twin and missing-final-LF target both compare equal → SKIP keeps stale bytes. Deviates from §3.4 rule 2's "payload lines … byte-equal". |
+| R3 | MINOR | **VALID** | Confirmed (A5): `--plane` with no value → IndexError traceback exit 1; unknown plane → `sys.exit(str)` exit 1, conflating usage error with drift. House convention is usage=2 (run_all unknown flag exits 2; sibling tools use argparse). |
+| R4 | MINOR | **VALID** | Confirmed by reading: `scan_draft` accepts any subset; ghost tripwire fires only on canonical-without-draft; empty out-dir + truncated drafts promotes partially, exit 0. The universe constants needed for the assert already exist in `wave_kinds` (`MANAGED_KINDS`, `EXPECTED_PAIR_FILES`). |
+| R5 | MINOR | **VALID** | Read at `cdb_verify.py:203–204` (dataset `_meta.buildId` checked) vs `:306–325` (pair loop checks edges/kinds/valid/mechanism, never buildId). §3.6: "emitter stamps it into `_meta.buildId` and relink `_meta`; verifier requires equality" — plain reading covers both planes. In-pipeline masked by the promoter's `--buildid` drift check (which does cover both planes generically). |
+| R6 | MINOR | **VALID — resolution directed** | Mismatch real: expected string says "anywhere under canonical dirs", scan (`:302–308`) is top-level-only. Naive recursion would false-fail the lawful wave-3 copies (`data/_draft/place.jsonl` etc. exist NOW — draft-dir census below), i.e. the reviewer's false-fail note contradicts naive recursion but NOT pruned recursion. Ruling: recurse both canonical planes pruning any path component named `_draft`; fail on the four banned names; count-and-report other non-managed `.jsonl`. Code matches the frozen spec words; no spec edit. |
+| R7 | MINOR | **VALID** | Read at `:293–299`: `deferred-present` re-states `wave_kinds.DEFERRED`'s shape (non-empty + unblock truthiness) — §3.5 content drift inside the module is undetectable. §5.2 demands "matches the revised §3.5 honesty list". Inline frozen copy (CENSUS-style) is the house pattern. |
+| R8 | MINOR | **VALID as spec-text lag; flag COMPLIANT — doc fix only** | Confirmed at `run_all.ps1:280`/`:302`. Adjudication vs T4 below. Removing the flag would weaken drift detection; the fix is the spec text catching up. |
+| R9 | MINOR | **VALID — understated** | Draft-dir census (A3): `extracted/data/_draft` holds **47** entries including `battle_scene.jsonl` (unnamed anywhere in the ledger or spec); `extracted/relinks/_draft` holds **53** including `poi_coordinates.jsonl` AND `poi_tile_coords.jsonl` — both get the generic "non-managed name" reason (`promote_drafts.py:38–49`). Subdirectories skipped silently (`:167`, `:190` `if not os.path.isfile(p): continue`) vs rule 1 "ignored and enumerated". |
+| R10 | MINOR (latent) | **VALID** | `subprocess.run(..., text=True)` without `encoding=` at `:117–118`/`:131–132`; children print `ensure_ascii=False` JSON and validate_all PARSES the dig's stdout as JSON — cp1252 decode would corrupt it. Latency demonstrated this session: an unrelated print crashed with `UnicodeEncodeError … cp1252` on this machine. |
+| R11 | LATENT | **VALID (half)** | Zero-edge pair file → labeled `modeled` (`direction_record`, `:201–207`, no edges>0 guard) violating §4.3's "≥1 edge" — order the one-line guard. The both-modeled `"None"` unblock cell is cosmetic, hit by 0 pairs today and pinned by T9 — **not** ordered (over-engineering). |
+
+## Rulings — test review (F1–F15)
+
+| # | Sev claimed | Ruling | Proof basis |
+|---|---|---|---|
+| F1 | BLOCKER | **VALID** | E1 re-run fresh: real CDB × mini drafts rc=1 (`_meta.columns diverge` et al.) — I1's opening assert (`test_stages_toolchain.py:1175–1176`) can never hold; Σ 10,207 is true of the mini world by construction (same census numbers). Rewrite per §3.1 verbatim from `HARVEST_CDB` (the regen fixture in `test_stages_datasets.py` already emits exactly this shape). |
+| F2 | MAJOR | **VALID** | E2 re-run fresh: envelope keys are top-level (`buildId, deferredTargetPairs, kindCount, pairCount, pairs, selfPairs, textKeyCoverage, totals`); `doc["header"]["pairCount"]` at `:1241` raises on the real artifact. |
+| F3 | MAJOR | **PARTIAL** | Blindness real (H-B re-confirmed). But (a) the finding cites AC7 for RELATIONS.md — AC7's "MD states the same per-check results" is **VALIDATION-REPORT.md** (that surface is F13's); (b) the spec's frozen enforcement for "rendered from the same matrix" IS the byte-derived marker (§5.2 parenthetical) plus generation-time row-for-row parity (§4.2 → T9, which passes). Residual exposure: post-generation MD tamper/corruption preserving the marker line. Proportionate closure ordered — parse-and-compare sub-assertion, NOT string regeneration (see adjudication below). |
+| F4 | MAJOR | **PARTIAL — blindness VALID, proposed fix INVALID as stated** | H-C re-confirmed (truncated row passes; `:238–239` is subset-only). But `set(row["availableLocales"]) == EXPECTED_LOCALES` would false-fail lawful rows: measured histogram is strictly bimodal `{9: 3321, 0: 458}` for availableLocales and `{9: 3219, 0: 560}` for namedLocales — **458 rows lawfully carry zero locales**, 0 partial-size rows exist, `named ⊆ available` holds on all 3,779. Corrected invariant ordered below (frozen from measurement, per the spec's own threshold discipline). |
+| F5 | MAJOR | **VALID** | H-A re-run: suite green under the exempt-all mutant; positive control updates on buildId-only tamper. Behavior right, unpinned. One T5 leg closes it. |
+| F6 | MAJOR | **VALID — ESCALATED to tool-side blocker-class** | Reading `cdb_verify.py`: `dangling` counted (`:320–321`) and printed (`:382–384`) but **never fed to `fail()`** — the spec-named stage-5 gate does not enforce §3.3/§4.4's "any positive count fails cdb_verify (exit 1)". A source-authoring dangling edge (emitted flag agrees with the independent recomputation) ships through the gate green today; only stage 6's frozen-count backstop catches it, and a count-preserving swap would evade even that. This is a silently weakened requirement (mission item 4), not merely a missing test. One-line tool fix + T2b escalation ordered. |
+| F7 | MAJOR | **VALID** | Confirmed by reading `_mini_db` (`:115–238`): every sheet carries a native id column; no localizable column, no undeclared payload key, no id-less/keyRule sheet — three of the six features the spec §7 sketch names for the fixture, absent without disclosure (docstring admits scale divergence only). textKey fidelity, preservation counters and the synthetic-id path currently ride only on corpus-conditional layers (regen/green-tree/integration), so a fresh clone shows green exercising none of them. |
+| F8 | MINOR | **VALID** | grep: `driftAbsent` appears nowhere in either test file; nothing asserts it empty anywhere (validator included). One-line assert at matrix load. |
+| F9 | MINOR | **VALID** | grep: neither test file imports `wave_kinds`; the fixture token table (`test_stages_datasets.py:145–151`, slugs like `hbson-wave-3`) doesn't even carry the module's ids/unblocks (`hbson-decoded-kinds`, R1/R2/none…) — editing the module breaks nothing. Parity case ordered, with the fixture aligned to the frozen tokens. |
+| F10 | MINOR | **VALID (documentation hygiene only)** | Self-referential arithmetic fixtures confirmed (F4/F7 families, scan-scope/drift tables assert the file's own literals). Do NOT mandate heavy live moves (over-engineering); order naming/docstring clarity + at most the cheap bridge-sheet live count. |
+| F11 | MINOR | **VALID** | T10 is one function (`:1039–1146`): a `_green_tree` skip or exit-2 probe retires ALL six legs together, including the RED case. Split per map-suite convention; sequence with the new fault legs (W6) to avoid double churn. |
+| F12 | MINOR | **VALID** | I4 (`:1308–1347`) reduces "--dry-run prints the EXACT vectors" to `[dry-run]` + stage substring; no resolved-`CDB` line, no mtime-no-change assertion, no `run_all.sh` forwarder identity, no E-row/TotalCount assertions. Spec §7-I4 + AC10 name them. Split always-run greps from `--run-integration` subprocess legs. |
+| F13 | MINOR | **VALID** | `deferredTargetPairs` pinned at `:843–846` though §4.2's envelope description omits it (implementation also ships `selfPairs`/`textKeyCoverage` undescribed); AC7's MD parity asserted existence-only (`:1066`). Spec amendment + MD-table parse ordered. |
+| F14 | MINOR (defect is the tool's) | **VALID — keep red** | Same root as R1 (my repro doubles as its proof). The RED case is minimal and correct; zero test changes — it flips green when W1 lands. |
+| F15 | NOTE | **VALID as note — deferred, no mandatory change** | Churn-not-corruption confirmed (dig is deterministic; `__file__`-anchored — proven when the fakeroot dig looked inside the fakeroot, not the real tree). Known lever if it ever matters: the fakeroot pattern (copy the four tools + inputs into tmp; everything redirects). Not worth CLI-surface churn now. |
+
+## Adjudications (mission items 2–4)
+
+### R8 vs T4 — is `--buildid` on promote_drafts compliant?
+
+**Compliant addition; the spec text lags.** §3.6's operative sentence is
+"run_all passes defaults `BUILDID` on every invocation", written for the
+retrofit as a whole; the emitter stamps relink `_meta.buildId` (emit
+`:282`), and the promoter consuming it makes the promotion act
+fail-loud-before-write on drift — the same doctrine §3.4 rules 3–6 serve
+and strictly stronger than promoting then failing at the verify gate.
+T4 pins §3.6 emit/verify semantics only; there is no contradiction.
+Removing the flag or ignoring it would be the actual defect. **Fix is
+doc-side:** amend the §3.1 step-4 and §4.1 step-1 command blocks and the
+§3.4 CLI block to carry `[--buildid <id>]`, with one behavior-rule line
+(draft `_meta.buildId` ≠ `--buildid` ⇒ exit 1 before any write).
+
+### F3 — validator machinery or test-side assertion?
+
+Neither extreme. A test alone cannot make the validator see MD falsification;
+the marker alone cannot see it either (it binds matrix→MD one-way and survives
+row edits). But regenerating render strings inside validate_all would couple
+the checker to the producer's formatter — the thing its child-invocation
+design avoids. Ordered middle: parse the Full-matrix section's **modeled**
+cells (regex field extraction, T9's approach — an independent re-derivation)
+and compare FIELD VALUES (status word, edges, validCounts triple, joinKeys,
+cardinality) against the matrix records. 39 modeled directions today;
+bounded. Plus the T10 fault leg that edits an MD row expecting
+`catalog-parity=False`.
+
+### F6 — where the fix belongs
+
+The suite-side escalation (T2b hard under `--run-integration`) is correct
+but treats the symptom. The spec puts the invariant IN the gate twice
+(§3.3 "dangling must be 0 pack-wide"; §4.4 "any positive count fails
+cdb_verify (exit 1) and therefore the stage"), and the landed verifier's
+own docstring claims it. One `if dangling: fail(...)` line closes the gap
+at the layer that owns it; T2b's probe then falls through to its
+hard-assert arm naturally.
+
+### Scope/boundary sweep (mission item 4)
+
+- §5.2 verdict-set completeness: all eight check ids present in the
+  landed validator; report envelope matches the spec's key list. ✓
+- §4.3 status vocabulary: all three statuses reachable in the catalog
+  implementation. ✓
+- §3.3/§4.4 dangling gate: **silently weakened** — see F6 escalation.
+- §5.2 record-semantics vs crash: **violated** — see R1.
+- AC9 drift classes: ghost/restore executed; **consumer-precondition has
+  no executable case** (only prose tables, `test_stages_datasets.py:165–172`)
+  — ordered in W6 as a sandboxed-pack integration case.
+- E1–E6: spot-checked (defaults block, stage table, §2 pins 6/6 match
+  disk, history entry present) — CodeReviewer's clean bill stands.
+
+### New finding A (arbiter) — fold into W1
+
+`validate_all.py:81–84` builds the wave-1-draft precondition paths with
+`os.path.join("extracted", "data", "_draft", ...)` — **cwd-relative**,
+unlike every other path in the file (args-derived or `PACK_ROOT`-derived).
+Proven live twice this session: invoking the validator from any cwd other
+than the pack root exits 2 spuriously (this is also why the reviewers'
+own scripts misbehaved when re-run from `D:\_rev-tmp`). Harmless through
+run_all (`Set-Location $PackRoot`). One-line anchor to `PACK_ROOT` inside
+the W1 pass.
+
+## Verified clean — do not re-litigate
+
+Wiring surface (`--list`/dry-runs/unknown-flag/usage block); live
+`run_all.ps1 relink` + `emit` PASS exit 0; emit-parity of regenerated
+waves vs canonical (default `--buildid` preserves recorded outputs);
+hole-1 skip-and-enumerate live over both planes; `hbson_emit.py` repoint
+(single input = harvest output); promoter idempotency/atomicity/drift
+semantics/exit codes; D7 adjudication carried beside regeneration-honest
+null flags (`relink_catalog.py:48–54`); catalog byte-stability (F9/spec
+stamp policy); E1–E6 + all six sha256 pins. Baseline suite behavior and
+every independently re-measured frozen number (TestReviewer §2 table)
+confirmed.
+
+## Verdict: FIX
+
+Seven work items. W1–W2 first (blockers); W3–W5 next; W6 last (asserts
+fixed behavior); W7 rides every commit. No item invalidates an earlier
+one. Owners: CodeFixer (W1–W4), Documentator (W5), TestFixer (W6).
+
+---
+
+### W1 (BLOCKER) — validate_all.py pass — CodeFixer
+
+File: `pipeline/tools/validate_all.py` (one commit; refresh its §2 pin in
+the same commit).
+
+1. **R1/F14**: filter the census loops to the managed universe — iterate
+   `managed_kinds_in(args.datadir)` (or equivalent) for `per_kind_rows`,
+   `total_rows`, and the rowCount check, so intruders never enter the
+   math. Replace the vacuous `extra` computation (:59–64) with a raw-name
+   listing so the message can't claim "exactly" while filtering — and do
+   **not** die on non-managed extras (T10 needs the planted fault to
+   reach `hbson-independent` as a record; run_all's raw exactly-40 exit-2
+   boundary stays as the stage guard).
+2. **R6**: make `hbson-independent` recursive over both canonical planes,
+   pruning any path component named `_draft`; fail on
+   `place|group|element|levelProps`; count-and-report every other
+   non-managed `.jsonl` found in the record's `actual`.
+3. **R7**: `deferred-present` compares `wave_kinds.DEFERRED` against an
+   inline frozen transcription of §3.5 (ids + kinds + unblock tokens,
+   CENSUS-style), not against itself.
+4. **F3**: extend `catalog-parity` with the parse-and-compare sub-
+   assertion over modeled cells (adjudication above).
+5. **F4**: replace the subset-only locale check with the measured law:
+   per row, `set(availableLocales)` ∈ {∅, exact 9-official set} and
+   `set(namedLocales)` ∈ {∅, exact 9-official set} (both histograms
+   strictly {0,9} today: 3,321/458 and 3,219/560); keep the vocabulary
+   subsets, counts, and grid assertions unchanged.
+6. **Finding A**: anchor the wave-1-draft precondition paths to
+   `PACK_ROOT`.
+
+Acceptance: (i) rerunning `D:\_rev-tmp\arb_check2.py` A1 shape — intruder
+run writes the report with `hbson-independent=False`, exit 1, no
+traceback; control unchanged; (ii) live `run_all.ps1 emit` still PASS
+exit 0 (458 zero-locale rows stay lawful); (iii) validator invoked from a
+non-pack cwd no longer exits 2; (iv) the RED test (toolchain fault 5)
+flips green with zero test edits; (v) falsified-MD and truncated-locale
+fakeroot probes (holes2.py shapes) each flip their named check False.
+
+### W2 (BLOCKER) — cdb_verify.py gates — CodeFixer
+
+File: `pipeline/tools/cdb_verify.py`; refresh its §2 pin in the same
+commit.
+
+1. **F6-tool**: after the recount, `if dangling: fail(f"pack-wide "
+   f"dangling invariant: {dangling} != 0")` — §3.3/§4.4 gate restored.
+2. **R5**: require pair-file `_meta.buildId == buildid` in the pair loop
+   (one `fail`, mirroring the dataset check at `:203`).
+
+Acceptance: (i) T2b's probe condition (rc==0 + "dangling 1") goes false →
+its hard assert `rc==1` executes and passes, no longer skip-branched;
+(ii) isolated verify over a pair file with tampered `_meta.buildId`
+exits 1 naming it; (iii) live `run_all.ps1 relink` + `datasets` still
+PASS (dangling 0, uniform buildIds); (iv) mini-suite T1–T4 stay green.
+
+### W3 — promote_drafts.py hygiene — CodeFixer
+
+File: `pipeline/tools/promote_drafts.py`; refresh pin.
+
+1. **R2**: equality compares payload BYTES exactly (e.g. split the raw
+   bytes once after the `_meta` line); `_meta` stays structural with the
+   `emitted` exemption.
+2. **R3**: replace the hand-rolled parser with argparse (siblings'
+   pattern); usage errors exit 2.
+3. **R4**: completeness precondition — draft set must equal the full
+   universe for the selected planes (40 kinds / 51 pairs from
+   `wave_kinds`), else exit 2 naming the missing entries; runs before any
+   write.
+4. **R9**: extend `IGNORE_REASONS` with `poi_tile_coords.jsonl` and
+   `battle_scene.jsonl` (attribute per data-dig-log/EXTRACTION-LOG —
+   factual dig names, no invention); enumerate subdirectory entries with
+   reason "subdirectory (never scanned)" instead of silent skip.
+
+Acceptance: (i) A4 probes flip — CRLF twin and no-final-LF target both
+counted `updated`; (ii) truncated `--plane` exits 2 cleanly, unknown
+plane exits 2; (iii) 30-of-40 draft sandbox over an empty out-dir exits 2
+naming the ten missing kinds; (iv) live promoter run enumerates
+`poi_tile_coords.jsonl`/`battle_scene.jsonl` with named reasons; (v) T5/
+T6/T7/T11/AC9 stay green.
+
+### W4 — relink_catalog.py zero-edge guard — CodeFixer
+
+File: `pipeline/tools/relink_catalog.py`; refresh pin. **R11**: treat a
+zero-edge canonical pair file as evidence-less (partial/missing per the
+existing ladder, carrying its unblock), never `modeled` (§4.3 "≥1 edge").
+Do not touch the both-modeled `"None"` cell (cosmetic, 0 pairs, pinned by
+T9).
+
+Acceptance: synthetic zero-edge pair file renders non-modeled WITH
+unblock; live `run_all.ps1 relink` products byte-identical before/after
+(no zero-edge files exist today).
+
+### W5 — spec text catches up — Documentator
+
+Files: `docs/spec-stages-datasets.mdx` only.
+
+1. **R8**: add `[--buildid <BuildId>]` to the §3.1 step-4 vector, the
+   §4.1 step-1 vector, and the §3.4 CLI block; one behavior-rule bullet
+   in §3.4 (drift ⇒ exit 1 before any write; run_all passes defaults
+   BUILDID per §3.6).
+2. **F13**: enumerate the FULL shipped `matrix.json` envelope in §4.2
+   (add `selfPairs[]`, `deferredTargetPairs[]`, `textKeyCoverage{}` to
+   the declared header/record description) so T8/F13 pins cite the spec,
+   not the implementation.
+
+Acceptance: the strengthened I4 (W6) can assert dry-run vectors verbatim
+against §3.1/§4.1/§5.1; the envelope-parity case pins spec-named keys.
+
+### W6 — suite pass — TestFixer (after W1–W5)
+
+Files: `pipeline/tests/test_stages_toolchain.py`,
+`pipeline/tests/test_stages_datasets.py`.
+
+1. **F1**: rewrite I1 per §3.1 verbatim from `HARVEST_CDB` into tmp (emit
+   waves 1+2 → gate → promote those drafts → canonical re-verify →
+   per-kind == census, Σ 10,207, second-run unchanged); delete the mini
+   reuse. **F2**: `doc["pairCount"]`; add the always-run envelope-keys
+   parity case (spec-named keys required: `buildId`, `kindCount`,
+   `pairCount`, `pairs[]`, `totals`).
+2. **F3**: T10 fault leg falsifying one rendered MD row (holes2.py shape)
+   expecting `catalog-parity=False`. **F4**: T10 fault leg truncating one
+   row's locale set 9→3 expecting `availability-regenerated=False` (and
+   keep a zero-locale row lawful in the green tree — the synthetic
+   builder writes all-9 rows; add one ∅-locale row to pin the bimodal
+   law's empty arm).
+3. **F5**: T5 leg tampering ONLY `_meta.buildId` in the target → expect
+   `updated` (symmetric with the emitted-only leg). **R2-regression**:
+   T5 leg planting a CRLF twin → expect `updated` (pins W3-1).
+4. **F6**: T2b hard-asserts (no skip branch) when `--run-integration` is
+   set; keep the honest skip offline until W2 lands, then retire the
+   probe entirely.
+5. **F7**: add to the mini world one localizable column (textKey ref
+   asserted through verify's exact-shape check), one undeclared payload
+   key row (preserved verbatim; counter > 0), one id-less sheet emitted
+   under `keyRule` with synthetic ids accepted by the verifier (make the
+   leaf `env` carrier id-less — nothing references it); disclose any
+   remaining divergences in the docstring.
+6. **F8**: assert `doc["textKeyCoverage"]["driftAbsent"] == []` wherever
+   matrix.json is loaded (T8; and the real-tree leg when present).
+7. **F9**: parity case `wave_kinds.DEFERRED` ↔ fixture table, fixture
+   restated to carry the module's frozen ids/tokens (`hbson-decoded-kinds`
+   R1 · `achievement` R2 · `constant` none-closure · `subset-views`
+   none-joins).
+8. **F11**: split T10 into a green case + parametrized fault cases on a
+   shared session green-tree fixture; the RED case (planted
+   `place.jsonl` → report-record flip) runs independently.
+9. **F12**: I4 asserts the exact §3.1/§4.1/§5.1 argv vectors per dry-run
+   step, no-mtime-change, `run_all.sh --list` identity, resolved `CDB`
+   line, `TotalCount` ≥ header comment lines, and one EXTRACTION-LOG
+   assertion for the three new tool rows (house precedent:
+   `test_map_tiles.test_extraction_log_carries_freeze_and_repin_record`);
+   heavy subprocess legs under `--run-integration`.
+10. **F13**: parse `VALIDATION-REPORT.md`'s table; every JSON check id
+    present with the matching pass word (AC7's "states the same
+    per-check results").
+11. **AC9 consumer-precondition executable case** (integration mark):
+    copy `run_all.ps1` + a minimal `EXTRACTION-LOG.md` defaults block +
+    `pipeline/tools/*.py` into a tmp pack, plant/remove a managed
+    canonical name, assert `emit`/`relink` exit 2 NAMING the owning
+    producer — closing the last AC9 class with no shared-tree mutation.
+12. **F10**: rename/docstring-mark arithmetic-only fixtures; optionally
+    move the bridge-sheet count (35) into the regen layer (read-only,
+    cheap). Nothing heavier.
+
+Acceptance: default suite green (0 failed — RED case retired green),
+skips only where inputs are genuinely absent; mutation re-run of the
+H-battery (mutant meta_equal, falsified MD, truncated locales, envelope
+rename, non-pair reldir) now goes red on at least one case each;
+`--run-integration` on NE8K green including I1/I2/I4 and the AC9
+consumer class.
+
+### W7 — every-commit discipline — all owners
+
+Refresh the §2 sha256+bytes rows for every edited tool in the SAME
+commit (AGENTS.md rule 5; E2 footnote-¹ local-only regime — tools are
+git-swallowed until negation lines land, so the pins ARE the provenance);
+append the dated EXTRACTION-LOG §6 history entry naming the retrofits
+and proofs.
+
+### Deferred (recorded, not ordered)
+
+- **F15** shared-tree churn: known lever = the fakeroot pattern (tools +
+  inputs copied into tmp redirect everything, proven this session);
+  adopt only if concurrent-orchestrator collisions actually bite.
+- **R11 cosmetic**: both-modeled `"None"` unblock cell — 0 pairs today,
+  pinned by T9; revisit only when a bidirectional pair first exists.
+- **Spec §3.4 rule 1** enumeration examples may name the two newly
+  attributed draft entries whenever that section is next rewritten
+  (optional; the tool ledger is the operative artifact).

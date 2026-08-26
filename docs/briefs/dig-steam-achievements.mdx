@@ -1,0 +1,62 @@
+# Brief — Data dig 10: Steam achievements dataset, keyless route (fresh subagent)
+
+Fresh small data-dig agent. **Never spawn subagents**; never commit;
+Wartales pack only. Headless: stdout → log; end with verification results.
+
+Read first: repo-root `AGENTS.md` (rule 2: legality never analyzed — record
+facts only; rule 3 provenance classes); `wartales/spec.md` `achievement`
+entity + `live.steam` block; `wartales/docs/competitor-research.mdx`
+achievement anchors (§2.6/§7); `wartales/extracted/data/_draft/counter.jsonl`
+(`counter@props.achievements` subtree = the client half of the join);
+`_foundation/decision-register.md` [DR-2026-08-15] D1 key topology.
+
+## State (verify, don't trust)
+
+- No Steam Web API key exists (`_foundation/credentials.md` checklist row
+  is ❓) — GetSchemaForGame is unavailable. The KEYLESS public surfaces
+  carry the same schema data:
+  - `https://steamcommunity.com/stats/<appid>/achievements/?l=<lang>`
+    HTML lists ALL achievements with display name + description +
+    global-percent, paginated (page param or ?p=). Community locale codes
+    differ from client codes (e.g. `schinese`/`tchinese`, `brazilian`) —
+    map them to our BCP-47 set per localization-architecture §5.
+  - `https://store.steampowered.com/api/appdetails?appids=<id>` (keyless)
+    gives the authoritative total count + store metadata.
+- Client buildid pinned 20318128; Steam surface is live and may drift —
+  stamp rows with fetch date (machine plane) and coverage label
+  "Steam-connected sessions" is NOT needed here (schema is static game
+  content, durable class).
+- WebFetch tool is broken on this host — use `curl -s` in bash. If a page
+  returns blank/blocked, retry once with a search/AI-crawler UA
+  (OAI-SearchBot / Claude-User), then stop after a single failed attempt
+  per URL and ledger it as a finding (AGENTS.md rule 10).
+
+## Task
+
+1. Fetch the full achievement list for appid **1527950** (+ verify count
+   == 235 via appdetails) → emit
+   `extracted/data/_draft/achievement.jsonl`: one row per achievement —
+   `{id (api name string), displayName, description, globalPercent,
+   icon, iconGray, _meta}` with `_meta` first line (source class
+   official-feed, endpoints used, fetch date, buildid-independent note,
+   row count).
+2. Localized variants for the 9 pack locales (en fr de es pl pt-BR ru ko
+   zh-Hans): community `?l=` codes mapped explicitly; emit per-locale
+   overlay rows keyed by api name into
+   `extracted/locales/_draft-achievements/<locale>.json` following the
+   existing overlay conventions you find in `extracted/locales/en/`.
+   Record any locale Steam does not serve honestly (availability rows).
+3. Join probe: cross-reference api names against the client
+   `counter@props.achievements` subtree in counter.jsonl — report match
+   rate; unmatched names on either side listed (do not guess joins).
+4. DLC apps (3899740, 2903960, 2692400, 4165520, 3112270, 3335020,
+   3559560, 4490120): check each for its own achievement schema; if any
+   has achievements, include; if none, record the negative fact.
+5. Write **Dig 10** into `docs/data-dig-log.mdx` + update PROOF.md R2
+   row (measured facts; keep the keyed-endpoint upgrade path noted).
+
+## Constraints
+
+Rate-limit politely (~1 req/2s max, single attempt per URL unless the
+UA fallback applies). Never commit; never spawn subagents; credentials
+never enter git or logs.

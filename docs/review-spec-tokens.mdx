@@ -1,0 +1,166 @@
+# Review — design/spec-tokens.mdx (fresh Reviewer, PrepareTask pass)
+
+2026-08-24 · Reviewed against root AGENTS.md, `_foundation/design-standard.md`
+(in full), foundation-guide §6–§7, `design/shadcn-adoption.mdx` (in full),
+`design/extracted-ui/` (EXTRACT-LOG + style.css), and source shots 02/03/07/17
+(viewed). ~45 claims re-derived independently rather than trusted: full
+style.css census re-run (regex census over lines/blocks/hex/filters/props),
+pixel-sampling of `RarityBackground.png` + `dialogBg.png` + the two 1920²
+atlases, WCAG ratios recomputed from scratch, every cited selector grepped,
+every cited DR id located in the decision-register.
+
+**Evidence fidelity is exceptionally strong.** Verified byte-exact: 32,113
+lines · 7,138 blocks · 96 six-digit + **42 real** 3-digit hex = **930
+occurrences** (reconciles exactly once the `#background`-ID-prefix impostor
+`#bac` ×96 is excluded — the spec's census is honest to the single impostor) ·
+361 filters · 130 `background-alpha` + 307 `alpha` · 5 faces, 14 sizes, ramp
+14×71/16×163/19×142/22×18/25×81 exact · fonts block exact (16/16/16→19 dialog
+italic/14/25; no latin sans — Noto CJK fallback only) · item-slot
+`#rarityBackground` visible:false 54×54 hgrid 3 with uncommon/rare/legendary
+tile order · **rarity frame fills `#151A1E/#272310/#251724` byte-exact from the
+PNG** · tip classes `#AAF/#BBF`, `#FFA/#FFB`, `#F8F/#FBF` · destiny
+`glow(#d8a519,0.5,40,1,1,true) outline(0.5,#d8a519)` · counter
+gold/good/bad trio · scrollbar pair · button recipe (vgrid 3, slice 25 5, pad 5
+25, h30) · section HeaderBg h35 slice 10 10, title `#969696` 19 offset −3 ·
+SmallEntryBG pad 10/15, margin-top −10 · dialogBg slice 20 20 · item-tip width
+350 · **dialogBg sampled center `#0C0B09`, border `#36322A`, inner `#494339`
+all confirmed by pixel sampling** · text-ramp occurrence counts (160/115/90/27/
+59, `#888` disabled) · player palette ×13 each · 100 `.disabled` rules ·
+residue claims (`background-alpha` >1, `color-adjust: gain()`) real. Contrast
+math: 11 of 12 claimed ratios reproduce to the second decimal. All cited DRs
+and all cited shots exist; shots confirm the readings (empty beveled wells,
+gold currency discipline, white-outline selection, right-aligned stat values,
+locked-stays-visible).
+
+Findings below; 2 major, 3 medium, 3 minor. Verdict **NEEDS-REVISION** — the
+revision gate is F1+F2; everything else is fix-in-place and does not reopen
+the token method.
+
+---
+
+## Findings
+
+**F1 — MAJOR · `--accent #26221B` (shadcn hover wash, §2.6) has no stated
+provenance and none is discoverable.** 0 occurrences in style.css (case-
+insensitive); absent from `dialogBg/HeaderBg/SmallEntryBG/RarityBackground`;
+the only hits anywhere are stray pixels inside the two 1920² icon atlases —
+not a defensible source for a chrome hover wash. Every other value in the
+spec carries a traceable game source; §2.6 is also the one table with no
+"game source" column, which is exactly where the untraceable value hides.
+Per the brief, an invented value is a blocker.
+**Fix:** add a source column to §2.6; for `--accent` either (a) extract
+`buttonBg.png` (already on the §0 follow-up list) and sample its hover frame,
+or (b) state the derivation formula over evidenced values (e.g. a documented
+wash over `--bg-2`), or (c) substitute an evidenced value. If none of the
+three is done, this is a blocker at re-review.
+
+**F2 — MAJOR · `--destructive-foreground` contrast constant is wrong: 5.64:1,
+not 6.7:1.** Recomputed `#FFF7DB` on `#B63131` = **5.64:1**; no alternative
+pairing in the family yields 6.7 (white on `#B63131` = 6.05). Still AA (≥4.5),
+so the design intent survives — but §6.2 bakes "6.7:1" into the test as an
+assertion constant, so the contrast test as specified fails against reality.
+**Fix:** replace 6.7 → 5.64 in §2.6 and §6.2 (both occurrences of the claim).
+
+**F3 — MEDIUM · `--warning #B4691E` is outside the §6.2 contrast matrix and
+fails the spec's own gate on one surface.** Measured: 4.54:1 on `--bg-1`,
+4.67:1 on `--panel-well`, but **4.29:1 on `--bg-3`/`--card`** — below the 4.5
+body gate §6.2 itself sets, and the game uses it as body-size text
+(`resources-bar .gold.low text`, 14/16px). §6.2's tested token list
+(`--text-*`, `--light-rarity-*`, `--positive`, `--negative`-text) omits it.
+**Fix:** add `--warning` to the matrix; either constrain its usable surfaces
+(bg-1/well only) or brighten the token; document whichever in §2.3.
+
+**F4 — MEDIUM · file layout undeclared for the F1 deliverable.** `site/`
+exists but is empty; the spec names `tokens.css` (§5.1) and "beside the
+tests" (§6.4) without a path — no location for the theme file, self-hosted
+woff2 faces, test files, or the census script. pieces.mdx F1 row doesn't pin
+it either. CodeWriter+TestWriter inherit an ambiguity that breeds a second
+convention later.
+**Fix:** pin paths (theme `site/src/styles/tokens.css`, fonts
+`site/public/fonts/*.woff2`, tests + census under the site test dir) **or**
+declare the deferral to the F2 scaffold piece explicitly in §5.
+
+**F5 — MEDIUM · follow-up extraction list misses the tooltip's own chrome
+texture.** §4 makes Tooltip the core hover primitive, but its real surface in
+style.css is `tip-content .with-title { background: url("ui/elements/
+ToolTipBg.png") 5 50 }` — `ToolTipBg.png` is not in the §0 follow-up list
+(buttonBg, ListHeader×2, smallSeparator, CraftBoardBg, XpBar, dot,
+separator). `EquipementSlot.png`/`TrinketSlot.png` (item-slot backgrounds,
+same rules the rarity frames sit on) are also unlisted. The canon row would
+be built without its actual skin.
+**Fix:** add `ToolTipBg.png` (required) and the two slot textures (recommended)
+to §0; log in EXTRACT-LOG.mdx per the same one-liner protocol.
+
+**F6 — MINOR · inline counts drift under re-derivation; pin the census
+definitions.** Measured vs spec: `outline(0.5, white)` **38** not ×34;
+`text-shadow:` decls **28** not 18; texture refs **860 (225 distinct)** not
+"229 (856)" under a plain `ui/*.png|dds` regex; `spacing:` 5/10 = **125/104**
+pure-property or **195/190** incl. `h/vspacing` — "184/182" reproduces under
+neither. Every qualitative conclusion survives (5/10 do dominate; the scale
+2·3·4·5·8·10·15·20 matches the measured top set), but §6.4's census script is
+built *from* these definitions.
+**Fix:** one sentence in §6.4 fixing the counting rules (word-boundary
+properties, selector-vs-value discrimination, texture-path pattern) so the
+script's numbers are reproducible and the drift becomes moot.
+
+**F7 — MINOR · provenance-label nits.** (a) "`--bg-1` deepest surface literal
+in style.css" — `#0A0A0A` (`.scrollbar`) is in the css and darker; qualify as
+"deepest *panel* literal". (b) §2.3 cites "reputation-up" as a `--positive`
+source — no such selector exists (17 `reputation` hits, none `-up`);
+`counter.good` + `progress-bar.ready` are the real sources. (c) §4 Progress
+calls `XpBar.png` the *track* — css uses it as the `#bar` **fill** background.
+(d) §4 Tabs cites shot-07 "Governance/Development/Assignments" — that shot
+shows Government/Assignments as section *headers*, not a tab strip (the
+`tabSelector` mechanism itself is real, ×19 in css); cite a shot that shows a
+tab strip or soften the wording.
+**Fix:** four one-line corrections.
+
+**F8 — MINOR · over-engineering hunt: one candidate, otherwise clean.** The
+build-gating census (§6.4: fail the frontend build on unmapped style.css
+literals, re-run on buildid change) permanently couples site CI to game-patch
+noise — the one scope-creep candidate. It is defensible (data honesty +
+`update-trigger: build-id`), so keep it, but scope the failure to
+token-relevant literals (colors/fonts) rather than any css change. Everything
+else passes the hunt: co-op `--player-1..4` and `--chart-1..5` are small,
+evidenced, and load-bearing; the legendary animated border is a guide §7
+pattern with a reduced-motion freeze; no speculative token tiers, no light
+theme, no unused primitives.
+
+---
+
+## Canon conformance (brief item 2) — passes
+
+- **shadcn-adoption layers**: structure (§2.4 panel anatomy from real 9-slice
+  sources), interactions (§2.5 game filter vocabulary translated 1:1),
+  animations (§2.5 + §3 reduced-motion freeze; restrained per guide §7),
+  typography (§1 game faces, no sans chrome, 12px floor honored), look (§2.1
+  translucency, §3 rarity, gold discipline). "Upgrade not reskin" is enforced
+  by §4 + §5.4 with the adoption §Verification failure loop.
+- **Every shadcn CSS variable covered**: §2.6 spans background/foreground,
+  card, popover, primary, secondary, muted, accent, destructive, border/input/
+  ring, radius, font-sans, chart-1..5, sidebar-*; `:root`-is-dark declared;
+  `--light-rarity-*` correctly framed as text variants, not a theme.
+- **Rarity first-class**: §3's two coordinated expressions (frames + tip
+  classes), player-palette disentanglement, byte-parity test in §6.1c — the
+  strongest section of the spec.
+- **12px floor**: §1 (game min 14) + §6.3 Playwright crawl.
+- **Texture plan**: §0 follow-up list + §2.4 border-image/box-shadow recipes
+  + sampled fills — minus F5's missing tooltip texture.
+- **Motion rules**: guide §7 table respected; nothing gates content;
+  reduced-motion handled in §2.5 and §3.
+
+## Completeness (brief item 3)
+
+Acceptance criteria are measurable (compile, full-variable override with
+"component CSS included", ≥90%/100% accounting with residue table, side-by-side
+critic pass naming its four shots). Test spec is concrete (vitest byte-parity
+against extracted evidence, WCAG matrix, floor crawl, census gate) — pending
+F2's constant and F3's matrix addition. File layout is the one hole (F4).
+
+## Verdict
+
+**NEEDS-REVISION.** Gate: F1 (provenance for `--accent #26221B` or replace it)
+and F2 (5.64, not 6.7). F3–F5 should ride the same revision; F6–F7 are
+one-line fixes; F8 is a scoping sentence. The token method, evidence base, and
+canon conformance are sound — no finding reopens the extraction or the
+style.css-wins hierarchy.

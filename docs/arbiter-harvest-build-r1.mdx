@@ -1,0 +1,146 @@
+# ArbiterR1 — harvest build round 1 (harvest.py + test_harvest.py)
+
+Arbiter: fresh (ox-alpha) · 2026-08-24 · brief
+[`docs/briefs/arbiter-harvest-build.mdx`](./briefs/arbiter-harvest-build.mdx).
+Inputs read **in full**: `docs/spec-harvest.mdx`, `docs/review-harvest-code.mdx`,
+`docs/review-harvest-tests.mdx`, `pipeline/harvest.py` (733-line uncommitted
+refactor — the bytes judged by CodeReviewer), `pipeline/tests/test_harvest.py`,
+`pipeline/tools/wtpak.py`, `pipeline/tests/conftest.py`. Reviewers are not
+presumed right; every ruling below was re-derived from the code and, where
+cheap, reproduced live.
+
+Probes run (no full harvest, nothing on A: written): `py_compile` OK ·
+`--help` shape == §3.1 · `python -m pytest pipeline/tests -q -p
+no:cacheprovider` → **32 passed / 3 failed / 3 skipped** · `--manifest-only`
+on real res.pak with FRESH `--out` → rc 1 traceback (B1) · `--list | head` →
+**exit 120** (M5) · five synthetic mini-paks in `_recon-scratch/_arbiter_r1/`
+(since deleted): short header, 3-byte file, lone-nameLen root,
+boundary-after-childCount root, same-stem pak pair.
+
+---
+
+## Rulings — review-harvest-code.mdx (16 findings)
+
+| ID | Ruling | Grounds |
+|---|---|---|
+| B1 | **ACCEPT** (blocker) | Reproduced live: fresh-out `--manifest-only` on res.pak dies at `harvest.py:563`, FileNotFoundError, exit 1. All three red tests die at the same line. One of four contract modes cannot run. |
+| M1 | **MODIFY** — accept, broaden | Confirmed live, but narrower AND wider than stated. Narrower: my boundary-after-childCount probe exits **3 loud** already — the §7.14 childCount bound intercepts that family before IndexError can fire. Wider: a **3-byte file** dies rc 1 too (`wtpak.py:33` `f.read(1)[0]` → IndexError, constructor catch has only ValueError/OSError). The reviewer's lone-nameLen recipe does hit rc 1 (reproduced). Fix must widen both catches (below). |
+| M2 | **ACCEPT** | Reproduced: two paks named `same.pak` → rc **0**, second silently wins (`summary.source` = bb copy, first pak's entries reused-away). Silent data loss violates §4.1's spirit and principle zero. Exit-2 UsageError naming both paths is right. |
+| M3 | **MODIFY** — accept, tighten | Bare `FF Fx` sync branch confirmed at `:175-176`. Concrete false-positive class the reviewer didn't name: **UTF-16LE BOM `FF FE`** matches (`0xFE & 0xE0 == 0xE0`) — any UTF-16 text payload would be silently catalogued media and never extracted. Latent today only because expected corpus media = 0 and res.pak probed clean; assets/content/map are still unprobed. Require full MPEG frame-header validation (version/layer/bitrate not-invalid) or drop the branch to strong containers, plus a loud stderr warning naming every magic-driven media row. Extension-corroboration alone is weaker — extensions lie (pack thesis). |
+| M4 | **ACCEPT** | Composite confirmed by read: replace outside try (`:372`); file/dir shadow surfaces as generic exit-3 write failure instead of §4.1 framing; `--out`-is-a-file dies FileExistsError exit 1 at `:507`. All three sub-fixes small; shadow→CollisionError(exit 4) is within §4.1's "resolve to one target" reading (overlapping namespace targets). |
+| M5 | **ACCEPT** | Reproduced: `--list \| head -3` → pipeline status **120** on this host; SIGPIPE guard provably dead on win32 (`signal.SIGPIPE` absent). 120 ∉ {0,2,3,4}; wrappers gate on `$?`. Guarded emission+flush → exit 0. Rank below correctness items. |
+| m1 | **ACCEPT** — and it blocks the suite | Arithmetic verified: masked form records **−2³²** for content.pak's numbers where spec §2.1 pins **−2³³** (= signed field − Σ). Hole both reviewers missed: `test_s7_case3_wrapdelta_in_summary` asserts exactly −2³² on its fixture, so fixing B1 alone turns that red into a *different* red. **B1 and m1 must land in the same pass** or the suite stays red. |
+| m2 | **ACCEPT** | List branch returns before `structural_checks` (`:449-454`) — slack/DATA/span/tiling unchecked in list mode. §2.2 "hard invariants" is mode-unqualified. Move checks before the branch. |
+| m3 | **ACCEPT** | `scope_work` computed twice back-to-back (`:675`,`:677`). Trivial hoist. |
+| m4 | **PARTIAL** — tuple hoist ACCEPT; mkdir-cache REJECT | 40k stat+mkdir calls are noise against 45 GB of disk+hash IO (seconds across a 15-min run); a created-parents cache adds statefulness for no measurable win. Hoisting `tuple(MEDIA_EXTENSIONS)` to module scope is free — take that half only. |
+| m5 | **ACCEPT** | Once the §4.2 hook ever fires, sampled media rows report `match:false` forever in the §6 artifact — a permanent false negative in the PROOF chain. Exclude or explicitly annotate. |
+| m6 | **ACCEPT** | `sha256:null` on catalogue-only rows is a schema wart; omit the key when None. One line. |
+| m7 | **REJECT** | Resume is already correct (targets re-verified; `.part` overwritten on redo). A phase-A sweep walks the whole output tree to delete files nobody tripped over, and adds a deletion surface. Hygiene note in code comment, not code. |
+| m8 | **ACCEPT** | `\\?\` prefixed onto `\\server\share` is malformed (`\\?\UNC\…` is correct). Harmless on NE8K local volumes today; one-line insurance. |
+| m9 | **ACCEPT** | Reader handle is provably dead after parse (payload reads use the separate phase-B handle). Close it post-parse — cheap, removes GC dependence on a long-lived tool. |
+| m10 | **ACCEPT** via reject-at-parse | A node name containing `\` cannot be preserved verbatim into an NTFS layout (pathlib splits it). Of the two suggested remedies, parse-time FormatFailure (exit 3) is the honest one — "document the bending" normalizes disk≠name divergence. |
+
+Over-engineering hunt: none material beyond the two rejections above. The
+calibration + `RunState` machinery is spec-mandated (§5 demands a *measured*
+preflight estimate and a fail-loud tripwire). The mid-run projection exceeds
+the spec letter ("pre-flight estimate") but wires the same tripwire to
+measured reality in ~20 lines with no knobs — ruled sanctioned; do not strip
+it. No scope creep found: everything stays inside the harvest stage.
+
+### Holes found in the reviews themselves
+
+1. **B1↔m1 sequencing** (above) — neither reviewer connected the suite's
+   pin to the wrap-delta bug; a CodeFixer following only "fix B1" ships red.
+2. **M1's blast radius was misdescribed in both directions** (see ruling).
+3. **UTF-16 BOM** as M3's concrete casualty (ruling M3).
+4. **Report-path literalism**: spec §6 names `extracted/harvest-report.json`;
+   the implementation writes `<out>/harvest-report.json` (= 
+   `extracted/harvest/harvest-report.json` under the default `--out`). Ruled
+   acceptable: with a custom `--out` the spec-literal location is
+   meaningless, out-root placement is the faithful generalization, and
+   `find_report` already tolerates both. EXTRACTION-LOG/PROOF citations must
+   say `<out>/harvest-report.json`. No code change.
+5. **`--fingerprint` has zero coverage anywhere** — folded into L3 below.
+6. Case-14's docstring claims red-by-design while the test passes (L5).
+
+---
+
+## Rulings — review-harvest-tests.mdx (9 findings)
+
+Attribution first: reran the suite — 32/3/3, all three failures
+(`test_s7_case10_list_and_manifest_only`, `test_s7_case3_wrapdelta_in_summary`,
+`test_s7_case13_manifest_offset_exact_above_2pow32`) die at `harvest.py:563`
+FileNotFoundError. **Implementation defect (B1), suite working as designed.**
+
+| ID | Ruling | Grounds |
+|---|---|---|
+| M1t | **ACCEPT** | Multi-pak headline form has zero coverage; stem-clobber (code M2) unpinned. Two tests: distinct-stem pair (both manifests, both summaries, two report seed entries) + same-stem → exit 2. **Dependency:** the same-stem test pins post-M2 behavior — sequence after CodeFixer lands. |
+| M2t | **MODIFY** — goal accept, mechanism reject | **Reject the hidden `--max-projected-minutes` knob**: §3.1's CLI surface is contractual; test-only flags are creep. The seam already exists — `import harvest` and monkeypatch module globals (`WALL_BUDGET_SECONDS`, `FREE_SPACE_MARGIN`), calling `preflight_gates` / `run` in-process. Sparse-hole fixtures make Σsizes huge at KB cost, so BudgetBreach is reachable cheaply. Three tests: projection arithmetic, breach stops-and-reports (rc 2, message names §5), space gate exits 2. |
+| M3t | **ACCEPT** | Lenient×integrity interaction unpinned; the catastrophe (corrupt corpus extracted as good, rc 0) is exactly what strict mode exists to prevent. Pin the exact matrix: `bad_magic`, `size_lies`, tampered-payload → **3 in both modes** (format/integrity, never downgradable); `slack_junk` and `no_data_marker` → **3 strict / 0 lenient with warning** (both are §2.2 invariant-list items, so §3.1 makes them downgradeable). |
+| M4t | **ACCEPT** | Name-half-only media testing leaves the magic half of §4.2 unguarded. Plant AV container magics (RIFF/WAVE, OggS, fLaC, `ftyp`) under benign names → `media:true`, no file. Align expectations with whatever M3-code fix lands; do **not** pin bare-FF-Fx-sync behavior if that branch gets validated away. |
+| L1 | **ACCEPT** | Near-tautology confirmed (`0` arrives free via counts). Assert exact paths: `wrap_delta_vs_sum_sizes == 0` and `sum_entry_bytes == info.total`. |
+| L2 | **ACCEPT** | `False in (0,2)` and `16.0 == 16` both pass today. Add `type(...) is int` (+bool exclusion, matching the offset pin) for flag and size. |
+| L3 | **ACCEPT**, extended | Add `s["sum_entry_bytes"] == info.total` and `measured_size == stat().st_size`; while there, pin `--fingerprint`'s `source_sha256` against `hashlib.sha256(pak_bytes)` (my addition — currently untested, cheap on mini-paks). |
+| L4 | **ACCEPT** | Landmark test reads both `_verify` artifacts unconditionally; absent files ⇒ false red, not skip. Add both to `_integration_prereqs`. |
+| L5 | **ACCEPT**, exercise don't drop | `data_size_override` confirmed dead (grep: def + internal use only). Keep it via a wrapped-field unit — it pins dataSize provenance without the 2 GB session fixture and synergizes with m1. Rewrite case-14's docstring to present tense (it passes today; harvest validates childCount; the wtpak signed-i32 hole is compensated upstream). |
+
+Fixture-writer soundness (reviewer mission item 4) independently spot-checked:
+header/index/DATA layout, unsigned childCount packing vs signed reader read,
+auto-flag threshold, hole-pad adlers vs zlib incl. mod-boundary triple,
+sparse truncate semantics — all check out. Marker hygiene confirmed against
+conftest (skip-unless-flag; unit layer provably A:-free).
+
+---
+
+## Verdicts
+
+### `pipeline/harvest.py` — **FIX**
+
+Ordered list for a fresh CodeFixer (1–2 and 3 are one mechanical cluster;
+do not split 1 from 2):
+
+1. **B1**: `os.makedirs(longpath(out_root), exist_ok=True)` unconditioned at
+   the top of `harvest_pak`, before any meta write. (pkg_dir creation stays.)
+2. **m1**: `"wrap_delta_vs_sum_sizes": ctx["data_size_field_i32"] -
+   ctx["sum_sizes"]` — drop the mask; keep `data_size_stored_unsigned` as the
+   masked provenance field. Same pass as B1 (the suite pins this).
+3. **M1**: `load_pak` constructor catch → `(ValueError, struct.error,
+   IndexError)`; parse catch → add `IndexError` beside
+   `struct.error`/`RecursionError`. Covers short headers, 3-byte files, and
+   lone-nameLen truncations; childCount-bound shapes already exit 3.
+4. **M2**: preflight duplicate-stem check in `run()` → UsageError naming both
+   paths (exit 2).
+5. **M4**: (a) move `os.replace` inside the try → FormatFailure on OSError;
+   (b) classify parent-shadow hits as CollisionError (exit 4) naming both
+   locations; (c) preflight: `--out` existing as a non-directory → UsageError.
+6. **m2**: run `structural_checks` before the `--list` branch in
+   `prepare_pak`.
+7. **M3**: validate the MPEG-sync branch (version/layer/bitrate bits) or drop
+   it; keep strong container magics; emit a loud stderr warning naming the
+   entry for every magic-driven media row.
+8. **M5**: wrap `--list` emission and final stdout flush in try/except
+   OSError → clean exit 0 on closed pipe.
+9. Small batch: m3 hoist `scope_work` · m4a module-level media-extension
+   tuple (cache rejected) · m5 exclude-or-annotate media rows in
+   `build_samples` · m6 omit null sha256 keys · m8 UNC path form · m9 close
+   the reader handle post-parse · m10 reject `\` in node names at parse
+   (FormatFailure).
+10. Rejected, do not implement: m7 `.part` sweep.
+
+### `pipeline/tests/test_harvest.py` — **FIX**
+
+Ordered list for a fresh TestFixer (**after** CodeFixer lands):
+
+1. Baseline: suite green post-fix — expect **38 passed / 0 failed /
+   3 skipped** (B1+m1 turn all three current reds green).
+2. M3t: corrupt-flavor × {strict, no-strict} matrix with the exact expected
+   codes from the ruling table.
+3. M4t: AV-magic-under-benign-name media fixtures (aligned with landed
+   is_av_container semantics).
+4. M1t: two-pak distinct-stems test + same-stem-exits-2 test.
+5. M2t: in-process seam tests (monkeypatched budget/space gates; projection
+   arithmetic) — no new CLI flag.
+6. Tightenings: L1 exact wrap keys/values · L2 type pins (flag, size) ·
+   L3 value pins + fingerprint sha256 pin · L4 prereq list += both `_verify`
+   landmarks · L5 data_size_override wrapped-field unit + case-14 docstring
+   refresh.

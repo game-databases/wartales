@@ -1,0 +1,23 @@
+# Brief — Arbiter: harvest build round 1 (code + tests) (fresh subagent)
+
+Fresh Arbiter in the build pipeline. Never spawn subagents, never
+commit. Wartales pack only. Read, in full: `docs/spec-harvest.mdx`
+(the contract), `docs/review-harvest-code.mdx`, 
+`docs/review-harvest-tests.mdx`, then verify every finding yourself
+against `pipeline/harvest.py` + `pipeline/tests/test_harvest.py` (you
+may RUN the tests: `python -m pytest pipeline/tests -q`, and py_compile,
+--help, --manifest-only on res.pak with a FRESH --out to reproduce B1;
+do NOT run the full harvest).
+
+Jobs: rule each finding ACCEPT/REJECT/MODIFY with grounds (reviewers
+are never automatically right; existing code can win); hunt holes in
+the reviewers' own judgments; check over-engineering in suggested
+fixes; check task boundaries (no scope creep beyond the spec).
+
+Deliverable: `docs/arbiter-harvest-build-r1.mdx` — rulings table +
+verdict per artifact:
+- harvest.py: APPROVE (no fixes needed) or FIX (exact ordered fix list
+  for a fresh CodeFixer)
+- test_harvest.py: APPROVE or FIX (exact ordered list for a fresh
+  TestFixer)
+Return: ≤10-line summary with both verdicts + counts.

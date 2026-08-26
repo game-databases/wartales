@@ -1,0 +1,26 @@
+# Brief — TestReviewer r2 (delta): stages suite fix diff (fresh subagent)
+
+Fresh TestReview agent. **Never spawn subagents**; never commit; Wartales
+pack only. Headless: stdout → log; end with verdict.
+
+Read first: `wartales/docs/arbiter-stages-build-r1.mdx` (W6 scope);
+`docs/review-stages-tests.mdx` (round-1 F1–F15 — confirm each addressed);
+`output/testfixer-stages.log` (fixer claims + disclosed incident);
+spec §4.2 AS AMENDED.
+
+## Mission — delta review of the TEST diff only
+
+1. Confirm all 14 W6 items landed as ruled (F1–F13, AC9, R2-reg) —
+   spot-check the assertions actually pin their criteria, not proxies.
+2. Hunt NEW test defects: over-coupling to implementation details that
+   will false-fail on lawful refactors; the RELATIONS.md tamper leg's
+   backup/restore redesign (verify it cannot corrupt shared state —
+   re-run it twice); cross-drive cwd workaround legality; any new
+   tautology introduced by the rewrite wave.
+3. Mutation spot-checks: plant 4 faults adjacent to new legs and prove
+   the suite catches-or-honestly-scopes them.
+4. Suite state: reproduce 187 passed / 25 skipped default run; every
+   remaining skip justified + armed.
+5. Verdict: CLEAN or NEEDS-FIXES (ordered).
+
+Deliverable: `docs/review-stages-tests-r2.mdx`.

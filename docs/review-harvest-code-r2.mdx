@@ -1,0 +1,90 @@
+# CodeReview R2 — harvest.py round-1 fixes (delta-only)
+
+Reviewer: fresh (ox-alpha) · 2026-08-24 · brief
+[`docs/briefs/review2-harvest.mdx`](./briefs/review2-harvest.mdx).
+Delta-only per the arbiter's law: verify each round-1 fix landed, hunt only
+defects the fixes introduced, confirm no untouched section drifted. Round-1
+inputs: [`review-harvest-code.mdx`](./review-harvest-code.mdx) +
+[`arbiter-harvest-build-r1.mdx`](./arbiter-harvest-build-r1.mdx); contract
+[`spec-harvest.mdx`](./spec-harvest.mdx) re-read in full. Judged bytes =
+working tree == commit `8030454` (`pipeline/harvest.py`, 817 lines).
+
+**Drift-method note (honest scope):** the pre-fix refactor was never
+committed — `5931de6` is pre-refactor v1 and `8030454` lands refactor+fixes
+as one blob, so no byte-diff against the round-1-reviewed revision exists.
+Untouched-section confirmation therefore rests on a full read of the current
+file against round-1's "verified clean" inventory plus the test-suite pin:
+format semantics (12-B header math, f64/int position encodings, u32 size
+unwrap, adler masking), detect vocabulary + `MAGIC_TOKENS` set, flatten
+dir-count definition, peek/hash/verify-extract/resume machinery, manifest
+schema + DFS key order, summary field set (masked provenance field kept),
+CLI surface, `RunState`/preflight/budget tripwire, sequential single-thread
+shape, and the exact 14-extension media set are all unchanged.
+
+## Probes run
+
+`py_compile` OK · `--help` shape == §3.1 · full suite `pytest pipeline/tests
+-q -p no:cacheprovider` → **48 passed / 0 failed / 3 skipped** (3.61 s) ·
+fresh-out `--manifest-only` on real res.pak → rc 0, 936-line manifest,
+dirs=127, media=0, wrap delta 0, zero payload dirs · content.pak
+`--manifest-only` → wrap delta **−8,589,934,592 = −2³³ exactly**, masked
+provenance field retained (3,071,405,646), 15,248 files / 1,225 dirs /
+Σ 7,366,372,942 reconciled · `--list | head -3` → PIPESTATUS **0**
+(pipefail too; was 120) · synthetic fixtures in
+`output/_recon-scratch/_review_r2/` (since deleted): 3-byte file, bad magic,
+nameLen-then-EOF index, backslash-name node, parent-shadow tree, dup-stem
+pair, `--out`-is-a-file.
+
+## Per-fix verification (arbiter items 1–10)
+
+| # | Fix | ✓/✗ | Evidence |
+|---|---|---|---|
+| 1 | B1 out-root mkdir | ✓ | unconditioned `os.makedirs(longpath(out_root))` top of `harvest_pak` (`harvest.py:566`); fresh-out res.pak smoke rc 0 with all three meta artifacts |
+| 2 | m1 wrap delta | ✓ | mask dropped (`harvest.py:647`); content.pak live = −2³³ per spec §2.1; `data_size_stored_unsigned` kept as provenance (`:646`); suite green (the pin that forced same-pass landing) |
+| 3 | M1 exception holes | ✓ | ctor catch `(ValueError, struct.error, IndexError)` (`:230`), parse catch adds `IndexError` (`:237`); probes: 3-byte file, bad magic, lone-nameLen→flags-at-EOF all **rc 3 clean, no traceback** |
+| 4 | M2 duplicate stems | ✓ | casefolded preflight check in `run()` (`:734-741`); same pak twice → rc 2 naming both paths |
+| 5 | M4 replace/shadow/out-file | ✓ | `os.replace` inside try, OSError ⇒ FormatFailure exit 3 (`:419-425`); parent-shadow fixture → **rc 4 naming both tree locations**; `--out`-is-a-file → rc 2 (`:721-722`) |
+| 6 | m2 checks before `--list` | ✓ | `structural_checks` runs before the list branch (`:501` → `:505`) — §2.2 invariants now mode-unqualified |
+| 7 | M3 MPEG validation | ✓ | `_mpeg_audio_frame` validates sync/version/layer/bitrate/sample-rate bits (`:193-204`); strong magics kept incl. `ftyp`/RIFF-WAVE/AVI/EBML/ID3 (`:215-222`); every magic-driven media row prints a loud `[media-hook] … naming the entry` to stderr (`:590-592`). UTF-16LE BOM spot-check: `FF FE 00 00` rejected by bitrate bits, `FF FE 3C 00` by reserved sample-rate bits |
+| 8 | M5 closed-pipe exit | ✓ | list emission wrapped → `silence_broken_stdout()` → rc 0 (`:505-511`); final flush guarded (`:792-795`); live `--list \| head` exits 0 both plain and under pipefail |
+| 9a | m3 scope_work hoist | ✓ | computed once, gates see `{}` under `--manifest-only` (`:754-755`) |
+| 9b | m4a module-level tuple | ✓ | `_MEDIA_EXT_TUPLE` hoisted (`:56`, used `:180`); rejected mkdir-cache correctly absent |
+| 9c | m5t media sampling | ✓ | sampled media rows annotated `match:null` + explicit note, never false `match:false` (`:542-546`) |
+| 9d | m6 null sha256 | ✓ | key omitted when None (`:619`); live `--sha256 --manifest-only`: 0 sha keys, 0 nulls across 936 rows |
+| 9e | m8 UNC longpath | ✓ | `\\?\UNC\server\share` form (`:156-158`); local-volume behavior unchanged (every probe flows through longpath). No UNC share probed — none exists in this topology |
+| 9f | m9 reader close | ✓ | `reader.f.close()` in finally post-parse (`:242`); safe — `wtpak.Reader.iter_files` walks the parsed tree only, never touches `f` after close |
+| 9g | m10 backslash names | ✓ | parse-time FormatFailure (`:114-117`); fixture → rc 3 clean naming the node |
+| 10 | m7 `.part` sweep — REJECTED | ✓ honored | no sweep code anywhere; `_discard` remains handled-failure-only |
+
+## Regression hunt (fix-introduced defects only)
+
+No regression found. Targeted edges examined:
+
+1. **In-spirit extension, sanctioned:** `read_entry` now converts an
+   undecodable UTF-8 name to FormatFailure (`:112-113`). Pre-fix that was an
+   uncaught `UnicodeDecodeError` traceback exit 1 — same hole family M1
+   closed; exit code, loudness, and entry-naming match the ruling. Not a
+   drift; recorded so the delta is visible.
+2. **M2 casefold breadth:** `res.pak` + `RES.PAK` are refused even where a
+   POSIX target would not collide. Correct on NE8K/NTFS (§4.1 treats
+   case-clashes as collisions; output dirs `<out>/<stem>` would fold);
+   no POSIX consumer exists in this pack. Note only.
+3. **Collision-before-invariant ordering:** shadow trees report exit 4
+   before any §2.2 complaint (checks run at `prepare_pak:500` before
+   `structural_checks:501`). Consistent with §4.1's hard-error framing.
+4. **Pipe-break mid-list:** `prepare_pak` returns None and `run()` keeps
+   parsing remaining paks, printing into the redirected descriptor, then
+   exits 0 — writer-side-success semantics the M5 ruling intended; nothing
+   is ever written to disk in list mode.
+5. **B1 mkdir placement:** phase-B only, before pkg_dir creation;
+   `--manifest-only` still leaves zero payload directories (smoke confirms
+   three meta files only).
+
+## Verdict
+
+**CLEAN** — all nine sanctioned fix clusters landed correctly (item 10
+honored as rejection); py_compile, --help, fresh-out res.pak
+`--manifest-only`, and the full suite (48 passed / 0 failed / 3 skipped)
+all green; no defect introduced by any fix; no untouched section drifted.
+The harvest stage matches its committed state `8030454` and is fit for the
+full four-pak run.

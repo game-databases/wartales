@@ -1,0 +1,68 @@
+# shadcn/ui adoption — owner directive, 2026-08-24 (amended same day)
+
+**Authority:** direct owner messages during the wartales build:
+
+1. "consider using shadcn ui components heavily tuning them to fit
+   game's style and soul"
+2. "not just reskinned for tokens, but upgraded to match game's UI,
+   style, interactions, animations, look&feel"
+
+## The rule for this pack
+
+Every frontend piece builds its interactive components on **shadcn/ui
+primitives (Radix behavior skeleton) UPGRADED to the game's own UI
+fidelity** — structure, interactions, animations, and look&feel match
+what Wartales' interface actually does. A re-skinned default component
+is a fail, same as an unthemed one.
+
+## Evidence hierarchy for the component canon
+
+1. **The game's own stylesheet** — `assets.pak:/ui` carries `style.css`
+   (779 KB) + `.asl` icon styles + atlases (recon §2, shorthand UIA).
+   The harvest stage extracts it; F1 derives the authoritative token
+   set (fonts, colors, spacing, borders, effects) from the game's real
+   definitions, not from eyeballing. Where style.css and screenshots
+   disagree, style.css wins.
+2. **UI screenshots** (`design/sources/`, 20 verified official frames)
+   — layout, composition, interaction states, panel anatomy
+   (quilted near-black panels, beveled slots, gold selection).
+3. **Extracted atlases/icons** — the real icon vocabulary (one icon
+   language across the site, design-standard §5.3).
+4. Community/reference sites — structure only, never the look.
+
+## What "upgraded, not reskinned" means per layer
+
+- **Structure**: panel anatomy copied from the game (header band,
+  beveled item slots, footer strip) — not a SaaS card with game
+  colors. Empty slots are the game's empty-slot look (dark beveled
+  well), per design-standard §5.1 honesty.
+- **Interactions**: hover/selection/active states match the game's
+  (gold selection glow, row highlight behavior); every data field
+  keeps its required hover job (definition / locale table / bidirectional
+  join — Enka bar unchanged).
+- **Animations**: the game's transition curves and timings where
+  observable (panel slide, tooltip fade, selection pulse); restrained
+  per foundation-guide §7, `prefers-reduced-motion` honored, motion
+  never gates content.
+- **Typography**: the game's own faces via style.css (`--font-flavor`
+  = the game's display/serif voice; UI sans for chrome), sizes ≥12px
+  floor.
+- **Look&feel**: quilted/leather texture surfaces, rarity tints
+  (olive/violet/steel on near-black), gold reserved for
+  currency/selection/AP — extracted, tokenized, applied at surface
+  level.
+
+## Why shadcn stays in (and what it contributes)
+
+Radix a11y primitives, keyboard nav, focus management, popover/tooltip/
+combobox/command mechanics — the behavior skeleton. FRAMEWORK §2.20
+stays satisfied (Tailwind + CSS-variable tokens; TanStack Table +
+Virtual under data tables). The presentation layer above it is
+Wartales', not shadcn's.
+
+## Verification
+
+Every visual critic round grades against the game's own UI frames
+(`design/sources/`) side-by-side: if a component reads as "shadcn with
+a palette swap" instead of "the game's panel on the web", the round
+fails and the builder goes back in.

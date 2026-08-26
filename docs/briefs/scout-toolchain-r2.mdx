@@ -1,0 +1,59 @@
+# Brief — Scout R2: Wartales extraction toolchain (fresh subagent, continuation)
+
+You are a FRESH Scout subagent (round 2) launched by the wartales
+orchestrator. A previous toolchain scout died mid-task; its partial work
+is ON DISK and you continue from it. You never spawn or request other
+subagents. You never commit to git. Wartales pack only.
+
+## Read first
+
+1. `C:\_reps\game-databases\AGENTS.md` — in full.
+2. `C:\_reps\game-databases\_foundation\extraction-doctrine.md` — in full.
+3. Your predecessor's artifacts (inspect, don't assume):
+   - `wartales/pipeline/tools/hlbc.exe` — HashLink bytecode disassembler
+     (already acquired/built, 17:36)
+   - `wartales/pipeline/tools/paktool/` +
+     `paktool-0.0.3-win-x64.zip` — community pak tool candidate
+   - `wartales/pipeline/tools/wtpak.py` — hand-written proof parser (6KB)
+   - `wartales/pipeline/tools/_refs/` — HashLink runtime sources pulled
+     for format study (hl_code.c/h, Reader.hx, Build.hx, Data.hx, PAK.txt)
+   - `wartales/output/_recon-scratch/*.tsv` — all four paks' raw entry
+     walks by the recon scout; `pak-diag.txt`, `pak-parse-summary.txt`
+4. Predecessor's transcript narration (last known state, for orientation
+   ONLY — re-verify everything yourself):
+   `C:\Users\lineg\.claude\projects\C---reps-game-databases-wartales\f7cc8c1f-141f-4955-ab54-f3348f2a8888.jsonl`
+   Key claims to re-verify: res.pak parsed perfectly clean (936 entries,
+   header u32 = tree/data boundary offset); assets/content/map desync —
+   suspected second entry variant (compressed-entry flag with extra
+   fields); hl_code.c v4 string-section encoding was being studied.
+
+## Client
+
+`A:\SteamLibrary\steamapps\common\Wartales\` — Heaps.io/HashLink,
+appids/buildid in PROGRESS.mdx. Python 3.14 at C:\Python314, node v22.
+
+## Deliverable (the missing report)
+
+`C:\_reps\game-databases\wartales\docs\toolchain-validation.mdx`:
+
+1. **Pak reader verdict**: which tool reads Wartales paks fully —
+   wtpak.py (fix/extend as needed), paktool, or QuickBMS script. Prove:
+   full entry listing per pak reconciled against the recon TSVs, ONE
+   real extraction per pak decoded correctly (magic bytes match expected
+   content type). Record tool+version+license tag+source URL as facts.
+2. **HashLink bytecode verdict**: prove `hlbc.exe <args>` opens the real
+   `hlboot.dat` — dump module count, function count, string count. If
+   hlbc fails on this build, name the exact failure and the fallback
+   (self-built dumper from _refs sources is Plan B; you may finish
+   wtpak-style hand parsing using _refs/hl_code.c semantics).
+3. **Texture path**: what image formats the paks contain (from entry
+   listings/extensions), conversion plan to webp.
+4. **Fallback plans A–D** per doctrine (format level; crypto gate if
+   any).
+5. **Full-deconstruction scope mapping** for this engine: data layer =
+   pak trees + XML tables; logic layer = hlboot.dat decompile; relink =
+   id registries across both.
+
+No legality commentary (repo rule 2). Read-only on A:. Keep every
+working artifact under wartales/pipeline/tools/. Return: ≤20-line
+summary of verdicts + blockers.

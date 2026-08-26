@@ -1,0 +1,54 @@
+# Brief — Data dig 13: structured-text decompiler, R3 remainder (fresh subagent)
+
+Fresh data-dig agent. **Never spawn subagents**; never commit; Wartales
+pack only. Headless: stdout → log; end with verification results.
+
+Read first, in full: `wartales/docs/decompile-dig-1.mdx` (plan step 5);
+`wartales/docs/disasm-formula-findings.mdx` (§4 open list is your scope
+contract); `pipeline/tools/hl_disasm.py` (CFG library + renderer);
+`extracted/logic/hl-structure/WALK-PROOF.mdx`;
+`docs/data-dig-log.mdx` Dig 8 entry.
+
+## State (verify, don't trust)
+
+- Complete operand disassembly exists: `extracted/decompiled/hl/**`
+  (1,584 `.dis.hx` mirrors, 52,114 functions / 2,508,050 ops) +
+  `_functions-index.jsonl` + `_unknown-opcodes.jsonl`. CFG stats: 504,298
+  blocks / 640,894 edges. Role audit passed (op 28 decoded, fields fit
+  317,945/317,945 receivers).
+- Known-semantics validation set: getFow row-major, getPlayerPosition,
+  getLayerColor, Compass.sync — your render must reproduce their
+  documented behavior.
+- Product motive: calculators need READABLE formulas — capture odds
+  (`getCaptureChance` f#7774), trade price factor (`Item.getLocalPriceFactor`),
+  damage (`calcDamages`), XP (`Debrief.addXP`). Those modules are the
+  priority order.
+
+## Hard rules
+
+- Python `C:\Python314\python.exe`, stdlib only.
+- Never invent semantics: unproven expressions render as the disasm they
+  came from with an `/* unresolved */` marker; the unknown ledger grows,
+  never shrinks silently.
+- The full corpus is the goal but VERIFIED output is the gate: a module
+  ships structured text only when its functions round-trip against the
+  CFG and spot-checks pass.
+
+## Task
+
+1. Build the structured-text emitter (extend hl_disasm.py or new
+   `hl_decompile.py`): expression reconstruction from stack ops per basic
+   block, if/while/switch from CFG shapes, calls resolved to names,
+   field chains kept flattened-then-prettified. Deterministic; re-runnable.
+2. Priority modules first: combat/damage → trade/prices → capture → XP;
+   then breadth across all modules as verification allows.
+3. Emit `extracted/decompiled/hl-src/{module}.hx` alongside existing
+   `.dis.hx`; index sidecar mapping function→file:line both layers.
+4. Verification per module: (a) every structured statement's op range
+   partitions the function's ops with no gaps/overlaps; (b) known-
+   semantics set renders correctly; (c) ≥20-function random hand-audit
+   sample documented in output/_dig-decomp/.
+5. Append **Dig 13** to docs/data-dig-log.mdx; update PROOF.md R3 row
+   (measured coverage %); record remaining open list honestly.
+
+Do NOT touch site/, run_all.*, extracted/logic/hl-structure/ inputs.

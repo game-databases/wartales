@@ -1,0 +1,26 @@
+# Brief — CodeWriter: F1 design tokens (fresh subagent)
+
+Fresh CodeWriter. Never spawn subagents, never commit. Wartales pack
+only. Your spec: `design/spec-tokens.mdx` (arbiter-fixed, 8/8 steps
+applied) — read in full. Evidence: `design/extracted-ui/` (the game's
+own style.css), `design/sources/` shots, `design/shadcn-adoption.mdx`.
+
+Deliverables (file layout per the spec's §4):
+1. `site/src/styles/tokens.css` — the full token set: shadcn CSS
+   variables ALL overridden with game-derived values; rarity scale
+   --rarity-0..N + light variants; fonts (--font-ui/--font-flavor);
+   texture-surface recipes; animated-border keyframes for top tiers
+   (reduced-motion aware).
+2. Font assets handling per spec (subset/link plan; no font files in
+   git if licensed — declare the CDN path contract).
+3. `site/src/styles/tokens.test.ts` (+ minimal vitest setup) — the
+   token-parity test from the spec: no default shadcn values remain,
+   contrast pairs meet the spec's matrix, 12px floor on font tokens.
+4. A tiny `site/src/styles/tokens-preview.html` static page rendering
+   swatches + rarity cards + type scale for the visual critic's first
+   side-by-side (self-contained, no framework).
+
+Run the tests green before returning. This is the FIRST site/ artifact
+— keep the footprint minimal (no Next.js scaffold yet; that is a later
+piece). Return: ≤10-line summary — files, test counts, any spec
+deviation (must be zero; spec defects STOP and report).

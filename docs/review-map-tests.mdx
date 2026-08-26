@@ -1,0 +1,158 @@
+# TestReview — test_map_tiles.py vs spec-map-pipeline §6+§7
+
+Reviewer: fresh TestReviewer (ox-alpha) · 2026-08-25 · brief
+[`docs/briefs/testreviewer-map.mdx`](./briefs/testreviewer-map.mdx). Judged
+against [spec-map-pipeline.mdx](spec-map-pipeline.mdx) §6+§7 only; the
+implementation (`pipeline/map_tiles.py`) was **not** read (absent anyway —
+suite is green-on-skips by design). No subagents, no commits.
+
+Probe: `python -m pytest pipeline/tests -q` → **80 passed / 0 failed /
+33 skipped**; the map suite alone collects 62 cases → **32 passed /
+30 skipped** (21 tool-layer awaiting `map_tiles`, 9 integration behind
+`--run-integration`). Every pass/fail claim below was reproduced live
+against `pipeline/tests/test_map_tiles.py`, not inferred from reading.
+
+**Verdict: NEEDS-FIXES.** The fixture/registry layer is genuinely strong
+(negative battery, sign traps, CR-insensitivity, honest dual-mode census
+check), but three spec ACs have zero coverage, the schema contract is
+validated against a private fork of the published schema, and two headline
+cases (AC9 roundtrip, hole-alpha snapshot) pass for weaker reasons than
+they claim.
+
+## MAJOR
+
+**M1. maps.json is validated against an embedded private schema, never
+against the published contract.**
+[spec-map-pipeline.mdx](spec-map-pipeline.mdx) §6 AC6 says "validates
+against its **published** JSON Schema" and §4 pins it in `contracts/` —
+`contracts/maps.schema.json` exists and **the suite never reads it**
+(`_registry_schema()` re-embeds a divergent copy). Drift runs both ways,
+verified:
+
+- Published requires `bounds` + `provenance` on *every* layer item;
+  embedded requires only `id`,`kind`. Live proof: deleting `bounds` from a
+  tiles layer passes `_check_registry` clean — so "every layer bound within
+  measured bbox" is vacuous exactly when bounds are absent, and the
+  rejection battery (`test_registry_rejects`) tests bounds-*outside*-bbox
+  but never bounds-*missing*. The published schema also requires
+  `polygonRef`+`bounds` on regions, carries `publicationPlane`, and allows
+  kind `"grid"` — all absent from the embedded copy.
+- Conversely the embedded copy is *stricter* than published:
+  `transform.d` enum `{null, −1}` vs published `number|null`;
+  `tileUnitPx` enum `{null, 512}` vs published `type: object`.
+
+Fix: load `contracts/maps.schema.json` as the authority (keep semantic
+assertions separate as today), add the missing-bounds negative, reconcile
+the d/tileUnitPx enums with one named owner.
+
+**M2. AC2, AC3, AC4 have no tests and no contracted symbols.** Grep over
+the suite: no `adler` anywhere (AC2's 6,886/6,886 re-extract MATCH), no
+format-census/uniformity hook (AC3's 4,131-row table with per-class
+(format,dims,mips) equality and listed outliers), no finite-value
+assertion nor threshold-frozen-from-measured-distribution guard (AC4).
+Worse, the docstring contract surface (lines 39–57) doesn't demand any of
+them, so CodeWriter is under no obligation to build them either. AC4's
+F4-style discipline exists only for D6 (`D6_BUDGET_PX` None→skip); D2 has
+no analogue.
+
+**M3. The flagship 276/273 duplicate groups are never reproduced from
+payload bytes — the chain is circular until D3, then stays circular.**
+Fixture side asserts constants about themselves
+(`276·262,272 == 72,387,072` etc.);
+`test_int_placeholder_subset_residue_from_emitted_cell_maps` admits the
+TSV can't yield crc and consumes D3's own `cells/*.cells.json`
+`placeholders` lists when they land — if D3 misclassifies consistently,
+that test confirms it. A direct integration hash-grouping of the 4,131 DDS
+payloads (crc32/sha256 per file → group sizes) would pin `0ff430e9`×276 ⊃
+`78c858d4`×273 independently of D3; golden hashing exists for 6 individual
+files but never groups them. What *is* sound: the 3-cell residue equality
+is pinned to spec-quoted coordinates, and `splat_set < albedo_set` is a
+real strict-subset check once inputs exist. Also fine: uniform class sizes
+make size-based grouping impossible — that's why hashing is required, not
+optional.
+
+## MODERATE
+
+**Mo1. AC9 roundtrip anchors are collinear — the test can't fail for most
+transform bugs.** `anchors = {(i·7, −i·3)}` lie on one line (verified
+algebraically and live). An affine fit through collinear points is
+underdetermined: any invertible interpolation of those points roundtrips
+to identity within budget, so fit/invert bugs of large measure pass.
+Spec §7 D6 says project the **town** anchors; until D5 lands use
+non-degenerate synthetic anchors spanning 2-D.
+
+**Mo2. Golden case hashes raw bytes instead of decoding.** Spec §6 tests
+paragraph: "one extracted tile per class **decodes** to a pinned
+checksum." `test_int_golden_file_checksums_per_class` hashes the payload
+file directly — extraction stability only. Every `decode_dds_rgba` /
+raw-grid bug passes golden untouched. Add decode-then-checksum cases
+alongside.
+
+**Mo3. AC5 integration hardcodes the unresolved D6 answer.**
+`test_int_real_pyramid_run_overview_and_orientation_verdict` assembles the
+real overview with `y_axis="north-up"` while §2 says orientation is "not
+yet provable" and §4 says never assumed/hardcoded. If D6 lands south-up,
+the stored artifact is silently mirrored and the test stays green (its
+maps.json check is merely `yAxis ∈ DIRECTIONS`). Drive the axis from
+maps.json when present; skip with a named reason while null.
+
+**Mo4. Hole-alpha set equality is self-referential at every layer that
+runs.** `test_hole_alpha_zero_exactly_on_hole_set_placeholder_pixels_kept`
+derives `holes = bbox − present` from the same dict it fed
+`assemble_mosaic`, so the assertion reduces to "doesn't paint outside its
+input." The spec's actual case — alpha==0 exactly on the measured D3 hole
+set of the assembled **albedo** corpus — has no integration hook: the
+pyramid test saves the PNG and asserts nothing about alpha. Wire the
+real-mosaic hole-alpha check to `cells/albedo.cells.json` when D3 lands.
+
+**Mo5. AC7 coordinate detection keys on literal `x`/`y` keys.** Verified
+live: a marker row `{"pos": [12.5, -3.25]}` passes `_check_registry` with
+no provenance — typed-empty treatment by key-name accident. Match any
+coordinate-shaped field (x/y/pos/offset…), or invert to an allowlist of
+typed-empty shapes. Related, smaller: the seam sweep plants only an
+x-direction mutation (`bad[(1,0)] = tile(2,0)`); a y-direction
+misplacement is never demonstrated (the metric would likely catch it, but
+the suite doesn't prove its own symmetry).
+
+## MINOR
+
+- **Validator nits (all reproduced live):** `buildid=True` passes (bool ⊂
+  int in Python); no `additionalProperties` handling, so the §4 `imagery`
+  block is entirely unconstrained — a registry advertising
+  `/map-tiles/splat/{x}/{y}.dds` sails through `_check_registry`,
+  contradicting the served-plane rule the suite elsewhere enforces via
+  `SERVED_TILE_RE`; the AC7 carrier allowlist accepts any string containing
+  a standalone `REG`/`PRE` token ("not actually REG" passes — `\b` does
+  block `REGrettable`, checked).
+- **Δ=0 "on any future buildid rerun" (AC1) is unimplementable as
+  written:** all totals are pinned to buildid 20318128, so a post-patch
+  rerun fails before Δ can be computed against the new numbers. Needs a
+  buildid-relative mode or an explicit documented re-pin step; today the
+  invariant is re-frozen only by hand-editing constants.
+- **§7 dig verifications without hooks:** D4 (`textures.json` key↔tile
+  bijection) and D7 (`_s ≈ ↓full` ratio on 1,377 co-present cells) have no
+  test and no contracted symbol; D5's `samePosAs` de-dup likewise. §6's
+  "schema validation wired into run_all" is also asserted nowhere.
+- **Real-corpus seam metric never runs.** Spec's seam case is neighbor
+  continuity "on assembled albedo"; the suite proves the mechanism on the
+  4-px synthetic gradient only. The integration pyramid assembles real
+  albedo and never applies `edge_delta` across its seams.
+
+## Sound (checked, not counted against)
+
+Fixture arithmetic family (intentionally self-referential constant guards,
+admitted in the docstring); lexicographic-vs-numeric demo (lexical really
+puts `-10` first — verified); `test_int_cell_sets_identical…` pins
+`len(albedo)==1377`, so a uniform five-class loss still fails loudly; the
+8-mutation registry rejection battery; negative-origin/rebase traps
+(−4096 floor, explicit rebase); CR-insensitive entry parsing with signed
+ints; dual-mode detect-census check (documented pre-D1 misroute vs post-D1
+corrected); MEDIA-CATALOGUE served-plane leak scan; clean skip hygiene
+(`_map()`/`_need()` reasons, conftest opt-in verified by the run above).
+
+## Fix order suggestion
+
+M1 (+missing-bounds negative) and M2 are cheap and unblock CodeWriter's
+contract surface; M3 closes the honesty loop on the pack's headline
+measurement; Mo1/Mo2/Mo5 are small fixture edits; Mo3/Mo4 land with their
+D5/D3 triggers.

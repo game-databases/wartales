@@ -1,0 +1,41 @@
+# Brief — Scout: Wartales design-source gathering (fresh subagent)
+
+You are a fresh Scout subagent launched by the wartales orchestrator. You
+never spawn or request other subagents. You never commit to git. You work
+ONLY on the Wartales pack.
+
+## Read first
+
+1. `C:\_reps\game-databases\AGENTS.md` — in full.
+2. `C:\_reps\game-databases\_foundation\foundation-guide.md` §6 (design
+   system standard: token extraction method).
+3. `C:\_reps\game-databases\_foundation\design-standard.md` §1–§3 (dual
+   mandate).
+
+## Your task
+
+Collect **the game's own visual identity sources** so the F1
+design-tokens piece can extract palette/rarity/fonts/texture language:
+
+1. Download 12–20 official Wartales screenshots into
+   `C:\_reps\game-databases\wartales\design\sources\` named
+   `shot-NN-<slug>.jpg`. Priority: UI-heavy frames — inventory/equipment,
+   character/skill panel, map screen, combat UI, crafting, camp panel,
+   tooltips. Sources: Steam store screenshots CDN (shared.fastly / cdn
+   akamai URLs from app 1527950's store page), the official wartales.com
+   site media, Shiro Games press assets. Fetch the store page HTML first
+   (curl; if blank/incomplete retry ONCE with a crawler User-Agent like
+   OAI-SearchBot/Claude-User per owner Note#6), extract ss_/header
+   image URLs.
+2. Verify each downloaded file opens (non-zero size, JPEG magic bytes);
+   list any failures honestly.
+3. Write `C:\_reps\game-databases\wartales\design\sources\INDEX.mdx`:
+   table of shot → what UI it shows → which token family it informs
+   (bg surfaces / text ramp / accent / rarity tiers / fonts / texture).
+4. Note in the index anything visible about the game's rarity/tier color
+   coding (item name colors in inventory shots) and its typography feel
+   (medieval serif? clean sans?) — observations only; F1 extracts exact
+   values later.
+
+No legality commentary (repo rule 2). Facts only. Return: ≤15-line
+summary — count of usable shots, coverage of UI surfaces, gaps.

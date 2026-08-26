@@ -1,0 +1,405 @@
+# Wartales Competitor Research
+
+**Scout report, 2026-08-24.** Feeds [tools-plan](../docs/tools-plan.mdx) (to be
+authored) and satisfies relink-floor bar 3 of
+[`_foundation/extraction-doctrine.md`](../../_foundation/extraction-doctrine.md#relink-bare-minimum--three-non-negotiable-bars-owner-2026-08-17)
+(≥3 independent sources analyzed for their entity-relationship model, findings
+APPLIED — §3 and §7 below are the applied delta).
+
+**Game anchors (measured 2026-08-24, keyless Steam endpoints unless noted):**
+Wartales, Shiro Games, Steam appid `1527950`, store release 2023-04-12,
+30,513 positive / 5,020 negative reviews (35,533 total, "Very Positive"),
+1,752 concurrent players at fetch time, 235 achievements, supported languages
+EN\*, FR, DE, ES-ES, PL, PT-BR, RU, ZH-HANS, KO (\*full audio: EN, KO).
+600k+ copies sold by 2023-05 ([dev announcement](https://www.reddit.com/r/WartalesGame/comments/134trja/),
+Reddit archive). Eight content DLCs 2023-12 → **2026-04** (Fires in the
+Capital) — the game still ships content, so every incumbent below is chasing
+patches right now.
+
+---
+
+## 1. Method and access log
+
+No browser was available to this scout (ABP MCP not registered in this
+environment), so all evidence is curl-fetched HTML/JSON or public archives;
+every wall met was recorded once and never retried into (AGENTS.md rule 10).
+Structure-derived design notes in §5 are labeled as such — pixel screenshots
+remain owed to [`database-visuals-examples/`](../../database-visuals-examples/).
+
+| Surface | Result |
+|---|---|
+| `wartales.wiki.gg/` | **401 "Not authorized"** domain-wide edge gate; identical under browser UA and crawler UA (Note#6 single retry spent). Unanswered: its actual page/entity inventory. |
+| `wartales.fextralife.com` | **Host does not resolve** while sibling `eldenring.wiki.fextralife.com` resolves normally from the same host → Fextralife hosts no Wartales wiki (absence verified by DNS). |
+| `wartales.fandom.com` | Live site 403 (Cloudflare). **Wayback Machine holds the wiki** (679 unique URLs; article snapshots 2022-06 → 2025-10) — analyzed from archives instead. |
+| `mapgenie.io/wartales` (+ `/map`, `/maps/world`) | **404**, and `wartales` appears **0 times** in Map Genie's full sitemap (`sitemap.xml`, 200 OK) → Map Genie has no Wartales product. |
+| `gaming.tools/wartales` | 403 Cloudflare challenge; coverage unverifiable from here (finding, not retried). |
+| reddit.com direct | 403 on `.json`. Mined instead via the public PullPush archive API (`api.pullpush.io`) — worked fully. |
+| Search engines | Bing/DDG-lite/Mojeek all captcha-wall curl; WebSearch tool down (500s) all session. Keyword mining ran against the PullPush corpus instead. |
+| Steam store / appreviews / appdetails / community guides & forums | All fetched clean (200) — the load-bearing evidence base. |
+
+---
+
+## 2. Inventory of incumbents
+
+### 2.1 wartales.wiki.gg — present but opaque (shape: wiki)
+
+URL: <https://wartales.wiki.gg/>. Exists behind a hard 401 edge gate (§1);
+page-level verification impossible from this machine this session. Platform
+facts observable from the error response itself: wiki.gg farm
+(`common.wiki.gg` error infrastructure, farm-standard Nunito skin assets) —
+i.e., a MediaWiki-class reference wiki. Its role as the likely primary wiki is
+a **reasoned estimate**: wiki.gg farms typically inherit the exodus traffic of
+Fandom wikis, and the strongest independent voice in §2.2 treats "the wiki" as
+stale relative to current DLCs. Entity kinds, languages, freshness: unverified.
+Strength: presumed SEO-dominant wiki slot. Weakness: opacity to agents/crawlers
+is itself a wedge — an agent-indexable, contract-pinned database
+([developer-distribution](../../_foundation/developer-distribution.md)) has no
+incumbent here.
+
+### 2.2 wartales.fandom.com — small, stale Fandom wiki (shape: wiki)
+
+URL: <https://wartales.fandom.com/wiki/>. Verified entirely from Wayback
+snapshots (main page 2024-09-27; articles through 2025-10).
+
+- **Scale:** 239 articles, 398 files, 2,818 edits (main-page counter,
+  2024-09 snapshot) — tiny. License tag observed on pages: CC-BY-SA
+  (provenance fact, recorded repo-only).
+- **Entity kinds** (main-page navigation tree): Character Development
+  (Attributes, Level & Experience, Specializations, Traits, Skills, Titles,
+  Professions), Gameplay (Combat Mechanics, Knowledge, Events), Game Mechanics
+  (Global Map, Injuries, Mood, Objectives, Shops, Status Effects, Tavern
+  Rumors, Tombs, Trackers, Paths & Titles, Destinies, Trade Goods), Items
+  (Accessories, Armor, Armor Layers, Codex, Consumables, Keys, Melee & Ranged
+  Weapons, Named & Legendary Items, Provisions, Trade, Treasures), Enemies
+  (Beasts, Champions, Humans). Languages: English only observed.
+- **Freshness signals:** article snapshots run out at 2024-12/2025-01 for most
+  item/status pages; independent corroboration of staleness — a Steam guide
+  author (2025-02, [guide 3395236522](https://steamcommunity.com/sharedfiles/filedetails/?id=3395236522))
+  documenting why they stopped trusting it: *"Missing information on where to
+  get a lot of blueprints and recipes · Had some incorrect information that
+  was likely obsolete data changed in later patches (like for the Lute) ·
+  Wasn't being updated with new DLC content (Pirates of Belerion, The Tavern
+  Opens!, The Pits, The Skelmar Invasion) · Wasn't listing that blueprints and
+  recipes could be found in multiple locations."*
+- **Strengths:** broad taxonomy sketch (the category tree above is a decent
+  entity-kind checklist); some genuinely logic-bearing pages (forging math,
+  §5). **Weaknesses:** tiny, hand-written, DLC-lagged, ad-chrome-wrapped
+  Fandom skin, stub-depth one-liners for towns, no structured joins (§3).
+
+### 2.3 Map Genie — absent (white space)
+
+Verified absent (§1). The brief's hypothesis "Map Genie's Wartales interactive
+map" does not exist. Consequence: **the interactive-map lane is open** — the
+best map artifact the community has is a set of annotated static screenshots
+inside a Steam guide (§2.6). Our owned-map gate (FRAMEWORK §2.6) would be the
+only interactive map product for this game, not the third one on the market.
+
+### 2.4 Fextralife — absent
+
+Verified absent by DNS (§1). One fewer wiki incumbent than assumed.
+
+### 2.5 gaming.tools / planner-calculator sites — unverified, walled
+
+Cloudflare-walled (§1). No verifiable Wartales company planner or damage
+calculator found anywhere else either: the calculator-shaped artifacts that do
+exist are community spreadsheets inside Reddit posts (§2.8) and arithmetic
+tables inside Steam guides. **No dedicated web tooling ranks in any surface we
+could observe** — the tools lane is effectively empty.
+
+### 2.6 Steam Community guides hub — the de-facto database (shape: guides/manual DB)
+
+Hub: <https://steamcommunity.com/app/1527950/guides> (fetched live).
+
+- **Scale:** 17 tagged categories summing to ~392 category-slots across
+  ~430 guides; categories: Gameplay Basics 58, Walkthroughs 48, Classes 32,
+  Secrets 30, Loot 30, Characters 28, Crafting 28, Weapons 23, Maps or Levels
+  21, Achievements 20, Game Modes 18, Trading 15, Story or Lore 13, Modding 12,
+  Co-op 8, Workshop 6, Multiplayer 2.
+- **Engagement metrics are public per guide** (measured 2026-08-24):
+
+| Guide (author) | Unique visitors | Favorites | Posted → Updated |
+|---|---|---|---|
+| [Full Detailed Map Guide v1.0.45207](https://steamcommunity.com/sharedfiles/filedetails/?id=2859881897) (Usikava) | **62,556** | 1,394 | 2022-09-07 → 2025-12-24 |
+| [The Strongest Companion Builds](https://steamcommunity.com/sharedfiles/filedetails/?id=3000270049) (zAcEz) | **38,209** | 1,516 | 2023-07-07 → 2024-10-21 |
+| [Skill Mastery Bonuses for Build Planning](https://steamcommunity.com/sharedfiles/filedetails/?id=2773980438) | 14,388 | 111 | 2022-03-05 → 2022-03-18 |
+| [Ultimate Prisoner Guide](https://steamcommunity.com/sharedfiles/filedetails/?id=3362610902) | 14,062 | 326 | 2024-11-11 → 2025-11-24 |
+| [Alazar Inquisition interrogation answers](https://steamcommunity.com/sharedfiles/filedetails/?id=2986436801) | 13,888 | 164 | 2023-06-08 → 2023-07-14 |
+| [Blueprint & Recipe Locations](https://steamcommunity.com/sharedfiles/filedetails/?id=3395236522) (halcyan2) | 12,582 | 304 | 2024-12-29 → 2025-02-03 |
+| [Food Efficiency guide](https://steamcommunity.com/sharedfiles/filedetails/?id=3368296474) | — | — | top-rated list |
+| [Trade Goods tables](https://steamcommunity.com/sharedfiles/filedetails/?id=2970350772) (Paulus Bruna) | 4,945 | 143 | 2023-05-02 |
+| [Wartales Trade Prices](https://steamcommunity.com/sharedfiles/filedetails/?id=3149155899) | 2,569 | 58 | 2024-01-28 → 2024-06-10 |
+
+  (visitors/favorites are lifetime Steam-reported counters — facts, not
+  estimates; dates are the pages' own Posted/Updated stamps.)
+- **Shape:** manual, screenshot-heavy documents; version stamps carried in
+  titles ("v1.0.45207"); per-guide changelog sections; comment threads acting
+  as Q&A; languages include English and Russian (e.g. [RUS full map](https://steamcommunity.com/sharedfiles/filedetails/?id=2861531404)),
+  plus a Japanese-language unofficial-translation guide (the game ships no
+  official JA localization — see §4 finding).
+- **Strengths:** where the demand actually is (62k visitors on a map guide);
+  authors maintain for years. **Weaknesses:** static images (no zoom, filter,
+  layers, or deep-links), stale versions persist, image-link rot acknowledged
+  in-text, data locked in prose/screenshots — none of it queryable.
+
+### 2.7 Steam discussions + r/WartalesGame — the living FAQ (shape: forum/community)
+
+- General board: <https://steamcommunity.com/app/1527950/discussions/0/>
+  (pages 1–5 mined). A single Russian megathread carries **12,809 comments**
+  ("РУССКИЕ обсуждения") — RU is the largest non-EN community signal on Steam.
+  Official pinned welcome points at Discord/Facebook/Twitter/Reddit.
+- **r/Wartales is dead**: its all-time top-scored post tells users the active
+  sub is [/r/WartalesGame](https://www.reddit.com/r/WartalesGame/) (PullPush
+  archive). r/WartalesGame is continuously active 2021-12 → 2026 (roadmap,
+  DLC-launch, and patch threads interleaved with memes; dev announcements sit
+  in the sub's top posts).
+
+### 2.8 Community-made data artifacts (shape: spreadsheets/grids)
+
+- [An Analysis of a Cortia, Stromkapp, Marheim Trade Route](https://www.reddit.com/r/WartalesGame/comments/r891mr/) (2021-12, 49 pts).
+- [Trade Resources Grid](https://www.reddit.com/r/WartalesGame/comments/vogl3q/)
+  (2022-06): buy/sell grid per resource, production locations starred,
+  trade-path-perk-adjusted values, green high-return cells — maintained by
+  hand in a sheet/image.
+- [Trade goods prices](https://www.reddit.com/r/WartalesGame/comments/14i2ycq/)
+  (2023-06), plus two Steam trade tables (§2.6). Four independent hand-built
+  price artifacts = strong, repeated demand for exactly one derived dataset.
+
+### 2.9 YouTube-referenced guides
+
+[Syken's comprehensive guide list](https://www.reddit.com/r/WartalesGame/comments/13slhtw/)
+(2023-05): review/beginner/combat videos plus six per-class build videos
+(Archer, Brute, Ranger, Spearman, Swordsman, Warrior) and an "optimal party"
+video — video creators fill the build-planning gap because no tool exists.
+
+---
+
+## 3. Relationship-model extraction (the floor)
+
+Three independent sources, each with the entity-relationship model their pages
+actually surface. §7 states the applied delta.
+
+### 3.1 Source A — Fandom wiki (archived pages)
+
+From [Cortia](https://web.archive.org/web/20240205184252/https://wartales.fandom.com/wiki/Cortia),
+[Armor](https://web.archive.org/web/20241009045931/https://wartales.fandom.com/wiki/Armor),
+main-page taxonomy, and category pages:
+
+- **region → towns → buildings → market goods**: "Cortia is a city located in
+  County of Arthes. There you can find Ploughshare Inn, Apothecary, Little
+  Saint Pier's Market, Church of Saint Septimus and Forge. The regional goods
+  sold at the market are Amber and Pelts." Towns enumerate their buildings;
+  markets enumerate regional-good entities.
+- **item → blueprint → station → materials → quality tiers**: forging section
+  models blueprint-known + materials-required → forge output; golden-strike
+  timing table maps strikes→+1/+2 superior quality (+10%/+20% stats, extra
+  armor-layer slots); path title "Champion Craftsman" grants another layer
+  slot — i.e., **title → crafting outcome** edges.
+- **character-development chain**: Attributes ← Level & Experience;
+  Specializations gated behind class level; Traits, Skills, Titles, Professions
+  as separate entity kinds feeding a company.
+- **status effects as first-class entities** (Bleeding, Burning, Berserk,
+  Blackout, Corrosion, Confusion…) with skill↔status edges (Axe Throw,
+  Bloodshed, Brutality…).
+- **enemy trichotomy** Beasts / Champions / Humans, with elites flagged.
+- **misc entity kinds worth keeping**: Codex, Tombs, Tavern Rumors, Trackers
+  (bounties), Destinies, Paths & Titles, Keys, Provisions, Treasures.
+
+What the model lacks: every edge is prose — no cardinalities, no weights, no
+drop sources beyond narrative, no prices except "regional goods exist".
+
+### 3.2 Source B — Steam guides (live pages)
+
+Four guides jointly model the densest community relationship graph:
+
+- **Map guide** (Usikava, [2859881897]): regions Tiltren, Vertruse, Arthes,
+  Ludern, Grinmeer, Drombach + Mount Altis + DLC regions Belerion Archipelago,
+  Ormance County, Wild Lands of Brigga, Rigel County. Marker vocabulary per
+  region: border crossings (toll vs piton vs pass), Knowledge Books, Bandit
+  Reinforcements, Unique Recruits, Secrets, Treasures, Bosses, Black-Market
+  Agents, Resources, Camp Equipment, fishing spots, iron veins (with
+  respawn-flagged exceptions). Legend → marker-type → coordinate-on-screenshot
+  is the whole model: **region → {marker type} → position → entity**.
+- **Build guide** (zAcEz, [3000270049]): weapon → class (Archer/Bow,
+  Brute/Mace, Pugilist/Brawling, Ranger/Dagger, Spearman/Polearm,
+  Swordsman/Sword, Warrior/Axe) → specializations (3 each, DLC-tagged) →
+  skills with keywords; plus prisoner-derived builds, non-combatant roles
+  (Porter & Camp Worker), aptitude/attribute budgets, starting traits,
+  helmet/skill interactions, valor-point economy notes.
+- **Blueprint & recipe guide** (halcyan2, [3395236522]): region/chapter →
+  blueprint-or-recipe acquisition location, cross-cut by profession stations
+  (Tinkerer, Blacksmith, Cook, Brewer, Alchemist, Sailing), each recipe listed
+  alphabetically AND ordered — and the explicit complaint that sources are
+  **multi-location** which no wiki models.
+- **Trade tables** (Paulus Bruna, [2970350772] + [Wartales Trade Prices](https://steamcommunity.com/sharedfiles/filedetails/?id=3149155899)):
+  town × trade-good base-price matrix at game start; distance-from-source
+  profit gradient; path/perk modifiers with community-measured caps — max
+  buy reduction ≈ 35% (Suppliers Knowledge + Broker's Table meal), max sell
+  bonus ≈ 25% (Skilful Merchants + Seed Sausage) — including the exception
+  where combined meals don't stack. That is reverse-engineered economy logic,
+  hand-measured.
+
+### 3.3 Source C — r/WartalesGame community model (PullPush archive)
+
+The mental model players argue with daily:
+
+- **trade route = ordered town pair + good + mode-of-profit**: analyses name
+  routes by town triple (Cortia–Stromkapp–Marheim), track margins net of food
+  and wages, ask "is trade actually profitable when you factor in food and
+  salaries?" ([thread](https://www.reddit.com/r/WartalesGame/comments/13slhtw/)
+  sibling discussions; §4 rows).
+- **prisoner pipeline**: capture (rope/choices) → transport → recruit-or-ransom
+  → value by tier; questions cluster on *which* prisoners/beasts are worth
+  recruiting and why capture fails in specific DLC missions.
+- **company composition**: class/spec tier lists, "best class to have 2 of",
+  valor-point sharing surprises, pony/animal unit roles.
+- **difficulty modes as parameters**: Region Locked / Adaptive Exploration /
+  Extreme change leveling and spawn rules — players reason about them as
+  config switches they can't inspect.
+- **camp as a layout puzzle**: spacing, adjacency effects (bears next to
+  beehives), tool upgrades, rest efficiency.
+
+---
+
+## 4. Pain-point mining (each row = a tool candidate)
+
+Recurring questions with evidence links (Steam boards/guides live-fetched;
+Reddit via PullPush archive; ≥15 required, 20 kept):
+
+Steam-board citations link the mined board page (`?fp=N` = board page N
+fetched this session). Reddit citations use dated permalinks recovered from
+the PullPush archive.
+
+| # | Recurring question | Evidence | Tool implication |
+|---|---|---|---|
+| 1 | What's the best class / party comp? | [Wartales 1.0 Class Specialization Guide](https://www.reddit.com/r/WartalesGame/comments/12ys58q/) (193 pts, 119 comments, 2023-04); "Specialisations tier list", "Best class?", "Best class to have 2 of?" (PullPush keyword hits, ≥9 distinct threads); Syken's six per-class videos ([list](https://www.reddit.com/r/WartalesGame/comments/13slhtw/)) | Build planner + tier views over extracted skill trees |
+| 2 | How do I capture prisoners? How do I recruit them? | Three distinct "how to capture prisoners" threads (PullPush q=prisoner+capture); [Ultimate Prisoner Guide](https://steamcommunity.com/sharedfiles/filedetails/?id=3362610902) — 14,062 visits | Capture/recruit mechanic explorer with exact odds from logic layer |
+| 3 | Which prisoners/beasts are worth recruiting? | ["what prisoners are worth recruiting", 24 comments](https://api.pullpush.io/reddit/search/submission/?subreddit=WartalesGame&q=%22worth%20recruiting%22); [recruit cats thread](https://www.reddit.com/r/WartalesGame/comments/zk5wql/) (99 pts) | Value/tier table per prisoner & animal template |
+| 4 | Are trade routes actually profitable after food+wages? | [Route analysis Cortia–Stromkapp–Marheim](https://www.reddit.com/r/WartalesGame/comments/r891mr/) (49 pts); "is trade actually profitable when you factor in food and salaries?" (PullPush q=trade+route, 31 comments); [Love the game, hate the economy](https://www.reddit.com/r/WartalesGame/) search hit, 39 pts | Profit simulator with wage/food inputs |
+| 5 | Where do I sell X / what's cheap where? | Four independent hand-built price artifacts ([grid](https://www.reddit.com/r/WartalesGame/comments/vogl3q/), [prices thread](https://www.reddit.com/r/WartalesGame/comments/14i2ycq/), [tables](https://steamcommunity.com/sharedfiles/filedetails/?id=2970350772), [price sheet](https://steamcommunity.com/sharedfiles/filedetails/?id=3149155899)) | Price atlas from client data |
+| 6 | Which DLC order / what's before Ludern? | ["What dlc is before ludern?" + "Wartales DLCs" threads](https://steamcommunity.com/app/1527950/discussions/0/?fp=3) | DLC/region progression map |
+| 7 | Is the game worth buying now? | ["Is this game worth getting ?" 17 comments](https://steamcommunity.com/app/1527950/discussions/0/) | Not ours — but data freshness is the substance of the answer |
+| 8 | How do people deal 100+ damage? | ["How are people getting their characters to do over 100 damage?"](https://steamcommunity.com/app/1527950/discussions/0/) | Damage formula page fed by decompiled math |
+| 9 | How does adaptive difficulty / level scaling work? | ["Extreme Difficulty Adaptation", "Adaptive dificulty - it can be a real ...", "XP is to easy... out level the zones"](https://steamcommunity.com/app/1527950/discussions/0/?fp=4) | Extracted scaling curves explainer |
+| 10 | Where is the lantern for Rigel's cursed forest / Belerion sepulchre door? | ["Where to get the Lantern for the cursed forest in rigel?" + "belerion sepulchre door"](https://steamcommunity.com/app/1527950/discussions/0/?fp=4) | Quest-item locator on owned map |
+| 11 | Where are all fish / treasure spots? | [Map & secret to getting all fish in Belerion DLC](https://steamcommunity.com/app/1527950/guides/?browsefilter=toprated); [Treasure Hunter achievement guide](https://steamcommunity.com/sharedfiles/filedetails/?id=3148736238) | Map marker layers |
+| 12 | Interrogation answers? | [Alazar Inquisition interrogation answers](https://steamcommunity.com/sharedfiles/filedetails/?id=2986436801) — **13,888 visits** for one quest's dialogue choices | Dialogue-choice dataset + page |
+| 13 | Cheapest food per ration? | [Food Efficiency guide](https://steamcommunity.com/sharedfiles/filedetails/?id=3368296474) (top-rated); [food-obsession thread](https://www.reddit.com/r/WartalesGame/comments/13d0v7h/) 362 pts | Food-efficiency calculator |
+| 14 | Blacksmith upgrades capped at 2 stars?! | ["Upgrading equipment at Blacksmith limits to 2 Stars!"](https://steamcommunity.com/app/1527950/discussions/0/?fp=4) | Upgrade-path page with exact costs |
+| 15 | Camp layout — what goes where? | [Camp Setup of Large Warband](https://www.reddit.com/r/WartalesGame/comments/13zwk5j/) 222 pts; [perfect camp arrangement](https://www.reddit.com/r/WartalesGame/comments/155ylqv/) 95 pts | Camp layout designer (flagship candidate) |
+| 16 | Co-op broken again? | ["Co-op Stability Q", "Black screen during combat in co-op", "MULTIPLAYER", "Is multiplayer now fixed?"](https://steamcommunity.com/app/1527950/discussions/0/) across pages 1–4; RU co-op thread same board | Live status/troubleshooting page (monitoring class) |
+| 17 | Extreme mode survivable builds? | ["How do you do in EXTREME MODE"](https://steamcommunity.com/app/1527950/discussions/0/?fp=2); [1-turn combat victory build guide](https://steamcommunity.com/sharedfiles/filedetails/?id=3129064685) | Build planner filter: mode-aware |
+| 18 | Skelmar mission demands capturing 2 prisoners, can't | [thread 1hiwy7a](https://www.reddit.com/r/WartalesGame/comments/1hiwy7a/) (2024-12) | Mission-requirement join: quest → mechanic → prerequisites |
+| 19 | Gosenberg wine recipe? Where do recipes come from? | ["Gosenberg Wine recipe"](https://steamcommunity.com/app/1527950/discussions/0/?fp=5); multi-location gap in [blueprint guide](https://steamcommunity.com/sharedfiles/filedetails/?id=3395236522) | Recipe explorer with typed source lists |
+| 20 | Japanese players translate the game themselves | [公式日本語化諦めた人向け](https://steamcommunity.com/app/1527950/guides/?browsefilter=trend) — unofficial JA-translation guide trending on the hub (game ships no JA locale) | Locale gap: ship the missing locale properly |
+
+---
+
+## 5. Design references (structure-derived notes; screenshots owed separately)
+
+Pixel evidence could not be captured this session (no browser; §1). These are
+DOM/structure-derived observations against the §2 bar of
+[design-standard](../../_foundation/design-standard.md):
+
+1. **Fandom skin buries thin content in heavy chrome.** The archived main page
+   spends its first viewport on farm navigation, "Advertisement" slots and a
+   "Fan Feed" module before/around 239 articles' worth of content; entity
+   pages like Cortia render as a single prose paragraph with no infobox, no
+   icon, no linked goods. Lesson: our entity pages invert this ratio — the
+   object fills the view, chrome is thin (design-standard §5.1).
+2. **The best map in existence for this game is a folder of annotated PNGs.**
+   Usikava's guide renders region-by-region static images with a legend of 12+
+   marker types and per-region changelogs; 62.5k people walked through it.
+   Every weakness is structural: no zoom, no filtering by marker type, no
+   deep-link to a marker, version drift, image rot. This is precisely the
+   FRAMEWORK §2.6 owned-map module — marker vocabulary already validated by
+   demand, waiting for tiles, state-in-URL and two-way entity links.
+3. **Steam guides prove the appetite for logic-layer content.** zAcEz's build
+   guide is 60+ sections of specialization-by-specialization skill tables;
+   Paulus Bruna hand-computes buy/sell modifier caps and flags a stacking
+   exception; the forging section on Fandom tabulates golden-strike
+   probabilities. People will read raw mechanics when nobody serves computed
+   answers — hover-as-join calculators (Enka feel bar) beat all of it.
+4. **Community spreadsheets show the maintenance wall.** The Trade Resources
+   Grid hand-marks production locations and perk-adjusted values in a static
+   image; every patch silently invalidates it. A generated price atlas with
+   `buildId` visibility (rule 3, user-facing half) resets trust every patch
+   automatically.
+5. **Version stamps are how this community speaks freshness.** Guide titles
+   carry "v1.0.45207"-style stamps and changelog sections; readers check them
+   before trusting content. Our equivalent — patch-label on data surfaces —
+   matches the native idiom exactly (no invention needed).
+
+---
+
+## 6. Traffic & scoring table (input to tools-plan)
+
+Demand anchors: measured Steam-guide visit counts (§2.6 — lifetime counters);
+review base 35.5k; CCU 1,752 (2026-08-24). Wiki traffic cannot be measured
+from this machine (§1) — figures marked **(est.)** are reasoned estimates with
+their basis inline, nothing else.
+
+| Incumbent / lane | Shape | Freshness signal | Traffic (basis) | Strengths | Weaknesses |
+|---|---|---|---|---|---|
+| wartales.wiki.gg | wiki | unverified (walled) | primary-wiki slot for a 35k-review game → **(est.)** low-hundreds of k monthly visits, low confidence | presumed SERP dominance | opaque to agents; unverified depth |
+| wartales.fandom.com | wiki | last waves 2024-12→2025-10; called DLC-stale by guide author 2025-02 | negligible (**239 articles** measured) | taxonomy breadth | tiny, prose-only, ad chrome |
+| Map Genie | — | — | **absent** (sitemap) | — | white space |
+| Fextralife | — | — | **absent** (DNS) | — | — |
+| gaming.tools | tools | walled | unverified | — | — |
+| Steam guides | manual DB | title version stamps + Updated dates, e.g. 2025-12-24 | 62.6k / 38.2k / 14.4k / 14.1k / 13.9k / 12.6k visits on top guides (measured) | demand concentration; long-term authorship | static, unqueryable, rots |
+| Steam discussions | forum | continuous | RU megathread 12.8k comments (measured) | raw pain-point stream | no data, search-poor |
+| r/WartalesGame | forum | continuous 2021→2026 | mid-size sub, top posts 100–600 pts | community mental model | memes ≫ data |
+| Community sheets | spreadsheet | hand-updated | dozens-to-hundreds of engagement pts each | prove price-atlas demand | decay per patch |
+
+Scored tool candidates (score = demand evidence × data feasibility from client
+× incumbent vacuum, /5 each):
+
+| # | Candidate | Demand | Feasibility | Vacuum | Total |
+|---|---|---|---|---|---|
+| 1 | Owned interactive map (all 12+ marker layers, state-in-URL) | 5 (62.6k visits) | 5 (tiles + coords extractable) | 5 (Map Genie absent) | **15** |
+| 2 | Trade route planner + price atlas | 5 (4 independent hand-built artifacts) | 5 (price tables + perk caps in client) | 5 | **15** |
+| 3 | Company/companion build planner (class→spec→skills, mode-aware) | 4 (38.2k visits; perennial "best class") | 5 (trees, formulas in bytecode) | 4 (guides compete) | **13** |
+| 4 | Prisoner & beast capture/recruit explorer | 4 (14.1k visits; recurring threads) | 4 (capture odds need logic-layer proof) | 5 | **13** |
+| 5 | Recipe/blueprint explorer (station trees, material rollups, multi-source) | 3 (12.6k visits; explicit wiki-gap quote) | 5 | 4 | **12** |
+| 6 | Interrogation/dialogue-choice database | 3 (13.9k visits for ONE quest's answers) | 5 (loc tables) | 5 | **13** |
+| 7 | Food-efficiency calculator | 3 | 5 | 4 | **12** |
+| 8 | Achievement checklist hub (235 achievements) | 3 (20 Steam achievement guides) | 5 (conditions in data) | 4 | **12** |
+| 9 | Co-op/server status troubleshooter (live-monitoring class) | 2 | 3 (protocol-dependent) | 5 | **10** |
+
+---
+
+## 7. Applied relinking delta (floor-bar 3 deliverable)
+
+Joins the incumbents model that **we must have** (target:
+`extracted/relinks/*.jsonl` + `RELATIONS.md`, mechanism tags per doctrine):
+
+1. region → towns → buildings → market/regional goods (Fandom Cortia model)
+2. item → blueprint → station/profession → materials → quality-tier outcomes
+   (+1/+2 superior, golden strikes) (Fandom Armor + halcyan2)
+3. weapon → class → specialization → skills, with DLC-gating flags (zAcEz)
+4. region → marker entities of ≥12 types (crossings, knowledge books, unique
+   recruits, secrets, treasures, bosses, black-market agents, resources, camp
+   equipment, fishing spots, veins) (Usikava)
+5. town × trade-good price matrix + distance gradient + perk/food modifier
+   caps (Paulus Bruna, community grids)
+6. status effect ↔ skills/weapons/oils/stamps (Fandom categories)
+7. quest/NPC → dialogue choices → outcomes (interrogations)
+8. enemy trichotomy beasts/champions/humans + elite flag → spawn tables
+
+Joins **they miss that extraction adds** (our competitive edge):
+
+- exact drop/spawn/capture **weights and probabilities** from decompiled logic
+  (everyone ships qualitative guesses)
+- **multi-location sourcing** done right — one recipe, N acquisition sites,
+  each typed (halcyan2's explicit unmet need)
+- **versioned truth**: every value pinned to client buildId; patch diffs make
+  staleness structurally impossible (all incumbents rot silently)
+- economy closure: wages, food consumption, path-perk stacking semantics as
+  one computable model instead of four partial hand-sheets
+- adaptive-difficulty / region-lock parameter sets as inspectable config
+- achievement ↔ unlock-condition graph (235 nodes, zero incumbent coverage)
+- locale parity: 9 shipped locales incl. proper KR/ZH, plus the missing-JA
+  opening; every incumbent is EN-only or worse
+- complete pairwise matrix incl. `inferred` edges no wiki even gestures at
+  (doctrine Principle one)
+
+<!-- END OF wartales/docs/competitor-research.mdx -->

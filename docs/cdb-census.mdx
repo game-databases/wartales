@@ -1,0 +1,456 @@
+# Wartales CastleDB census — res.pak:/data.cdb
+
+Source: `pipeline/tools/_verify/extract-res.pak-data.cdb` (extracted from `res.pak` by `wtpak.py`, adler32 MATCH, pipeline/tools/_verify/). Container: CastleDB JSON, `compress=false`, 10 customTypes (DamageType, TavernCustomerBase, BattleMode, BattleFilter, EffectStacking, FiefConditionTarget, Comparison, DialogSpecialAction, FiefTarget, TargetDesc). Client buildid **20318128**. Measured 2026-08-24 by `pipeline/tools/cdb_census.py`.
+
+## Totals (reconciled)
+
+| measure | value |
+|---|---:|
+| sheets | 386 |
+| — top-level (carry rows/datafiles) | 45 |
+| — hidden sub-sheets (`@`, list-column schemas, no lines) | 341 |
+| inline rows, Σ over all sheets | 11,473 |
+| cells, grid (Σ rows×cols) | 101,262 |
+| cells, populated (non-null) | 77,273 |
+
+Reconciliation: family row sums below total exactly 11,473; family sheet sums total exactly 386. Four top-level sheets declare `props.dataFiles` (`content/*.prefab;*.l3d`) and carry **zero inline lines** — their rows are the HBSON prefab corpus, not cut content: `place`, `group`, `element`, `levelProps`.
+
+## Column type system (every type encountered, payload-verified)
+
+| code | meaning | evidence in this build |
+|---|---|---|
+| `"0"` | id — unique row key | every sheet's `id` column (45 cols) |
+| `"1"` | text; `kind:"localizable"` → routed through the `lang/export_*.xml` bridge, `kind:"script"` → hscript source | 160 text cols, 111 localizable |
+| `"2"` | bool | 265 cols |
+| `"3"` | int | 274 cols |
+| `"4"` | float | 148 cols |
+| `"5:<cases>"` | enum, cases inlined; cell stores the case INDEX (resolved case tables ship in dataset `_meta`) | e.g. `item.rarity` = `5:C,U,R,Legendary`; 100+ distinct enums |
+| `"6:<sheet>"` | **hard foreign key** — cell stores the referenced row's id string | e.g. `region.kingdom` = `6:kingdom` → `"K_World"`; ~380 ref cols |
+| `"8"` | list — inline array of sub-row objects; sub-schema = hidden sheet `<parent>@<column>` | 214 cols |
+| `"9:<Type>"` | enum over `customTypes`; cases may carry TYPED ARGS (recursive AST payloads — logic-layer material) | e.g. `9:BattleMode` (`Beast(p:int)`), `9:BattleFilter` (`And(a,b)` recursion), 13× `9:TargetDesc` |
+| `"10:<cases>"` | flags bitmask over case list | e.g. `skill@props.flags` (21 cases) |
+| `"11"` | hex color | `constant.color`, 72 populated |
+| `"13"` | **file path** into pak content — the CDB↔prefab/asset join | `unitClass.model` 281/281, `activity.prefab` 14/24 |
+| `"14"` | icon atlas descriptor `{file,size,x,y}` | 19 cols |
+| `"16"` | directory path | 10 cols, zero populated |
+| `"17"` | **datafile ref** — row payload externalized to HBSON `.prefab`/`.l3d`; sheet carries no inline lines | 127 cols; whole sheets `place`, `group`, `element`, `levelProps` |
+
+Codes absent from this build: none between 0–17 unaccounted except `7`, `12`, `15` (never occur). `text[kind=script]` covers scripting.
+
+## Families
+
+| family | sheets | inline rows |
+|---|---:|---:|
+| items & economy | 33 | 3,270 |
+| skills & combat | 65 | 2,529 |
+| units & classes | 74 | 691 |
+| world & places | 44 | 31 |
+| fief governance | 61 | 557 |
+| quests, dialogue & world elements | 83 | 214 |
+| meta, UI & audio | 26 | 4,181 |
+| **total** | **386** | **11,473** |
+
+## Full sheet table (all 386 sheets)
+
+Hidden sub-sheets are marked ∅-lines (they define a parent list column's schema and store no rows). `refs-in` lists the `sheet@Column` hard references pointing at the sheet.
+
+| sheet | fam | rows | cols | cells(pop) | refs-in ≥1 | notes |
+|---|---|---:|---:|---:|---|---|
+| `icon` | meta, | 801 | 5 | 2,935 | 18 | UI |
+| `tutorial` | quests, | 81 | 5 | 317 | 2 | UI |
+| `tutorial@texts` | quests, | 0 | 2 | 0 | 0 | schema-only |
+| `tutorial@props` | quests, | 0 | 1 | 0 | 0 | schema-only |
+| `tutorial@props@reward` | quests, | 0 | 1 | 0 | 0 | schema-only |
+| `tutorial@props@reward@counters` | quests, | 0 | 2 | 0 | 0 | schema-only |
+| `tutorial@steps` | quests, | 0 | 1 | 0 | 0 | schema-only |
+| `notify` | meta, | 482 | 6 | 1,958 | 1 | UI |
+| `notify@props` | meta, | 0 | 11 | 0 | 0 | schema-only |
+| `notify@props@texts` | meta, | 0 | 1 | 0 | 0 | schema-only |
+| `place` | world | 0 | 4 | 0 | 15 | datafile-backed; World/Core/DataFile |
+| `place@world` | world | 0 | 10 | 0 | 0 | schema-only |
+| `place@world@rangeAttackPlace` | world | 0 | 2 | 0 | 0 | schema-only |
+| `place@world@codices` | world | 0 | 1 | 0 | 0 | schema-only |
+| `place@props` | world | 0 | 19 | 0 | 0 | schema-only |
+| `place@props@arena` | world | 0 | 2 | 0 | 0 | schema-only |
+| `place@props@produces` | world | 0 | 1 | 0 | 0 | schema-only |
+| `place@props@population` | world | 0 | 2 | 0 | 0 | schema-only |
+| `place@props@sport` | world | 0 | 1 | 0 | 0 | schema-only |
+| `place@props@rivalTavern` | world | 0 | 4 | 0 | 0 | schema-only |
+| `place@props@warEffort` | world | 0 | 3 | 0 | 0 | schema-only |
+| `place@props@stealthBattle` | world | 0 | 1 | 0 | 0 | schema-only |
+| `place@props@worldmapNameOffset` | world | 0 | 2 | 0 | 0 | schema-only |
+| `place@props@warEffort@rewards` | world | 0 | 1 | 0 | 0 | schema-only |
+| `place@props@sport@rules` | world | 0 | 1 | 0 | 0 | schema-only |
+| `place@props@arena@rules` | world | 0 | 1 | 0 | 0 | schema-only |
+| `groupType` | units | 97 | 5 | 485 | 8 | World |
+| `frescos` | world | 9 | 2 | 18 | 0 |  |
+| `frescos@frescos` | world | 0 | 2 | 0 | 0 | schema-only |
+| `groupType@props` | units | 0 | 14 | 0 | 0 | schema-only |
+| `groupType@descs` | units | 0 | 1 | 0 | 0 | schema-only |
+| `groupType@props@aggroTargets` | units | 0 | 1 | 0 | 0 | schema-only |
+| `groupType@props@regions` | units | 0 | 2 | 0 | 0 | schema-only |
+| `groupType@props@tavern` | units | 0 | 13 | 0 | 0 | schema-only |
+| `groupType@props@huntTracks` | units | 0 | 0 | 0 | 0 | schema-only |
+| `groupType@props@hunt` | units | 0 | 1 | 0 | 0 | schema-only |
+| `groupType@props@hunt@tracks` | units | 0 | 1 | 0 | 0 | schema-only |
+| `groupType@props@tavern@bonusRequired` | units | 0 | 3 | 0 | 0 | schema-only |
+| `groupType@props@tavern@menuItemRequired` | units | 0 | 3 | 0 | 0 | schema-only |
+| `groupType@props@tavern@firstDayBonus` | units | 0 | 2 | 0 | 0 | schema-only |
+| `groupType@props@tavern@menuItemRequired@itemType` | units | 0 | 1 | 0 | 0 | schema-only |
+| `groupType@props@tavern@menuItemRequired@item` | units | 0 | 1 | 0 | 0 | schema-only |
+| `groupType@props@loot` | units | 0 | 1 | 0 | 0 | schema-only |
+| `group` | units | 0 | 6 | 0 | 4 | datafile-backed; World/DataFile |
+| `region` | world | 13 | 6 | 76 | 13 | World |
+| `kingdom` | world | 9 | 4 | 31 | 5 | World |
+| `kingdom@props` | world | 0 | 1 | 0 | 0 | schema-only |
+| `region@props` | world | 0 | 24 | 0 | 0 | schema-only |
+| `region@props@meteo` | world | 0 | 6 | 0 | 0 | schema-only |
+| `region@props@minimap` | world | 0 | 2 | 0 | 0 | schema-only |
+| `region@props@counters` | world | 0 | 5 | 0 | 0 | schema-only |
+| `region@props@counters@finishConfessions` | world | 0 | 2 | 0 | 0 | schema-only |
+| `region@props@population` | world | 0 | 7 | 0 | 0 | schema-only |
+| `region@props@bounties` | world | 0 | 2 | 0 | 0 | schema-only |
+| `region@props@soundBanksName` | world | 0 | 1 | 0 | 0 | schema-only |
+| `region@props@population@faceRepartition` | world | 0 | 3 | 0 | 0 | schema-only |
+| `region@props@population@hairs` | world | 0 | 2 | 0 | 0 | schema-only |
+| `region@props@population@beards` | world | 0 | 2 | 0 | 0 | schema-only |
+| `region@props@population@tattoos` | world | 0 | 2 | 0 | 0 | schema-only |
+| `region@props@population@warpaints` | world | 0 | 2 | 0 | 0 | schema-only |
+| `region@setting` | world | 0 | 4 | 0 | 0 | schema-only |
+| `region@next` | world | 0 | 3 | 0 | 0 | schema-only |
+| `env` | skills | 87 | 9 | 405 | 0 | World |
+| `env@places` | skills | 0 | 1 | 0 | 0 | schema-only |
+| `env@camp` | skills | 0 | 2 | 0 | 0 | schema-only |
+| `env@battles` | skills | 0 | 2 | 0 | 0 | schema-only |
+| `element` | quests, | 0 | 7 | 0 | 17 | datafile-backed; DataFile |
+| `element@npc` | quests, | 0 | 24 | 0 | 0 | schema-only |
+| `element@npc@recruitCost` | quests, | 0 | 3 | 0 | 0 | schema-only |
+| `element@npc@equipment` | quests, | 0 | 2 | 0 | 0 | schema-only |
+| `element@npc@skills` | quests, | 0 | 3 | 0 | 0 | schema-only |
+| `element@npc@recruitRegions` | quests, | 0 | 2 | 0 | 0 | schema-only |
+| `element@npc@traits` | quests, | 0 | 1 | 0 | 0 | schema-only |
+| `element@npc@status` | quests, | 0 | 2 | 0 | 0 | schema-only |
+| `element@items` | quests, | 0 | 12 | 0 | 0 | schema-only |
+| `element@dialog` | quests, | 0 | 5 | 0 | 0 | schema-only |
+| `element@props` | quests, | 0 | 29 | 0 | 0 | schema-only |
+| `element@props@goals` | quests, | 0 | 2 | 0 | 0 | schema-only |
+| `element@props@traitRequire` | quests, | 0 | 2 | 0 | 0 | schema-only |
+| `element@props@tavernEvent` | quests, | 0 | 7 | 0 | 0 | schema-only |
+| `element@props@fief` | quests, | 0 | 6 | 0 | 0 | schema-only |
+| `element@props@tavernEvent@blockedEvents` | quests, | 0 | 1 | 0 | 0 | schema-only |
+| `element@props@goals@props` | quests, | 0 | 10 | 0 | 0 | schema-only |
+| `element@props@goals@props@helpTips` | quests, | 0 | 1 | 0 | 0 | schema-only |
+| `element@dialog@choices` | quests, | 0 | 4 | 0 | 0 | schema-only |
+| `element@dialog@props` | quests, | 0 | 22 | 0 | 0 | schema-only |
+| `element@dialog@props@gains` | quests, | 0 | 2 | 0 | 0 | schema-only |
+| `element@dialog@props@gainsCounter` | quests, | 0 | 2 | 0 | 0 | schema-only |
+| `element@dialog@props@gainsBattle` | quests, | 0 | 2 | 0 | 0 | schema-only |
+| `element@dialog@props@voiceWho` | quests, | 0 | 1 | 0 | 0 | schema-only |
+| `element@dialog@choices@props` | quests, | 0 | 21 | 0 | 0 | schema-only |
+| `element@dialog@choices@gains` | quests, | 0 | 22 | 0 | 0 | schema-only |
+| `element@dialog@choices@gains@dailyBonuses` | quests, | 0 | 2 | 0 | 0 | schema-only |
+| `element@dialog@choices@gains@fiefEvent` | quests, | 0 | 4 | 0 | 0 | schema-only |
+| `element@dialog@choices@gains@item` | quests, | 0 | 2 | 0 | 0 | schema-only |
+| `element@dialog@choices@gains@status` | quests, | 0 | 2 | 0 | 0 | schema-only |
+| `element@dialog@choices@gains@trait` | quests, | 0 | 2 | 0 | 0 | schema-only |
+| `element@dialog@choices@gains@bonus` | quests, | 0 | 3 | 0 | 0 | schema-only |
+| `element@dialog@choices@gains@attributePoint` | quests, | 0 | 3 | 0 | 0 | schema-only |
+| `element@dialog@choices@gains@relation` | quests, | 0 | 2 | 0 | 0 | schema-only |
+| `element@dialog@choices@gains@XP` | quests, | 0 | 3 | 0 | 0 | schema-only |
+| `element@dialog@choices@gains@injury` | quests, | 0 | 2 | 0 | 0 | schema-only |
+| `element@dialog@choices@gains@jobXP` | quests, | 0 | 2 | 0 | 0 | schema-only |
+| `element@dialog@choices@gains@customDesc` | quests, | 0 | 1 | 0 | 0 | schema-only |
+| `element@dialog@choices@gains@tavernAlcohol` | quests, | 0 | 2 | 0 | 0 | schema-only |
+| `element@dialog@choices@gains@prisonerTrust` | quests, | 0 | 2 | 0 | 0 | schema-only |
+| `element@dialog@choices@props@itemCost` | quests, | 0 | 4 | 0 | 0 | schema-only |
+| `element@dialog@choices@props@noPersonalities` | quests, | 0 | 1 | 0 | 0 | schema-only |
+| `element@dialog@choices@props@itemCostList` | quests, | 0 | 3 | 0 | 0 | schema-only |
+| `element@dialog@choices@props@traitCost` | quests, | 0 | 3 | 0 | 0 | schema-only |
+| `element@dialog@choices@props@rankCost` | quests, | 0 | 2 | 0 | 0 | schema-only |
+| `element@items@content` | quests, | 0 | 4 | 0 | 0 | schema-only |
+| `group@props` | units | 0 | 29 | 0 | 0 | schema-only |
+| `group@props@extraLoot` | units | 0 | 2 | 0 | 0 | schema-only |
+| `group@props@loot` | units | 0 | 1 | 0 | 0 | schema-only |
+| `group@props@cancelCost` | units | 0 | 1 | 0 | 0 | schema-only |
+| `group@props@weeklyBounties` | units | 0 | 1 | 0 | 0 | schema-only |
+| `group@props@timeBehaviour` | units | 0 | 6 | 0 | 0 | schema-only |
+| `group@props@seaLord` | units | 0 | 4 | 0 | 0 | schema-only |
+| `group@props@regions` | units | 0 | 2 | 0 | 0 | schema-only |
+| `group@props@seaLord@stats` | units | 0 | 2 | 0 | 0 | schema-only |
+| `group@movement` | units | 0 | 10 | 0 | 0 | schema-only |
+| `group@battleRules` | units | 0 | 7 | 0 | 0 | schema-only |
+| `group@battleRules@renforts` | units | 0 | 7 | 0 | 0 | schema-only |
+| `group@battleRules@neutrals` | units | 0 | 6 | 0 | 0 | schema-only |
+| `group@units` | units | 0 | 12 | 0 | 0 | schema-only |
+| `group@units@classes` | units | 0 | 1 | 0 | 0 | schema-only |
+| `group@units@follower` | units | 0 | 5 | 0 | 0 | schema-only |
+| `activity` | quests, | 24 | 6 | 90 | 3 | Systems |
+| `activity@props` | quests, | 0 | 7 | 0 | 0 | schema-only |
+| `activity@props@params` | quests, | 0 | 1 | 0 | 0 | schema-only |
+| `itemType` | items | 96 | 6 | 484 | 15 | Systems |
+| `itemType@props` | items | 0 | 10 | 0 | 0 | schema-only |
+| `item` | items | 2125 | 13 | 24,578 | 64 | Systems |
+| `craft` | items | 667 | 8 | 4,462 | 0 | Systems |
+| `craft@recipe` | items | 0 | 3 | 0 | 0 | schema-only |
+| `craft@props` | items | 0 | 16 | 0 | 0 | schema-only |
+| `craft@props@require` | items | 0 | 1 | 0 | 0 | schema-only |
+| `craft@props@requiresJob` | items | 0 | 2 | 0 | 0 | schema-only |
+| `craft@learnCost` | items | 0 | 2 | 0 | 0 | schema-only |
+| `loot` | items | 382 | 3 | 766 | 15 | Systems |
+| `loot@content` | items | 0 | 9 | 0 | 0 | schema-only |
+| `mission` | quests, | 22 | 14 | 289 | 2 | Systems |
+| `mission@description` | quests, | 0 | 1 | 0 | 0 | schema-only |
+| `mission@props` | quests, | 0 | 9 | 0 | 0 | schema-only |
+| `mission@props@inheritedGroupsFilter` | quests, | 0 | 1 | 0 | 0 | schema-only |
+| `confessions` | quests, | 87 | 3 | 261 | 1 | Systems |
+| `startChoice` | units | 29 | 5 | 107 | 1 | Systems |
+| `startChoice@troopChoices` | units | 0 | 1 | 0 | 0 | schema-only |
+| `startChoice@props` | units | 0 | 7 | 0 | 0 | schema-only |
+| `startChoice@props@bonuses` | units | 0 | 2 | 0 | 0 | schema-only |
+| `startChoice@props@items` | units | 0 | 4 | 0 | 0 | schema-only |
+| `startChoice@props@troopNames` | units | 0 | 1 | 0 | 0 | schema-only |
+| `trait` | units | 214 | 9 | 1,145 | 33 | Units/Core |
+| `trait@props` | units | 0 | 28 | 0 | 0 | schema-only |
+| `trait@props@attributes` | units | 0 | 4 | 0 | 0 | schema-only |
+| `trait@props@levels` | units | 0 | 2 | 0 | 0 | schema-only |
+| `trait@props@cantBeWith` | units | 0 | 1 | 0 | 0 | schema-only |
+| `trait@props@contentBonuses` | units | 0 | 3 | 0 | 0 | schema-only |
+| `trait@props@tavern` | units | 0 | 10 | 0 | 0 | schema-only |
+| `trait@props@tavern@attributes` | units | 0 | 2 | 0 | 0 | schema-only |
+| `trait@props@tavern@spyingReward` | units | 0 | 2 | 0 | 0 | schema-only |
+| `trait@props@tavern@specialities` | units | 0 | 2 | 0 | 0 | schema-only |
+| `trait@props@tavern@specialities@unlock` | units | 0 | 2 | 0 | 0 | schema-only |
+| `trait@props@tavern@scaleWithJobs` | units | 0 | 1 | 0 | 0 | schema-only |
+| `trait@props@tavern@unitCategories` | units | 0 | 1 | 0 | 0 | schema-only |
+| `trait@props@tavern@levels` | units | 0 | 1 | 0 | 0 | schema-only |
+| `trait@props@tavern@levels@bonuses` | units | 0 | 3 | 0 | 0 | schema-only |
+| `confessions@data` | quests, | 0 | 4 | 0 | 0 | schema-only |
+| `confessions@props` | quests, | 0 | 5 | 0 | 0 | schema-only |
+| `confessions@data@introDialog` | quests, | 0 | 1 | 0 | 0 | schema-only |
+| `confessions@data@choices` | quests, | 0 | 5 | 0 | 0 | schema-only |
+| `confessions@data@extraConditions` | quests, | 0 | 4 | 0 | 0 | schema-only |
+| `confessions@data@choices@texts` | quests, | 0 | 1 | 0 | 0 | schema-only |
+| `confessions@data@choices@cost` | quests, | 0 | 3 | 0 | 0 | schema-only |
+| `confessions@data@choices@props` | quests, | 0 | 3 | 0 | 0 | schema-only |
+| `confessions@data@choices@props@noPersonalities` | quests, | 0 | 1 | 0 | 0 | schema-only |
+| `confessions@data@choices@cost@itemCost` | quests, | 0 | 3 | 0 | 0 | schema-only |
+| `confessions@data@choices@cost@traitCost` | quests, | 0 | 3 | 0 | 0 | schema-only |
+| `confessions@data@choices@cost@rankCost` | quests, | 0 | 2 | 0 | 0 | schema-only |
+| `confessions@data@choices@gains` | quests, | 0 | 14 | 0 | 0 | schema-only |
+| `confessions@data@choices@gains@item` | quests, | 0 | 2 | 0 | 0 | schema-only |
+| `confessions@data@choices@gains@status` | quests, | 0 | 2 | 0 | 0 | schema-only |
+| `confessions@data@choices@gains@attributePoint` | quests, | 0 | 3 | 0 | 0 | schema-only |
+| `confessions@data@choices@gains@trait` | quests, | 0 | 2 | 0 | 0 | schema-only |
+| `confessions@data@choices@gains@relation` | quests, | 0 | 2 | 0 | 0 | schema-only |
+| `confessions@data@choices@gains@XP` | quests, | 0 | 3 | 0 | 0 | schema-only |
+| `confessions@data@choices@gains@injury` | quests, | 0 | 2 | 0 | 0 | schema-only |
+| `confessions@data@choices@gains@jobXP` | quests, | 0 | 2 | 0 | 0 | schema-only |
+| `confessions@data@choices@gains@prisonerTrust` | quests, | 0 | 2 | 0 | 0 | schema-only |
+| `confessions@data@choices@gains@dailyBonuses` | quests, | 0 | 2 | 0 | 0 | schema-only |
+| `unitClass` | units | 281 | 14 | 3,707 | 10 | Units |
+| `unitPattern` | units | 70 | 3 | 169 | 6 | Units |
+| `unitPattern@types` | units | 0 | 8 | 0 | 0 | schema-only |
+| `unitPattern@passiveSkills` | units | 0 | 1 | 0 | 0 | schema-only |
+| `unitClass@baseSkills` | units | 0 | 4 | 0 | 0 | schema-only |
+| `unitClass@props` | units | 0 | 41 | 0 | 0 | schema-only |
+| `unitClass@props@skillOrder` | units | 0 | 3 | 0 | 0 | schema-only |
+| `unitClass@props@status` | units | 0 | 2 | 0 | 0 | schema-only |
+| `unitClass@props@ai` | units | 0 | 5 | 0 | 0 | schema-only |
+| `unitClass@props@killLoot` | units | 0 | 3 | 0 | 0 | schema-only |
+| `unitClass@props@captureCost` | units | 0 | 2 | 0 | 0 | schema-only |
+| `unitClass@props@pitStatus` | units | 0 | 1 | 0 | 0 | schema-only |
+| `unitClass@props@mountData` | units | 0 | 3 | 0 | 0 | schema-only |
+| `unitClass@props@oils` | units | 0 | 1 | 0 | 0 | schema-only |
+| `unitClass@props@layers` | units | 0 | 1 | 0 | 0 | schema-only |
+| `unitClass@props@mountData@skills` | units | 0 | 2 | 0 | 0 | schema-only |
+| `unitClass@props@pitStatus@status` | units | 0 | 2 | 0 | 0 | schema-only |
+| `unitClass@weaponTypes` | units | 0 | 1 | 0 | 0 | schema-only |
+| `unitClass@equipment` | units | 0 | 6 | 0 | 0 | schema-only |
+| `unitClass@equipment@regions` | units | 0 | 1 | 0 | 0 | schema-only |
+| `unitClass@stats` | units | 0 | 4 | 0 | 0 | schema-only |
+| `attribute` | skills | 27 | 12 | 169 | 13 | Units |
+| `skill` | skills | 1373 | 14 | 15,578 | 25 | Battle/Core |
+| `status` | skills | 330 | 10 | 2,585 | 19 | Battle |
+| `status@attributes` | skills | 0 | 5 | 0 | 0 | schema-only |
+| `battle` | skills | 133 | 7 | 525 | 4 | Battle |
+| `effect` | skills | 66 | 7 | 245 | 4 | Fief |
+| `battle@templateBattles` | skills | 0 | 1 | 0 | 0 | schema-only |
+| `battle@variants` | skills | 0 | 2 | 0 | 0 | schema-only |
+| `battle@traps` | skills | 0 | 5 | 0 | 0 | schema-only |
+| `battle@effects` | skills | 0 | 5 | 0 | 0 | schema-only |
+| `battle@props` | skills | 0 | 13 | 0 | 0 | schema-only |
+| `battle@props@globalSkills` | skills | 0 | 1 | 0 | 0 | schema-only |
+| `battle@props@recruitClasses` | skills | 0 | 1 | 0 | 0 | schema-only |
+| `battle@props@rewards` | skills | 0 | 3 | 0 | 0 | schema-only |
+| `battle@props@pit` | skills | 0 | 1 | 0 | 0 | schema-only |
+| `battle@props@groupFight` | skills | 0 | 4 | 0 | 0 | schema-only |
+| `battle@props@genSetting` | skills | 0 | 13 | 0 | 0 | schema-only |
+| `battle@props@genSetting@minFriendDist` | skills | 0 | 2 | 0 | 0 | schema-only |
+| `battle@props@genSetting@minEnemyDist` | skills | 0 | 2 | 0 | 0 | schema-only |
+| `battle@props@genSetting@minMeleeEnemyDist` | skills | 0 | 2 | 0 | 0 | schema-only |
+| `battle@props@genSetting@minRangedEnemyDist` | skills | 0 | 2 | 0 | 0 | schema-only |
+| `battle@props@genSetting@obstacles` | skills | 0 | 9 | 0 | 0 | schema-only |
+| `battle@props@genSetting@propsObject` | skills | 0 | 4 | 0 | 0 | schema-only |
+| `battle@props@maxUnits` | skills | 0 | 2 | 0 | 0 | schema-only |
+| `battle@props@genRetryOverrides` | skills | 0 | 2 | 0 | 0 | schema-only |
+| `battle@props@genRetryOverrides@variables` | skills | 0 | 2 | 0 | 0 | schema-only |
+| `battle@props@pit@nbPlayerUnits` | skills | 0 | 2 | 0 | 0 | schema-only |
+| `battle@effects@radius` | skills | 0 | 2 | 0 | 0 | schema-only |
+| `battle@effects@nearSpawnRadius` | skills | 0 | 2 | 0 | 0 | schema-only |
+| `battle@effects@weights` | skills | 0 | 7 | 0 | 0 | schema-only |
+| `battle@effects@weights@mode` | skills | 0 | 2 | 0 | 0 | schema-only |
+| `bonus` | skills | 495 | 5 | 1,996 | 24 |  |
+| `counter` | meta, | 622 | 7 | 3,533 | 24 |  |
+| `counter@props` | meta, | 0 | 22 | 0 | 0 | schema-only |
+| `counter@props@achievements` | meta, | 0 | 3 | 0 | 0 | schema-only |
+| `counter@props@relationship` | meta, | 0 | 3 | 0 | 0 | schema-only |
+| `counter@props@partition` | meta, | 0 | 2 | 0 | 0 | schema-only |
+| `counter@props@thresholdXp` | meta, | 0 | 1 | 0 | 0 | schema-only |
+| `bonus@props` | skills | 0 | 27 | 0 | 0 | schema-only |
+| `bonus@props@bonuses` | skills | 0 | 4 | 0 | 0 | schema-only |
+| `bonus@props@items` | skills | 0 | 4 | 0 | 0 | schema-only |
+| `bonus@props@unitCondition` | skills | 0 | 7 | 0 | 0 | schema-only |
+| `bonus@props@unitCondition@skills` | skills | 0 | 1 | 0 | 0 | schema-only |
+| `bonus@props@globalCondition` | skills | 0 | 3 | 0 | 0 | schema-only |
+| `bonus@props@tavernReward` | skills | 0 | 2 | 0 | 0 | schema-only |
+| `constant` | meta, | 1266 | 7 | 2,998 | 10 |  |
+| `condition` | skills | 18 | 5 | 60 | 4 |  |
+| `constant@valueDifficulty` | meta, | 0 | 2 | 0 | 0 | schema-only |
+| `constant@values` | meta, | 0 | 1 | 0 | 0 | schema-only |
+| `constant@props` | meta, | 0 | 3 | 0 | 0 | schema-only |
+| `constant@props@bonuses` | meta, | 0 | 3 | 0 | 0 | schema-only |
+| `constant@props@items` | meta, | 0 | 1 | 0 | 0 | schema-only |
+| `constant@props@icons` | meta, | 0 | 1 | 0 | 0 | schema-only |
+| `levelProps` | world | 0 | 2 | 0 | 1 | datafile-backed; DataFile |
+| `levelProps@props` | world | 0 | 39 | 0 | 0 | schema-only |
+| `levelProps@props@linkedPlaces` | world | 0 | 1 | 0 | 0 | schema-only |
+| `levelProps@props@informations` | world | 0 | 5 | 0 | 0 | schema-only |
+| `levelProps@props@roamings` | world | 0 | 3 | 0 | 0 | schema-only |
+| `levelProps@props@spawnData` | world | 0 | 5 | 0 | 0 | schema-only |
+| `levelProps@props@roamings@variants` | world | 0 | 2 | 0 | 0 | schema-only |
+| `levelProps@props@informations@cost` | world | 0 | 2 | 0 | 0 | schema-only |
+| `sound` | meta, | 848 | 6 | 3,071 | 13 | Audio/Core |
+| `amb` | meta, | 11 | 8 | 57 | 1 | Audio |
+| `fiefPlace` | fief | 19 | 6 | 114 | 3 | Fief/Core |
+| `fiefPlace@names` | fief | 0 | 3 | 0 | 0 | schema-only |
+| `fiefPlace@productions` | fief | 0 | 2 | 0 | 0 | schema-only |
+| `fiefPlace@productions@conds` | fief | 0 | 4 | 0 | 0 | schema-only |
+| `fiefPlace@cost` | fief | 0 | 1 | 0 | 0 | schema-only |
+| `fiefPlace@cost@costList` | fief | 0 | 2 | 0 | 0 | schema-only |
+| `fiefPlace@props` | fief | 0 | 7 | 0 | 0 | schema-only |
+| `fiefPlace@props@effects` | fief | 0 | 8 | 0 | 0 | schema-only |
+| `fiefPlace@props@conds` | fief | 0 | 4 | 0 | 0 | schema-only |
+| `fiefPlace@props@buildingKinds` | fief | 0 | 1 | 0 | 0 | schema-only |
+| `fiefPlace@props@serviceCosts` | fief | 0 | 3 | 0 | 0 | schema-only |
+| `fiefPlace@props@populationType` | fief | 0 | 2 | 0 | 0 | schema-only |
+| `fiefPlace@props@alignments` | fief | 0 | 1 | 0 | 0 | schema-only |
+| `fiefPlace@props@effects@conds` | fief | 0 | 2 | 0 | 0 | schema-only |
+| `fiefGoal` | fief | 55 | 5 | 196 | 2 | Fief |
+| `fiefGoal@props` | fief | 0 | 3 | 0 | 0 | schema-only |
+| `fiefGoal@conditions` | fief | 0 | 2 | 0 | 0 | schema-only |
+| `fiefGoal@outcomes` | fief | 0 | 3 | 0 | 0 | schema-only |
+| `fiefGoal@conditions@data` | fief | 0 | 8 | 0 | 0 | schema-only |
+| `fiefCondition` | fief | 20 | 5 | 73 | 1 | Fief |
+| `fiefAlignment` | fief | 5 | 4 | 20 | 2 | Fief |
+| `fiefAdministration` | fief | 15 | 6 | 90 | 1 | Fief |
+| `fiefAdministration@inf` | fief | 0 | 3 | 0 | 0 | schema-only |
+| `fiefAlignment@names` | fief | 0 | 2 | 0 | 0 | schema-only |
+| `fiefAlignment@props` | fief | 0 | 3 | 0 | 0 | schema-only |
+| `fiefAlignment@props@populations` | fief | 0 | 1 | 0 | 0 | schema-only |
+| `fiefPopulation` | fief | 11 | 3 | 33 | 4 | Fief |
+| `fiefPopulation@inf` | fief | 0 | 2 | 0 | 0 | schema-only |
+| `fiefPopulation@inf@effects` | fief | 0 | 7 | 0 | 0 | schema-only |
+| `fiefEvent` | fief | 377 | 10 | 2,700 | 12 | Fief |
+| `fiefMission` | fief | 12 | 5 | 60 | 1 | Fief |
+| `fiefLaw` | fief | 43 | 7 | 244 | 1 | Fief |
+| `fiefLaw@cost` | fief | 0 | 2 | 0 | 0 | schema-only |
+| `fiefLaw@props` | fief | 0 | 2 | 0 | 0 | schema-only |
+| `fiefLaw@props@incompatibleWith` | fief | 0 | 1 | 0 | 0 | schema-only |
+| `fiefMission@text` | fief | 0 | 2 | 0 | 0 | schema-only |
+| `fiefMission@props` | fief | 0 | 8 | 0 | 0 | schema-only |
+| `fiefMission@props@reward` | fief | 0 | 3 | 0 | 0 | schema-only |
+| `fiefMission@props@conds` | fief | 0 | 4 | 0 | 0 | schema-only |
+| `fiefMission@props@cantBeWith` | fief | 0 | 1 | 0 | 0 | schema-only |
+| `fiefMission@compos` | fief | 0 | 1 | 0 | 0 | schema-only |
+| `fiefMission@compos@compo` | fief | 0 | 2 | 0 | 0 | schema-only |
+| `fiefEvent@conditions` | fief | 0 | 7 | 0 | 0 | schema-only |
+| `fiefEvent@consequences` | fief | 0 | 27 | 0 | 0 | schema-only |
+| `fiefEvent@params` | fief | 0 | 7 | 0 | 0 | schema-only |
+| `fiefEvent@params@filter` | fief | 0 | 1 | 0 | 0 | schema-only |
+| `fiefEvent@params@props` | fief | 0 | 4 | 0 | 0 | schema-only |
+| `fiefEvent@params@filter@populationTypes` | fief | 0 | 1 | 0 | 0 | schema-only |
+| `fiefEvent@consequences@planEvents` | fief | 0 | 3 | 0 | 0 | schema-only |
+| `fiefEvent@consequences@effects` | fief | 0 | 7 | 0 | 0 | schema-only |
+| `fiefEvent@consequences@alignment` | fief | 0 | 2 | 0 | 0 | schema-only |
+| `fiefEvent@consequences@populationType` | fief | 0 | 2 | 0 | 0 | schema-only |
+| `fiefEvent@consequences@relationLevel` | fief | 0 | 2 | 0 | 0 | schema-only |
+| `fiefEvent@consequences@items` | fief | 0 | 2 | 0 | 0 | schema-only |
+| `fiefEvent@consequences@traits` | fief | 0 | 3 | 0 | 0 | schema-only |
+| `fiefEvent@consequences@hurtUnit` | fief | 0 | 3 | 0 | 0 | schema-only |
+| `fiefEvent@consequences@descOverrides` | fief | 0 | 2 | 0 | 0 | schema-only |
+| `fiefEvent@consequences@fx` | fief | 0 | 4 | 0 | 0 | schema-only |
+| `fiefEvent@consequences@fx@visuals` | fief | 0 | 5 | 0 | 0 | schema-only |
+| `fiefEvent@consequences@fx@visuals@params` | fief | 0 | 1 | 0 | 0 | schema-only |
+| `fiefCondition@defaultValues` | fief | 0 | 2 | 0 | 0 | schema-only |
+| `input` | meta, | 84 | 7 | 378 | 0 | Core |
+| `credits` | meta, | 67 | 6 | 265 | 0 |  |
+| `credits@linesTrad` | meta, | 0 | 1 | 0 | 0 | schema-only |
+| `credits@lines` | meta, | 0 | 1 | 0 | 0 | schema-only |
+| `input@bindings` | meta, | 0 | 5 | 0 | 0 | schema-only |
+| `input@bindings@langOverride` | meta, | 0 | 1 | 0 | 0 | schema-only |
+| `sound@params` | meta, | 0 | 5 | 0 | 0 | schema-only |
+| `skill@props` | skills | 0 | 81 | 0 | 0 | schema-only |
+| `skill@props@tooltipStatus` | skills | 0 | 1 | 0 | 0 | schema-only |
+| `skill@props@attributes` | skills | 0 | 3 | 0 | 0 | schema-only |
+| `skill@props@itemCost` | skills | 0 | 2 | 0 | 0 | schema-only |
+| `skill@props@bonuses` | skills | 0 | 3 | 0 | 0 | schema-only |
+| `skill@props@aiOrders` | skills | 0 | 2 | 0 | 0 | schema-only |
+| `skill@props@fireSkills` | skills | 0 | 2 | 0 | 0 | schema-only |
+| `skill@props@destructiveStatus` | skills | 0 | 1 | 0 | 0 | schema-only |
+| `skill@props@zoneGenInfo` | skills | 0 | 3 | 0 | 0 | schema-only |
+| `skill@props@switchData` | skills | 0 | 2 | 0 | 0 | schema-only |
+| `skill@props@tooltipText` | skills | 0 | 1 | 0 | 0 | schema-only |
+| `skill@props@battleObjective` | skills | 0 | 2 | 0 | 0 | schema-only |
+| `skill@props@switchData@switchSkills` | skills | 0 | 1 | 0 | 0 | schema-only |
+| `item@baseBonus` | items | 0 | 6 | 0 | 0 | schema-only |
+| `skill@range` | skills | 0 | 8 | 0 | 0 | schema-only |
+| `status@props` | skills | 0 | 32 | 0 | 0 | schema-only |
+| `status@props@skills` | skills | 0 | 1 | 0 | 0 | schema-only |
+| `status@props@bonuses` | skills | 0 | 3 | 0 | 0 | schema-only |
+| `item@props` | items | 0 | 52 | 0 | 0 | schema-only |
+| `item@props@converts` | items | 0 | 3 | 0 | 0 | schema-only |
+| `item@props@refItems` | items | 0 | 1 | 0 | 0 | schema-only |
+| `item@props@sfx` | items | 0 | 3 | 0 | 0 | schema-only |
+| `item@props@bonuses` | items | 0 | 5 | 0 | 0 | schema-only |
+| `item@props@bonuses@conds` | items | 0 | 6 | 0 | 0 | schema-only |
+| `item@props@startQuantityDifficultyBonus` | items | 0 | 2 | 0 | 0 | schema-only |
+| `item@props@refIcons` | items | 0 | 1 | 0 | 0 | schema-only |
+| `item@props@specialStatus` | items | 0 | 1 | 0 | 0 | schema-only |
+| `item@props@tavern` | items | 0 | 6 | 0 | 0 | schema-only |
+| `item@props@fief` | items | 0 | 2 | 0 | 0 | schema-only |
+| `item@props@fief@effects` | items | 0 | 7 | 0 | 0 | schema-only |
+| `item@props@fief@effects@conds` | items | 0 | 1 | 0 | 0 | schema-only |
+| `item@props@tavern@attractedFactions` | items | 0 | 1 | 0 | 0 | schema-only |
+| `item@tool` | items | 0 | 22 | 0 | 0 | schema-only |
+| `item@tool@personalBonuses` | items | 0 | 3 | 0 | 0 | schema-only |
+| `item@tool@bonusesIfAssigned` | items | 0 | 3 | 0 | 0 | schema-only |
+| `item@tool@tavern` | items | 0 | 9 | 0 | 0 | schema-only |
+| `item@tool@requiredWeapon` | items | 0 | 1 | 0 | 0 | schema-only |
+| `item@tool@tavern@bonuses` | items | 0 | 2 | 0 | 0 | schema-only |
+| `item@tool@tavern@factions` | items | 0 | 1 | 0 | 0 | schema-only |
+| `skill@levels` | skills | 0 | 2 | 0 | 0 | schema-only |
+| `skill@levels@props` | skills | 0 | 11 | 0 | 0 | schema-only |
+| `skill@levels@props@tooltipStatus` | skills | 0 | 1 | 0 | 0 | schema-only |
+| `skill@levels@props@attributes` | skills | 0 | 3 | 0 | 0 | schema-only |
+
+## Cut-content candidates
+
+- **Empty sheets:** only the four datafile-backed ones (`place`,`group`,`element`,`levelProps`) — externalized to the HBSON prefab corpus, NOT cut. No top-level sheet is truly empty.
+- **Never-referenced top-level roots** (no `6:` column anywhere points at them): `craft`, `credits`, `env`, `frescos`, `input`. These are root consumers (recipes / environments / UI bindings), not orphans — flagged relink-terminal, not cut. Every other root is the target of at least one hard reference; 4,990 populated ref cells exist across the file.
+- **Content-status marker:** `item.done` enum `TODO,Coded,Ok,Wait` — rows not `Ok`(2) are authoring-state candidates for the cut-content ledger (counts in the dig log).
+- **DLC gating:** sheet `separators` carry DLC titles (`DLC_Belerion`, …) — per-row DLC membership is recoverable from separator ranges.
+
+## Kind-map pointers
+
+- Entity kinds and their sheet routes: [cdb-kind-map.mdx](cdb-kind-map.mdx).
+- Locale route: every `text[kind=localizable]` column resolves through `res.pak:/lang/export_<locale>.xml` (+root `texts_*.xml`), extracted to [harvest/_lang-bridge/](../extracted/harvest/_lang-bridge/) — parsing is the next dig's job (client-recon §4: 35 sheets, 9,912 leaves @en).

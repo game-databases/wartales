@@ -1,0 +1,106 @@
+# Icons export — coverage report (buildid 20318128)
+
+Data dig: every CDB icon ref on the item/skill/class kinds resolved to its
+atlas pixels and exported to the versioned CDN set
+`output/cdn/v20318128/{kind}/{id}.webp`. Machine-plane companions live
+beside the images: `misses.jsonl` (every explicit-missing entity, reason-coded),
+`resolution-proof.jsonl` (per-kind proof: mechanism, ≥20 samples, rates),
+`_tool.json` (tool + version). Export tool:
+[pipeline/tools/icon_export.py](../pipeline/tools/icon_export.py).
+
+## Resolution mechanism (pinned)
+
+A CDB type-14 `icon` value is an **atlas descriptor**, not a path:
+
+```json
+{"file": "ui/Icons/GearIcons/DaggersIcons.png", "size": 96, "x": 0, "y": 2, "height": 2}
+```
+
+- `file` resolves under the assets.pak root — harvest path
+  `extracted/harvest/assets/<file>`.
+- The pixel rect is `(x·s, y·s)` → `((x+w)·s, (y+h)·s)` with `s = size`
+  and optional tile spans `width`/`height` (default 1×1).
+- **Tile spans are real and frequent**: 787 of 3,248 refs (24.2%) span
+  multiple tiles — `(1,1)` 2,461 · `(1,2)` 593 · `(2,1)` 52 · `(2,2)` 141 ·
+  `(3,3)` 1. A 1-tile crop on a spanned descriptor silently loses half the
+  art (gear icons are tall); the exporter reads them.
+- Ruled out: `.asl` files are Photoshop layer-style binaries (8BSL), not an
+  addressing layer; `style.css`'s `background-tile-pos` corroborates that the
+  Heaps UI indexes tiles within a background image, same model as the CDB
+  descriptor.
+- All 36 referenced atlases are **magic-verified genuine PNG** (the TOOL §3
+  route-by-magic rule; no DDS hides behind `.png` in this set) → Pillow
+  decodes directly, texconv not needed.
+
+## Proof
+
+Full-corpus resolution (stronger than the brief's ≥20/kind sample; samples
+ship in `resolution-proof.jsonl`):
+
+| kind | entities | icon-bearing | refs resolved | rate vs bearing | rate vs all |
+|---|---|---|---|---|---|
+| item | 2,125 | 2,098 | 2,098/2,098 | **100%** | 98.73% |
+| skill | 1,373 | 1,093 | 1,093/1,093 | **100%** | 79.61% |
+| class | 281 | 57 | 57/57 | **100%** | 20.28% |
+
+Zero out-of-bounds cells across every (file, size-group); zero missing atlas
+files. Fidelity proof: all **3,199** non-empty exports re-decoded and compared
+pixel-exact against their source crop after the webp roundtrip — **0
+mismatches** (`lossless + exact=True`; without `exact`, libwebp zeroes RGB
+under fully-transparent pixels).
+
+## Coverage / export counts
+
+| kind | total | resolved | exported (real art) | explicit-missing | bytes |
+|---|---|---|---|---|---|
+| item | 2,125 | 2,098 | 2,049 | 76 (27 no-ref + 49 empty-cell) | 23,806,938 |
+| skill | 1,373 | 1,093 | 1,093 | 280 (no-ref) | 12,611,370 |
+| class | 281 | 57 | 57 | 224 (no-ref) | 614,308 |
+| **Σ** | **3,779** | **3,248** | **3,199** | **580** | **37,032,616** |
+
+Every entity id has exactly one `{kind}/{id}.webp` — 3,779 files; the 580
+explicit-missing ones carry the named placeholder (black square, gray frame,
+34,880 B total) and are enumerated in `misses.jsonl`. Distinct descriptors:
+item 1,447 · skill 999 · class 44 — shared descriptors still export per-id;
+variants the game distinguishes (tile spans, sizes, atlases) are preserved as
+distinct crops.
+
+### Atlas-vs-loose
+
+Loose single-image icons: **0**. Every one of the 3,248 refs is an atlas cell
+across 36 atlases. Largest contributors: Icons_Resources.png 614 ·
+BattleIcons_03_96PX 393 · Icons_Resources_02.png 290 (+45 span-1 bundle refs)
+· BattleIcons96PX 264 · BattleIcons_02_96PX 333 (+1 sub-cell 32px ref) ·
+HelmetsIcons 176 · Icons_Resources_04.png 100.
+
+## Misses character (all named in misses.jsonl)
+
+- `no-icon-ref` (531): CastleDB omits null cells — these rows carry no icon
+  column at all.
+  - item 27: abstract base/family rows never displayed with own art
+    (`DaggerBase`, `MaceBase`, `Sword2HBase`, …).
+  - skill 280: system/internal skills and specialization sub-skills the UI
+    never draws individually (`MoraleSkill`, `OpportunityAttack`, `Reload`,
+    `EndRoundDots`, `SwordSpe5Skill3_1`, …).
+  - class 224: unitClass is mostly enemy/NPC classes whose visual identity is
+    a CHARS portrait/model (spec `companion.display`), not a UI icon; the 57
+    icon-bearing rows are the player-facing classes.
+- `resolved-empty-cell` (49): descriptor resolves, cell is fully transparent —
+  the game's own "no art here".
+  - 45 `Bundle*T1` items share ONE 1×1 transparent cell at (4,1918) in
+    Icons_Resources_02.png — bundle art is composed dynamically from member
+    items (logic-layer composition; do not invent art).
+  - 4 camp/world props (`PlainMonolith`, `FishingDeck`, `OliveTree`,
+    `SmallShipwreck`) point at an empty 2×2-tile cell in Icons_Camp.png.
+- Out of scope of this export but recorded: `startChoice` (29 rows) has zero
+  icon refs; its display identity rides unitClass.
+
+## Tools
+
+Python 3.14.7 + Pillow 12.3.0; lossless webp, RGBA bit-exact
+(`exact=True`), original pixel sizes preserved (96→96, 96×192 spans stay
+96×192). texconv/cwebp not needed — see `_tool.json`.
+
+Relinks: [data-dig-log.mdx](data-dig-log.mdx#2026-08-25--dig-4-icons-export-to-cdn-set-v20318128) ·
+spec context [spec.md §entities](../spec.md) · kind map
+[cdb-kind-map.mdx](cdb-kind-map.mdx).

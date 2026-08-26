@@ -1,0 +1,97 @@
+# Arbiter (delta re-check) — fixed spec.md + spec-harvest.mdx
+
+2026-08-24 · Delta-only Arbiter per
+[`docs/briefs/arbiter-delta.mdx`](./briefs/arbiter-delta.mdx), bound by the
+previous ruling's law ([`docs/arbiter-specs.mdx`](./arbiter-specs.mdx)):
+"the next Arbiter pass checks the listed deltas only" — no re-scouting,
+no re-review of untouched sections. Read in full: root `AGENTS.md`,
+`docs/arbiter-specs.mdx` (both ordered fix lists + A1/A2), current
+[`../spec.md`](../spec.md), [`spec-harvest.mdx`](./spec-harvest.mdx),
+`pipeline/tools/_verify/` listing, `_verify/run-log.txt`.
+
+## Method
+
+Three checks, all mechanical, none resting on the fixer's prose:
+
+1. **Range-diff** `git diff 3a07025..HEAD -- spec.md docs/spec-harvest.mdx`
+   (3a07025 = "fixers launched", the pre-fix base): every hunk inventoried
+   against an ordered fix ID; any hunk not mapping to a listed delta would
+   be drift. Result: **zero unaccounted hunks** (see [Drift](#drift)).
+2. **F1 spot-run** (the one fix whose citation had to be a real executed
+   command): this arbiter independently ran
+   `python pipeline/tools/wtpak.py extract A:/SteamLibrary/.../res.pak lang/export_fr.xml <scratch> --verify`
+   → `stored=b8bf65e8 computed=b8bf65e8 -> MATCH`, 3,224,628 B == TSV size,
+   adler == TSV col 5 (`b8bf65e8`, res TSV line 916), and byte-identical to
+   the saved `_verify/extract-res.pak-lang-export_fr.xml`. Scratch copy
+   deleted after the check.
+3. **Residue greps**: no `≪`, no offset `2147483648` (old synthetic value),
+   no "(none exist)", no "16 B)" header remnant anywhere in either artifact;
+   remaining `readiness: verified` hits are exclusively roles outside F6's
+   scope (item/companion stats+reconciliation, achievement baseline).
+
+## spec.md — per-fix verification
+
+| # | Fix | Landed | Evidence |
+|---|---|---|---|
+| 1 | F2 touch nothing (.fbx line) | ✓ | Line absent from range-diff; "6,946 … 7,204 / 2.13 GB" intact verbatim |
+| 2 | F1 lang ✅ honest citation | ✓ | Reworded exactly "✅ extracted & adler-MATCHed ×17 (_verify/, 2026-08-24)"; 17 artifacts on disk under `pipeline/tools/_verify/` (export ×9 + texts ×8 == TSV rows 913–929; texts_fr correctly absent — FR is root texts.xml); `run-log.txt:32` "lang ×17 extracted, 17/17 adler MATCH"; my own spot-run MATCH (method §2). Fallback wording not needed |
+| 3 | F4 map.pak JSON harmonized | ✓ | Region readiness-note gains "sole .json = /assets/worldmap/data/textures.json (texture index)"; layers comment now "no region-shape JSONs; the sole map.pak .json is a texture index" |
+| 4 | F5 audio unit | ✓ | "Wwise 2.49 GiB (2.67 GB) loose under res/" exact |
+| 5 | F6 readiness drops | ✓ | class + animal-mount flipped `verified → on-disk` in diff, notes verbatim; npc-vendor already `on-disk` at base (checked `git show 3a07025`) — end state correct for all three named roles |
+| 6 | F7 Secrets glob + M4 twelfth layer | ✓ | Container "/POI/*.prefab + /Secret*/**/*.prefab (115 = Secrets 103 + Secret 12)"; M4 enumerates 12 layers incl. bandit reinforcements, "≥12" kept |
+| 7 | F8 tier enum | ✓ | "TBD (owner D3 call; provisional umbrella per [DR-2026-08-24-wartales-roster] ¶2–3)" exact |
+| 8 | F9 transform bound | ✓ | Appended "worst case rect-per-map; height/raw x-y pairs may collapse it to simple — resolved by first map dig" |
+| 9 | F10 ship-order dedup | ✓ | Tools comment now "Ship order: PLAN §4."; scores, flagship flag, exclusions line untouched |
+| 10 | F11 PAKTool pin | ✓ | "PAKTool (\`paktool-0.0.3-win-x64.zip\`, sha256 at first use) expand of res.pak" |
+| 11 | F3 filler policy trio | ✓ | filler-policy omit-until-translated (DECLARED, omission picked + reasoned) · code-mapping { zh: zh-Hans } · availability-log extracted/relinks/locale_availability.jsonl (drives links/sitemaps/coverage, regenerated per rerun) |
+| 12 | A2 resolved-by restatement | ✓ | missing-data bullet now "RESOLVED by spec-harvest.mdx §2.1, pending CodeWriter proof" covering flag-2 (A,B) + u32@0x08, with version byte 0 in the EXTRACTION-LOG backfill plan |
+
+## spec-harvest.mdx — per-fix verification
+
+| # | Fix | Landed | Evidence |
+|---|---|---|---|
+| 1a | Finding 1 ground-truth bullet | ✓ | "(path, size, adler) across all 40,201 rows — never offset equality; flag-0 offsets may additionally be compared; flag-2 offset columns unusable — synthetic pre-R2 reconstructions (uniform 2²⁸ steps; max end 4.28e9 < 27.9e9)" |
+| 1b | Finding 1 manifest example | ✓ | `"offset":2148002816` (live-verified position of normal_x10_y14.dds) |
+| 1c | Finding 1 §2.1 explanatory note | ✓ | Rewritten to the tiling proof (gap-free `[0, Σsizes)` walk, first f64 just past 2³¹) with the provenance sentence calling the column "synthetic reconstruction, not bytes" |
+| 1d | Finding 1 §0 scope | ✓ | "reconcile exactly against the recon TSVs (path, size, adler)" |
+| 2 | A1 header boundary + round-trip test | ✓ | Header (12 B) named u8[3]/u8/i32/i32; tree blob "[12 .. header_size-4)"; DATA trailer kept; §7 adds the mini-pak-round-trips-through-`wtpak.Reader` assertion + non-package sys.path stub note |
+| 3 | Finding 3 map.pak size pinned | ✓ | 27,889,015,798 B @ buildid 20318128, Σsizes + header_size 229,523 exactly, R2 slip residual +1,142,183; delta-0 tripwire retained |
+| 4 | Finding 2 perf budget | ✓ | "≈10–25 min across 30–75 MB/s"; ≪ gone; 30-min cap wired to stop-and-report contingency |
+| 5 | Finding 4 dataSize wording | ✓ | mod 2³² i32, interpret unsigned, record wrap delta, content.pak −1,223,561,650; −2³³/−3×2³³ sentence retained |
+| 6 | Finding 5 version byte 0 | ✓ | §2.2 "(all four paks: 0)"; §9.4 "now known live: **0** (2026-08-24 read) — backfill into EXTRACTION-LOG.md"; runtime read-and-record stays (§3.2 summary field) |
+| 7 | Finding 6 CRLF contract | ✓ | "TSV rows end CRLF — strip `\r` and compare fields numerically, never as raw bytes" |
+| 8 | Finding 7 media exemption | ✓ | §3.3 media:true rows skip verify+extract, counted separately, absence never a mismatch; case 11 gains second-run identical-row check |
+| 9 | Finding 8 long paths | ✓ | §4.4 item 4 (`\\?\` prefix or LongPathsEnabled preflight, exit 2); case 12 >260-char target test |
+| 10 | Finding 9 detect fallback defined | ✓ | `u:<8hex>` = first 4 payload bytes hex; short entries hash what exists; peek past EOF during extract → exit 3 naming the entry |
+| 11 | Finding 10 --list columns | ✓ | `path\tflag\toffset\tsize\thash`, "columns in the scratch-TSV order" (align option taken) |
+| 12 | Finding 12 new test cases | ✓ | Case 13 f64 position >2³² (1,612-entry corpus fact cited); case 14 implausible childCount loud failure; sys.path stub in §7 intro |
+| 13 | Finding 11 acceptance report named | ✓ | `extracted/harvest-report.json` with all five required keys (RNG seeds, sample paths, adler results, wall seconds, throughput) |
+
+## Drift
+
+Range-diff hunk inventory: spec-harvest.mdx 14 hunks ↔ findings 1(a–d)/A1/3/
+2/4/5/6/7/8/9/10/11/12 (+§9.4 backfill riding finding 5); spec.md 13 hunks ↔
+F1/F3/F4(×2)/F5/F6(×2)/F7(×2)/F8/F9/F10/F11/A2. No hunk outside the fix
+lists; untouched sections byte-stable between 3a07025 and HEAD.
+
+Hygiene observation (non-blocking, not a delta defect): the fixes reached
+HEAD inside commit 3e1f281, whose message is kenshi-scoped ("kenshi:
+Verifier-A refutes +1 quirk…") — a concurrent-orchestrator sweep in the
+shared worktree. Content is correct; future pack-scoped commits should stay
+scoped per NE8K shared-worktree discipline.
+
+## Verdicts
+
+### spec.md — **APPROVE-FOR-FREEZE**
+
+All twelve ordered items landed exactly as specified; the one
+execution-dependent fix (F1) is backed by real artifacts, a run-log line,
+and this arbiter's independent spot-run; no drift. Freeze is the
+orchestrator's call and can proceed on this text.
+
+### spec-harvest.mdx — **APPROVE-FOR-BUILD**
+
+All thirteen ordered items landed, including both modified sub-fixes
+(blocker rewrite-not-delete, A1 boundary correction); the reconciliation
+contract, pinned numbers, and test obligations are internally consistent
+with the proven R2 model. CodeWriter + TestWriter may build against it.

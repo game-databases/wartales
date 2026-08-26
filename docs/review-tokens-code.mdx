@@ -1,0 +1,127 @@
+# Review — F1 tokens artifact (fresh CodeReviewer)
+
+2026-08-25 · Scope per brief: `design/spec-tokens.mdx` (arbiter-fixed) +
+`design/shadcn-adoption.mdx` read in full; reviewed
+`site/src/styles/tokens.css`, `site/src/styles/tokens.test.ts`,
+`site/src/styles/tokens-preview.html`. Method: ran `npm test` myself
+(**20 passed / 0 failed**, matches the brief's expectation of 20);
+grepped the file for the stock shadcn default set (`oklch(`, `0 0% 100%`,
+`0.625rem`, bare `#fff` chrome values — zero hits outside the border-mask
+alpha ramp `linear-gradient(#FFF 0 0)`, which is not a UI color);
+re-derived the two reconciliations' contrast math from the hexes; and
+**mutation-probed the suite** in an isolated temp copy (never touched the
+worktree): four independent mutations — `--accent` back to the retired
+`#26221B`, `--rarity-2` off by one hex digit, `--text-sm` dropped to
+10px, `--space-5` 8→9px — produced **6 distinct failures**, each naming
+the assertion that guards it. The tests are not vacuous.
+
+Findings below; 1 major, 3 minor. Verdict **NEEDS-FIXES** — the gate is
+T1 alone, and it is a one-line class removal in the preview page. The CSS
+itself is contract-clean.
+
+---
+
+## Findings
+
+**T1 — MAJOR · preview's uncommon card wears rare's tier class.**
+`tokens-preview.html:119`: `<div class="rcard r1 rarity-tier-2"
+style="box-shadow:none">` is labeled *"uncommon — steel"* but carries
+`rarity-tier-2`, which paints the **rare** static olive-gold sheen
+(`--rarity-2-border-gradient`) around it — spec §3 is explicit:
+"common/uncommon stay quiet"; the sheen belongs to rare only. The same
+element's inline `box-shadow:none` also strips the panel double-bevel the
+other three cards wear, so the critic round (AC 5.4 evidence) sees an
+uncommon item presented with rare's border and off-canonical chrome —
+exactly the kind of mismatch that reads as a rarity-system bug.
+**Fix:** delete `rarity-tier-2` and the `style="box-shadow:none"` from
+the `.r1` card (line 120 keeps its class; it is the real rare).
+
+**T2 — MINOR · duplicated declarations create an edit-site the tests
+cannot see.** `--chart-1..5` (lines 146–150) and `--border`/`--input`
+(lines 181–182) are each declared a second time verbatim in the shadcn
+map (lines 280–284, 277–278); `#36322A` additionally lives in
+`--bevel-outer`, `--sidebar-border`, and hardcoded inside
+`--shadow-panel-double-border` (lines 185–186). Values agree today, but
+the test parser keeps the **first** occurrence (`if (!decls.has)`), so a
+future edit to the second copy passes the verbatim-map test while the
+file silently diverges. **Fix:** declare once and alias
+(`--chart-1: var(--parchart-1)` or vice versa), and compose the shadow
+from `var(--bevel-outer)`/`var(--bevel-inner)`/`var(--panel-well)`
+instead of repeating the hexes.
+
+**T3 — MINOR · 12px floor test enumerates today's five names instead of
+the concept.** `tokens.test.ts:253` filters
+`/^text-(sm|base|dialog|lg|display)$/` — a future `--text-xs: 10px`
+evades the floor check entirely. Same family: `--font-serif`/
+`--font-mono` are required by `SHADCN_VARS` but never resolved (only
+`font-sans` gets the alias-follow assertion at line 272). **Fix:** fail
+when any `text-*` token holds a length value outside the declared ramp
+list, and add `resolve("font-serif")`/`resolve("font-mono")` to the
+serif-first test.
+
+**T4 — MINOR · test placement contradicts the spec sentence.** Spec §6.1
+says token tests live under `site/tests/`; they ship at
+`site/src/styles/tokens.test.ts` (the path this brief itself names, so
+the code followed newer instructions). One of the two documents should
+move: either update §6.1's location note or relocate the file — left as
+is, the next agent inherits which-is-authoritative doubt. Noted, not
+gated: the census script (AC 5.3, `census.mjs`) also isn't present yet;
+it is owned by a later step and out of this review's scope.
+
+---
+
+## Brief checklist
+
+1. **Every shadcn variable overridden — PASS.** All 37 stock names
+   (`--background` … `--sidebar-ring`, `chart-*`, `radius`, fonts)
+   defined in `:root` and pinned to the §2.6 game values verbatim by
+   test. Grep finds no stock palette survivor: `oklch(` banned outright
+   (strongest form — every stock v4 default is oklch), plus HSL-white
+   and `0.625rem` sentinels. No `.dark` block, correctly, per dark-first
+   canon.
+2. **Rarity scale — PASS in CSS, FAIL in preview (T1).** `--rarity-0..3`
+   + `--light-rarity-1..3` + washes byte-exact against the sampled frame
+   fills and tip classes; player-palette separation asserted. Animated-
+   border recipe is correct and reduced-motion-complete: border-mask
+   pseudo-element rings the card, legendary runs
+   `moveGradient 5s alternate infinite`, and the
+   `prefers-reduced-motion` block kills the animation *and* pins
+   `background-position: 0% 50%` — the first gradient stop — so the tier
+   stays legible frozen (spec §3 requirement met exactly).
+3. **Tests actually assert — PASS.** Byte-parity, verbatim map,
+   recomputed WCAG ratios against the spec's printed constants
+   (`toBeCloseTo(want, 1)`), radius-zero, exact spacing rhythm array,
+   ramp equality. Mutation probe: all four seeded bugs caught, including
+   the accent mutation tripping both the verbatim map and the sentinel
+   test. 20/20 green as briefed.
+4. **Preview self-contained/offline — PASS with defect T1.** Relative
+   `./tokens.css` link, zero external URLs, inline module script works
+   from `file://`; missing font binaries degrade to Georgia by declared
+   contract (header comment). Shows the swatch grids (surfaces / text
+   ramp / accents+semantics with the warning-constraint footnote), the
+   four rarity cards, and the full type scale.
+5. **Both reconciliations sound and cited — PASS.** (a) *Selection gold
+   as `--selection`*: the collision (§2.3 wanted `--accent` for the gold,
+   arbiter F1 fixed `--accent` to the hover wash) is resolved without
+   losing either value, cited at `tokens.css:130–137` naming arbiter F1 +
+   §2.6/§2.3, and the gold still reaches every shadcn slot through
+   `--primary`/`--ring`. (b) *Disabled-text scoping*: re-derived here —
+   `#888888` on `#242424` is 4.38:1 (< 4.5 body gate), on the wells
+   ≥ 5.10:1 — so scoping to well surfaces is the correct minimal fix,
+   cited at `tokens.css:127` and asserted as a positive rule
+   (`tokens.test.ts:188–194`), not just assumed.
+6. **12px floor — PASS.** Ramp is 14/16/19/22/25; those are the only
+   size tokens in the file; none below 12. Test gap noted at T3.
+7. **Over-engineering hunt — clean.** No speculative token tiers, no
+   light theme, no unused effect tokens; `--tex-*` texture contracts are
+   forward declarations with stated provenance, not dead weight; the
+   preview scaffolding is lean. The only consolidation candidates are
+   T2's duplicates.
+
+## Verdict
+
+**NEEDS-FIXES.** Gate: T1 (one-line fix in `tokens-preview.html`). T2–T3
+are small hardening fixes worth riding the same pass; T4 is a doc-line
+decision for the owner/orchestrator. `tokens.css` itself and the test
+suite pass their brief items outright — no finding questions a sampled
+value, a contrast number, or the reconciliation logic.

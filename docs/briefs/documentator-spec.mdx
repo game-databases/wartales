@@ -1,0 +1,72 @@
+# Brief — Documentator: wartales/spec.md draft (fresh subagent)
+
+You are a FRESH Documentator subagent launched by the wartales
+orchestrator. You never spawn other subagents. You never commit to git.
+Wartales pack only.
+
+## Read first, in full
+
+1. `C:\_reps\game-databases\AGENTS.md`
+2. `C:\_reps\game-databases\FRAMEWORK.md` — §4 template (you follow it
+   field-for-field), §2 invariants, §3 variable layer
+3. `C:\_reps\game-databases\_foundation\decision-register.md` — entry
+   [DR-2026-08-24-wartales-roster] at top
+4. `C:\_reps\game-databases\_foundation\domain-doctrine.md`,
+   `_foundation/localization-architecture.md`, `_foundation/live-monitoring.md`
+   §4 field reference for identity.steam
+
+## Inputs to synthesize (read each; they are your evidence)
+
+- `wartales/docs/client-recon.mdx` (if present)
+- `wartales/docs/toolchain-validation.mdx` (if present)
+- `wartales/docs/competitor-research.mdx` (if present)
+- `wartales/design/sources/INDEX.mdx` (if present)
+- `wartales/output/_recon-scratch/pak-parse-summary.txt`, `pak-diag.txt`,
+  `inv-summary.txt` (raw evidence)
+- `wartales/PROGRESS.mdx` (buildid/appid/engine facts)
+
+If an input is missing, write the spec section anyway from what IS
+verified and mark the hole `[PENDING-SCOUT: <which>]` — never invent.
+
+## Deliverable
+
+`C:\_reps\game-databases\wartales\spec.md` per FRAMEWORK §4 template
+v2.2, filled with verified facts:
+
+- game/folder/tier (provisional umbrella pending owner domain call —
+  cite the DR entry)/lifecycle live/domain (localhost-first note)/stack:
+  next (default; page count will stay under the Astro gate unless
+  evidence says otherwise)
+- identity.steam.apps: appid 1527950 primary, coverage-label required;
+  any dlc/soundtrack appids ONLY if a scout verified them
+- locales.official: ONLY what client-recon verified against the client
+  files (texts_*.xml set / pak locale tables), with method+date; canonical
+  en; source-per-locale all: client-pack (or P0-DIG if unproven yet)
+- axes: version-eras continuous (per-patch stamps via buildid); variant
+  axes if evidence supports (item tiers/rarity)
+- entities: kinds grounded in the recon/toolchain evidence (illustrative
+  minimum: item, skill, class, unit/enemy, companion, recipe, quest,
+  region/location, npc/vendor, lore, achievement, building/camp,
+  animal/mount) — every kind names its source container from the pak
+  tree evidence
+- relations list per guide §3.2 adapted to Wartales
+- maps block: imagery-path client-extracted (map.pak), layers from
+  recon evidence, coordinate-transform TBD-P0, coordinate-sources
+  unknown-P0 until proven, readiness ACHIEVABLE (map.pak exists)
+- economy: npc-prices yes (trade goods evidence permitting), market-feed
+  none, streaming none (single-player/co-op game)
+- live.steam.enabled yes (ccu/news surfaces per live-monitoring §4)
+- tools: seed list from competitor-research pain points (mark which)
+- automation: update-trigger build-id (Steam manifest diff), cadence
+  observed, staleness per-record
+- satellite: status considered, gep-check open
+- legal: data/tooling facts only (license tags recorded by scouts);
+  fan-program monitoring; personal-data none; malware-policy n/a
+- content-policy-holes: 3D/video/audio ban → catalogue-first strategy
+- missing-data: every hole found by scouts
+- status block: research done/in-progress per input presence,
+  spec-frozen false (freeze is the orchestrator's call after Arbiter)
+
+Every line carries a field or a citation to its evidence source.
+Compression idioms blessed per §4. Return: ≤15-line summary + list of
+[PENDING-SCOUT] holes you had to mark.

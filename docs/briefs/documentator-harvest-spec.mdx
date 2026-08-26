@@ -1,0 +1,57 @@
+# Brief — Documentator: harvest-stage spec (fresh subagent, piece F3/PT-25)
+
+You are a FRESH Documentator subagent launched by the wartales
+orchestrator. You never spawn other subagents. You never commit to git.
+Wartales pack only.
+
+## Read first
+
+1. `C:\_reps\game-databases\AGENTS.md` — in full.
+2. `C:\_reps\game-databases\_foundation\extraction-doctrine.md` — in
+   full (principle zero, media carve-out, PROOF requirements).
+3. `C:\_reps\game-databases\wartales\docs\client-recon.mdx` — in full
+   (the pak format section is your implementation spec's foundation).
+4. `C:\_reps\game-databases\wartales\docs\toolchain-validation.mdx` —
+   in full (reader verdict; if absent, mark `[PENDING-SCOUT]`).
+5. `C:\_reps\game-databases\wartales\output\_recon-scratch\` — the four
+   `*-pak-entries.tsv` files (header line + a few sample rows each) are
+   the ground truth your stage must reproduce.
+6. `C:\_reps\game-databases\wartales\pipeline\tools\wtpak.py` — the
+   existing proof parser you build on or replace.
+
+## Deliverable
+
+`C:\_reps\game-databases\wartales\docs\spec-harvest.mdx` — the spec the
+CodeWriter+TestWriter pair will receive:
+
+1. **Stage contract**: `pipeline/harvest.py` (python 3.14, stdlib-only
+   preferred) — CLI: `--pak <path> [--out <dir>] [--manifest-only]`,
+   reads a Shiro `PAK\0` archive per the recon §2 layout (16-B header,
+   DFS name tree with `DATA` marker, flag-0 raw region + flag-2
+   sequential region), extracts every entry byte-identical to
+   `extracted/harvest/<pakname>/<entry-path>`, and writes
+   `extracted/harvest/<pakname>.manifest.jsonl` (path, offset, size,
+   flag, hash) — one line per entry, counts reconciling EXACTLY with the
+   recon TSVs (assets 17,131 · content 15,248 · map 6,886 · res 936).
+2. **Idempotency**: re-run skips entries whose hash matches; `--list`
+   mode prints entries without writing.
+3. **Media carve-out hooks** (DR-2026-08-18-media-scope): `.wem/.bnk`
+   (loose in res/audio — separate offload stage, not this one) are
+   catalogued not extracted; in-pak audio/video if any found →
+   catalogue-only rows in the manifest with `media: true`.
+4. **Magic-based extension correction**: recon found `.fbx`=HMD,
+   `.png` sometimes DDS, prefabs=HBSON — the manifest records BOTH the
+   packed name and the detected magic (`detect` column), never renames.
+5. **Acceptance criteria**: (a) entry counts match recon TSVs per pak;
+   (b) Σbytes extracted == Σsizes in TSVs; (c) 10 random entries per
+   pak hash-verify against TSV hashes; (d) one known DDS from map.pak
+   opens in a viewer (magic check sufficient at this stage); (e) full
+   run of all four paks completes <30 min on this machine, resumable.
+6. **Test spec for TestWriter**: unit tests on a synthetic mini-pak
+   built per recon layout (all edge cases: flag-0/flag-2 mix, unicode
+   names, empty dirs, duplicate names), plus integration smoke on
+   res.pak (smallest, 936 entries).
+7. **Out of scope**: decompile, dataset derivation, relink — later
+   stages.
+
+Return: ≤10-line summary + any contract holes you found in recon §2.

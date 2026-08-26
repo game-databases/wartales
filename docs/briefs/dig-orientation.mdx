@@ -1,0 +1,27 @@
+# Brief — Data dig: world-map orientation evidence (fresh subagent)
+
+Fresh data-layer dig agent. Never spawn subagents, never commit.
+Wartales pack only. The map pipeline holds `yAxis/d = null` (fail-loud
+— orientation can't close from design/sources shots 04/05, which are
+region dialogs). Your job: find the evidence that closes world
+orientation (which way is +x/+y on screen; is d up or down) from the
+CLIENT corpus, not screenshots:
+
+1. `extracted/logic/hscript/` (12 sources incl. World.hx) — camera/
+   coordinate/compass logic; how world coords map to screen.
+2. hlboot strings + types (`extracted/logic/hl-structure/`) — search
+   compass/cardinal/north/rotate/minimap symbols and the classes
+   using them.
+3. `extracted/harvest/res/` data.cdb region rows + any POI coordinate
+   pairs — do region relative positions imply an arrangement matching
+   a known geography (Tiltren west of Vertruse etc. from lore/
+   quest text in the locale bridge)?
+4. `extracted/harvest/map/assets/worldmap/data/` — the `_s` pyramid
+   and any label/compass overlay layers (textures.json materials).
+5. Cross-check community knowledge ONLY as a hypothesis to verify
+   against client evidence (never as the source of record).
+
+Deliverable: `docs/orientation-evidence.mdx` — each evidence thread,
+what it proves, confidence; a final verdict (orientation closed with
+yAxis/d values + the proof, or still open with the exact missing
+piece). Append `docs/data-dig-log.mdx`. Return ≤10 lines.

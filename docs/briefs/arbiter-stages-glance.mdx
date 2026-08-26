@@ -1,0 +1,28 @@
+# Brief — Arbiter glance r2: revised stages spec (fresh subagent)
+
+Fresh Arbiter agent. **Never spawn subagents**; never commit; Wartales
+pack only. Headless: stdout → log; end with your verdict.
+
+Read first, in full: `wartales/docs/spec-stages-datasets.mdx` (REVISED
+r1); `wartales/docs/arbiter-stages-spec.mdx` (your predecessor's rulings
+F1–F14 — you verify their application); the fixer's report is quoted in
+`output/fixer-stages-spec.log` (treat as claims to spot-check, not truth).
+
+## Mission
+
+One glance pass, as ruled: verify each F-item's application against the
+revised spec text (and re-measure 3–4 of the numbers yourself), confirm
+no scope creep or weakened requirements entered with the revision,
+confirm the fixer's three disclosed drive-by corrections are sound.
+
+Two known residues are ACCEPTED-AS-RECORDED (not blockers): F14's two
+specifics live in spec §9 pending an agent allowed to edit PROOF.md /
+data-dig-log.mdx; wave-3 promotion stays queued by design.
+
+Verdict rules: APPROVE-FOR-BUILD if every F-item holds; REVISE again only
+for new proven defects (each with section + proof).
+
+## Deliverable
+
+`docs/arbiter-stages-spec-r2.mdx` — per-item application table +
+verdict line. Short; no restatement of the spec.

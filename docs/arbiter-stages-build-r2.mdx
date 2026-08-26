@@ -1,0 +1,214 @@
+# Wartales — stages 4–6 build: arbiter r2 (final glance over the completed chain)
+
+Status: FINAL r2 (2026-08-26). Verdict: **APPROVE-FOR-SHIP-COMMIT** (commit
+checklist at the end). Arbiter: fresh agent, no subagents spawned, nothing
+committed, wartales pack only. Contract:
+[spec-stages-datasets.mdx](./spec-stages-datasets.mdx) REVISED r1 AS AMENDED
+by W5. Standards applied:
+[arbiter-stages-build-r1.mdx](./arbiter-stages-build-r1.mdx) (W1–W7),
+[review-stages-code-r2.mdx](./review-stages-code-r2.mdx) (R12–R14),
+[review-stages-tests-r2.mdx](./review-stages-tests-r2.mdx) (G1–G3).
+Doctrine inputs read in full: root `AGENTS.md`,
+`_foundation/extraction-doctrine.md`. Fixer logs treated as claims and
+spot-checked: `output/codefixer-stages.log`, `output/testfixer-stages.log`,
+`output/docfixer-w5.log`, `output/testfixer-g.log`,
+`output/codefixer-r14.log`.
+
+**Namespace note.** This file's R#/F# = round-1 review findings;
+R12–R14 = code-review r2 additions; G# = tests-review r2 additions;
+"r1-A" = arbiter r1's own finding A; "specA-A1/A2/B1" = the
+spec-arbiter items cited inside the amended spec (`arbiter F8/A1`,
+`arbiter F14/A2`, `arbiter B1`) that bind this unit. Where the brief
+said "arbiter additions A1–A3", all three readings are covered by the
+marked rows below.
+
+## Method — re-executed first-hand this session
+
+Scratch writes sandboxed under `D:\_arb-r2\` (fakeroot: five tools +
+canonical planes + drafts + CDB + nine bridge XMLs copied to D:, all
+`__file__`-anchored so children redirect into the sandbox; shared tree
+read-only except suite-mandated regen churn). All five tools
+(`validate_all.py`, `cdb_verify.py`, `promote_drafts.py`,
+`relink_catalog.py`, `wave_kinds.py`) read in full at current bytes.
+Executed:
+
+| # | Experiment | Result |
+|---|---|---|
+| E1 | **R12 cross-drive repro** (mandated): validator invoked from a C: cwd over the D: fakeroot tree | **rc=0, PASS 8/8, report written**, no traceback — the pre-fix `ValueError: path is on mount 'D:'` crash is dead |
+| E2 | **R13 discriminator**: falsified ONE modeled cell in the fakeroot's own RELATIONS.md (`activity–trait` E22→21), ran the REAL pack's validator against the fakeroot `--reldir` while the shared `extracted/RELATIONS.md` stayed pristine | rc=1, `catalog-parity=False`, cell mismatch quoted field-for-field — parity provably reads THE TREE UNDER TEST, not the tool pack. Control (untampered fakeroot): PASS |
+| E3 | **R14 corrupt-input probe**: truncated `matrix.json` to invalid JSON in the fakeroot | rc=1, report WRITTEN and parses, 8/8 checks recorded, `catalog-parity: UNREADABLE … JSONDecodeError` naming both inputs — no lost report |
+| E4 | **W2 dangling gate** (mandated): planted a flag-consistent dangling edge (`toId=__tw_ghost_region__`, `valid:false`) in fakeroot `class__region.jsonl`; isolated `cdb_verify` | exit 1 with `pack-wide dangling invariant: 1 != 0` among the failures — exactly the source-authoring class that shipped green before W2 |
+| E5 | **Byte-stability rerun-twice** (mandated): `relink_catalog.py` twice into scratch outdirs over the fakeroot planes | both runs `matrix.json 5efaba53…` + `RELATIONS.md 7e8bfb1e…` — identical to each other AND to the shipped products (W4 introduced zero live drift) |
+| E6 | **Full default pytest suite** (mandated), `--basetemp` on D: | **187 passed, 25 skipped** in 66.10s — expected numbers digit-for-digit. (One earlier invocation died session-finish with empty output — consistent with the ACL-locked `pytest-current` symlink the W6 fixer disclosed as pre-existing host debris; the logged rerun above is clean.) |
+| E7 | Stage files standalone (mandated) | together: **63 passed, 5 skipped**; `test_stages_datasets.py` alone: **36 passed** |
+| E8 | **R1/F14 intruder shape**: `place.jsonl` planted in the fakeroot canonical data dir | rc=1, report written, `hbson-independent=False` naming it, `census-closure` stays True — record, not crash |
+| E9 | Shared-tree integrity across E1–E8 + all three suite runs | `matrix.json` / `RELATIONS.md` / `locale_availability.jsonl` hashes byte-identical before and after every run; zero `.tw-*` debris — the retargeted tamper leg provably never opens the shared artifact |
+
+Pin audit (current bytes vs EXTRACTION-LOG §2): `cdb_emit 3013abd2…`
+(13,823 B) ✓ · `cdb_verify cc9c5b6e…` (18,329 B) ✓ ·
+`wave_kinds e96a95c3…` (5,329 B) ✓ · `promote_drafts f3516e1f…`
+(11,885 B) ✓ · `relink_catalog f795286d…` (19,328 B) ✓ ·
+**`validate_all` STALE: pinned `df701495…` (23,264 B), disk
+`c3224362e3c8cb05accfae7cd1c501464a658b6cd5c86b30bdbc2ccfb5dcf5a3`
+(28,228 B)** — see ruling D-a.
+
+## Closure table — ruled remedy → landed state
+
+Landing evidence: **FIRST-HAND** = re-executed this session (E# above);
+**BYTES** = verified in the current file bytes this session plus prior
+round's executed proof, no contradiction found.
+
+### Code review round 1 (R1–R11)
+
+| # | Ruled remedy (r1) | Landed state verified |
+|---|---|---|
+| R1 | Filter census loops to managed universe; intruders become `hbson-independent` records; never die on extras | **FIRST-HAND (E8)** — loops iterate `managed_kinds_in()` (`validate_all.py:245`), guard dies only on MISSING kinds carrying the raw-name listing (:132–141), extras land as records |
+| R2 | Payload equality byte-exact after the `_meta` split | **BYTES** — `load_parts` keeps raw payload bytes (:70–85); equality `payload_src == payload_dst` (:196–197). CRLF/no-final-LF probes executed by code r2 |
+| R3 | argparse; usage errors exit 2 | **BYTES** — argparse with `choices=("data","relinks","both")` (:267–280); truncated/unknown plane exit 2 per code r2 probes |
+| R4 | Universe completeness before any write, exit 2 naming missing entries | **BYTES** — `universe_missing` gate placed after ghost tripwire, before `makedirs` (:178–187); 30-of-40 sandbox proof in code r2 |
+| R5 | Pair `_meta.buildId == --buildid` mirroring the dataset check | **BYTES** — `cdb_verify.py:313–316`; discriminator probe executed by code r2 (A3) |
+| R6 | `hbson-independent` recursive pruning `_draft`; banned names fail; others count-and-report | **FIRST-HAND (E1/E8)** — recursive walk with `_draft` prune (:516–520); lawful `nonManaged=1 locale_availability.jsonl` reported every control run |
+| R7 | Inline frozen §3.5 transcription compared against the module | **FIRST-HAND (E1)** — `FROZEN_DEFERRED` (:79–90) vs module (:498–508); live `frozenMatch=True` |
+| R8 | Doc-side only: spec vectors carry `[--buildid <id>]` | **BYTES** — spec §3.1 step 4 / §4.1 step 1 / §3.4 CLI block + rule 7 all read in the amended spec |
+| R9 | Ledger names `poi_tile_coords.jsonl`/`battle_scene.jsonl`; subdirectories enumerated | **BYTES** — `IGNORE_REASONS` (:61–66), `"subdirectory (never scanned)"` (:135–139) |
+| R10 | Explicit `encoding="utf-8"` on validator subprocess captures | **NOT LANDED — see New findings N1** (dropped thread: assigned to no W-item; recorded debt, non-blocking) |
+| R11 | Zero-edge pair file never `modeled` | **FIRST-HAND (E5)** — edges>0 guard (`relink_catalog.py:201–210`); shipped products byte-identical to pre-edit pins |
+
+### Test review round 1 (F1–F15)
+
+| # | Ruled remedy (W6) | Landed state verified |
+|---|---|---|
+| F1 | Rewrite I1 real-CDB per §3.1 verbatim | **FIRST-HAND (E6/E7)** — suite green incl. I-layer; assertion-level landing verified by tests r2 (`test_i1_stage4_chain_end_to_end`) |
+| F2 | Top-level envelope access + always-run parity case | **FIRST-HAND (E6)** — envelope case green; eight-key exact-set pin verified by tests r2 |
+| F3 | Validator parse-and-compare of rendered cells + MD-falsification fault leg | **FIRST-HAND (E2/E6)** — the sub-assertion caught my E-cell falsification with field values quoted; leg now retargets the tree-local victim (see R13/G rows) |
+| F4 | Measured bimodal law {∅, exact-9} + truncation fault leg + lawful ∅/∅ row | **FIRST-HAND (E1)** — live `localeLawViolations=0` with the 458/560 zero-locale rows lawful; truncation leg red in suite |
+| F5 | T5 `_meta.buildId`-only tamper leg | **FIRST-HAND (E6)** — suite green; mutant-killing property verified by tests r2 |
+| F6 | T2b hard-asserts once W2 lands | **FIRST-HAND (E4/E6)** — gate exists tool-side; T2b hard-asserts the ruled count-only line; probe/skip retired |
+| F7 | Mini world gains localizable + undeclared-key + keyRule features, disclosed | **FIRST-HAND (E6)** — new case green in suite; disclosure docstring verified by tests r2 |
+| F8 | `driftAbsent == []` wherever matrix loads | **BYTES** — asserted at T8/envelope/green-tree/I2 (tests r2 line map); suite green |
+| F9 | `wave_kinds.DEFERRED` ↔ fixture parity case with frozen tokens | **FIRST-HAND (E1/E6)** — three-way lockstep (module ↔ fixture ↔ validator frozen copy) all green |
+| F10 | Arithmetic-only marks + one cheap live move | **BYTES** — renames/docstrings + `test_regen_bridge_sheet_count_live_from_export_en` present |
+| F11 | T10 split: green case + parametrized faults + independent RED | **FIRST-HAND (E6/E8)** — split landed; RED case runs independently and passes |
+| F12 | I4 static/integration split asserting exact vectors, mtimes, forwarder, E-rows | **FIRST-HAND (E6)** — always-run static half green in every suite run; integration legs executed by tests r2 |
+| F13 | Full envelope enumerated in spec §4.2 + VALIDATION-REPORT.md table parity | **BYTES + FIRST-HAND (E6)** — amended §4.2 read in full; MD-table parse case green |
+| F14 | Keep RED red until W1 lands | **FIRST-HAND (E8/E6)** — flipped green with zero test edits; behavior proven again via my intruder probe |
+| F15 | Deferred — fakeroot lever adopted only if collisions bite | **DEFERRED as ruled** (fakeroot pattern used by reviewers/fixers/ad-hoc probes when needed) |
+
+### Arbiter additions
+
+| # | Remedy | Landed state verified |
+|---|---|---|
+| r1-A (finding A) | Anchor wave-1-draft preconditions to `PACK_ROOT` | **FIRST-HAND (E1)** — anchored (:155–162); my cross-drive run started from a NON-PACK cwd (`/c/_reps/game-databases`) and cleared preconditions — the spurious exit-2 is dead |
+| specA-A1 | Preservation counters re-frozen from the emitter counter table == verifier stdout | **FIRST-HAND (E1)** — verifier stdout preserved-key total consumed by fixtures; suite F6-pins green |
+| specA-A2 | `hbson_emit.py` repointed off the scratch copy onto the harvest output | **BYTES** — single input read at `hbson_emit.py:149` = `extracted/harvest/res/data.cdb`; no `_verify` reference remains |
+| specA-B1 | Regeneration drops D7 stamps by design; adjudication carried beside the null flags | **BYTES + FIRST-HAND (E1)** — `D7_LEDGER` + drift die (`relink_catalog.py:48–54,:176–180`); ledger rendered in RELATIONS.md; 61/9/2 decomposition asserted every control run |
+
+### Tests-review r2 additions (G1–G3)
+
+| # | Remedy | Landed state verified |
+|---|---|---|
+| G1 | Atomic backup publication (.tmp sibling → length check → `os.replace`) | **BYTES** — staged `.tw-staging` + length verification in the current test file; ENOSPC harness proof in `output/testfixer-g.log`; exercised by every suite run (E6/E7) without touching the shared artifact (E9) |
+| G2 | `else: pytest.fail(...)` closing the FAULTS chain | **BYTES** — guard present at `test_stages_toolchain.py:1443`; vacuous-pass harness proof in the G log |
+| G3 | `tampered = None` pre-try binding + guarded unlink/staging cleanup | **BYTES** — bound before the try, finally guards all three siblings |
+
+### Code-review r2 additions (R12–R14)
+
+| # | Remedy | Landed state verified |
+|---|---|---|
+| R12 | Anchor the walk's relpath to the plane root; add cross-drive probe | **FIRST-HAND (E1)** — `os.path.relpath(os.path.join(root, fn), directory)` (`validate_all.py:529`); cross-drive invocation passes with a written report |
+| R13 | Anchor `catalog-parity`'s MD beside the tree under test; rebuild the fault leg off the shared artifact | **FIRST-HAND (E2/E9)** — `relations_md_path(args)` (:112–119) used by precondition (:149) and parity reader (:436); discriminator proved tree-local reading; the md-leg victim is now the fault tree's own copy and the shared file was never opened across all runs |
+| R14 | Route malformed-input faults into the owning check's record | **FIRST-HAND (E3)** — `UnreadableInput` (:165–185) + census/relink/availability/catalog fault routing; corrupt matrix → written report, 8 records, named locators |
+
+## New findings (this glance)
+
+- **N1 (RECORDED DEBT — non-blocking).** R10 was ruled VALID in round 1
+  ("explicit `encoding="utf-8"` on subprocess captures") but appears in
+  NO work item of arbiter r1's FIX list — W1 carries R1/R6/R7/F3/F4/A,
+  and no other item owns validate_all. Current bytes still have bare
+  `text=True` captures (`validate_all.py:211–212`, `:225–226`), and
+  `run_all.ps1` sets no `PYTHONUTF8`/`PYTHONIOENCODING` mitigation.
+  Exposure stays latent: both children print ASCII-only today (every
+  embedded child run this session parsed clean), and a child-side
+  cp1252 print failure surfaces as a nonzero exit that
+  `verifier-gates` already fails loudly. **Ruling:** do NOT reopen the
+  tool for this before commit — the hash the R14 fixer proved would
+  churn again for zero behavioral change. Fold `encoding="utf-8"` into
+  the NEXT CodeFixer touch of validate_all.py (named trigger: any child
+  output becoming non-ASCII).
+- **N2 (note, no action).** `cdb_verify.py:310–311` parses pair-file
+  meta lines unguarded (the dataset loop guards; the two pair loops do
+  not). A corrupted canonical pair file crashes the CHILD with a
+  traceback — but exit code is still nonzero, so both consumers
+  (`run_all` stop-on-nonzero, `verifier-gates`) fail loudly and
+  correctly. Robustness cosmetics only; R14's directive scoped the
+  validator, not the child.
+- **N3 (note, no action).** `cdb_verify.py:376` bridge path is
+  cwd-relative; from a foreign cwd the informational textKey coverage
+  lines silently degrade to zeros. Nothing consumes them downstream
+  (matrix coverage comes from `relink_catalog --bridge`). In-pipeline
+  unreachable (`Set-Location $PackRoot`).
+- No defect found adjacent to the fixed ones in `promote_drafts.py`,
+  `relink_catalog.py`, or `wave_kinds.py`: drift-before-write ordering,
+  atomic copy cleanup, ghost-vs-completeness ordering, D7 ledger drift
+  die, deterministic sort keys, and the universe asserts all verify
+  clean at current bytes.
+
+## Rulings on the two known stale-doc follow-ups
+
+- **D-a — ASSIGN to the committing owner (blocking for the commit, not
+  for approval).** Confirmed first-hand: `EXTRACTION-LOG.md:72` pins
+  `validate_all.py` at `df701495…` (23,264 B); disk is
+  `c3224362…` (28,228 B). Required in the ship commit: refresh that §2
+  row (hash + bytes + a description clause naming the R12/R13/R14
+  fixes), AND append one dated §6 history entry covering the post-r2
+  waves — W5 spec amendments, W6 suite rewrite, G1–G3, R12/R13/R14 —
+  which today appear in NO history entry (newest entry stops at
+  W1–W4+W7). This also retires code-r2's hygiene nit about W5/W6
+  having no dedicated entries.
+- **D-b — ASSIGN, one line, same commit.** Confirmed first-hand: spec
+  §5.2's `catalog-parity` row (line 552) says "RELATIONS.md rendered
+  from the same matrix" without the R13 anchor. Amend to state the MD
+  is read from beside the tree under test (`<reldir>/../RELATIONS.md`)
+  so out-of-tree validation parity-checks its own render. Documentator
+  if available, else the committing owner; six words of contract text,
+  no renumbering.
+
+## Over-engineering / scope sweep
+
+Proportionate. The fix waves added no frameworks: W1–W4 were
+guarded/laddered one-liners plus the adjudicated parse-and-compare; R14
+is fault-routing try/except whose green-path output strings are
+byte-unchanged (control runs show unchanged `actual` shapes); G1–G3 are
+~10 lines in one function; the R13 retarget DELETED machinery (the
+shared-file snapshot/tamper/restore window) rather than adding it.
+Deferred items stayed deferred (F15 fakeroot lever, R11 cosmetic cell).
+Tools remain stdlib-only; no dependency, surface, or user-facing scope
+creep; site/frontend untouched; decompile stub intact. The only
+couplings added (exact envelope keys, cell grammar) are sanctioned by
+the amended §4.2 enumeration and the r1 F3 adjudication respectively.
+
+## Verdict: APPROVE-FOR-SHIP-COMMIT
+
+The chain is done: all 41 round-1 findings closed, all r2 additions
+landed and re-proven, mandated re-executions green, hunt found nothing
+blocking. Ship the following unit as ONE commit (AGENTS.md rule 5):
+
+1. `wartales/pipeline/tests/test_stages_toolchain.py` — tracked,
+   modified (+41/−24: G1–G3 hardening + R13 tree-local victim
+   retarget). Verified green under E6/E7/E9.
+2. `wartales/EXTRACTION-LOG.md` — REQUIRED EDIT BEFORE COMMIT per
+   ruling D-a (validate_all §2 pin refresh + dated §6 history entry
+   naming W5/W6/G/R12–R14).
+3. `wartales/docs/spec-stages-datasets.mdx` — REQUIRED ONE-LINE EDIT
+   per ruling D-b (§5.2 catalog-parity R13 anchor wording).
+4. `wartales/docs/arbiter-stages-build-r2.mdx` — this file.
+5. Local-only tools (git-swallowed by the root `tools/` ignore rule;
+   provenance IS the §2 pins — all verified matching disk this
+   session): `cdb_emit.py 3013abd2…` · `cdb_verify.py cc9c5b6e…` ·
+   `wave_kinds.py e96a95c3…` · `promote_drafts.py f3516e1f…` ·
+   `relink_catalog.py f795286d…` · `validate_all.py c3224362…` (pin
+   lands with item 2).
+
+Recorded debts riding along (non-blocking): N1 (R10 encoding one-liner
+at next validate_all touch), N2/N3 notes, F15/R11 deferrals as ruled.
+No REVISE items; owners for D-a/D-b as named above.

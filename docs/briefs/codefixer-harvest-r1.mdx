@@ -1,0 +1,13 @@
+# Brief — CodeFixer: pipeline/harvest.py round 1 (fresh subagent)
+
+Fresh CodeFixer. Never spawn subagents, never commit. Wartales pack
+only. Read `docs/arbiter-harvest-build-r1.mdx` in full, then execute
+ONLY its "pipeline/harvest.py — FIX" ordered list (items 1–10),
+verbatim, in order, no reinterpretation. Item 10 is a REJECTED
+suggestion — do not implement it. Change nothing else in the file.
+After fixing: `python -m py_compile pipeline/harvest.py` must pass;
+run `python pipeline/harvest.py --help` and ONE
+`--manifest-only` res.pak run with a FRESH --out to prove B1 dead
+(include the exit code + line count in your summary). Do NOT touch
+pipeline/tests/ (TestFixer follows you, sequenced). Return: ≤10-line
+summary — per-item ✓/✗ + smoke evidence.

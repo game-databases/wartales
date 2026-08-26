@@ -1,0 +1,12 @@
+# Brief — Fixer: spec.md revision per arbiter fix list (fresh subagent)
+
+Fresh Fixer. Never spawn subagents, never commit. Wartales pack only.
+Read `docs/arbiter-specs.mdx` in full, then execute ONLY its
+"spec.md — REVISE" ordered fix list, verbatim, in order, no
+reinterpretation — plus arbiter-added finding A2 (missing-data rows).
+The arbiter ruled findings; do not re-litigate, do not add scope.
+Where the fix list says "perform the verification" (F1 lang adler),
+actually run it via `pipeline/tools/wtpak.py` against the live client
+and cite the command + result in the spec line. Keep every other
+spec.md line byte-identical. Return: ≤8-line summary — each fix done
+✓/✗ with one clause.

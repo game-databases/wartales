@@ -1,0 +1,18 @@
+# Brief — Arbiter (delta re-check): fixed spec.md + spec-harvest.mdx
+
+Fresh Arbiter. Never spawn subagents, never commit. Wartales pack only.
+The previous Arbiter ruled both artifacts REVISE with ordered fix lists
+(`docs/arbiter-specs.mdx`) and pinned its own law: "the next Arbiter
+pass checks the listed deltas only" — no re-scouting, no re-review of
+untouched sections.
+
+Read `docs/arbiter-specs.mdx` fix lists (both artifacts + A1/A2), then
+verify EACH fix landed in the current `spec.md` / `docs/spec-harvest.mdx`
+exactly as ordered (diff against your understanding of the list; the
+F1 lang-adler fix must cite a real executed command + result — spot-run
+it yourself once to confirm). Also confirm no untouched section drifted.
+
+Verdicts (delta-only): APPROVE-FOR-FREEZE (spec.md) /
+APPROVE-FOR-BUILD (spec-harvest.mdx) or REVISE with the exact missing
+delta. Write `docs/arbiter-delta.mdx`: per-fix ✓/✗ table + verdicts.
+Return: ≤8-line summary with both verdicts.

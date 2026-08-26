@@ -1,0 +1,213 @@
+# Review — wartales/docs/spec-harvest.mdx (PrepareTask reviewer pass)
+
+Fresh Reviewer, 2026-08-24, NE8K. Read in full before judging: root
+`AGENTS.md`, `_foundation/decision-register.md`,
+`_foundation/extraction-doctrine.md`, `_foundation/extraction-host.md`,
+[`client-recon.mdx`](./client-recon.mdx) §2,
+[`toolchain-validation.mdx`](./toolchain-validation.mdx) §1,
+`output/_recon-scratch/{assets,content,map,res}-pak-entries.tsv` (headers +
+samples + full-column recomputation), `pipeline/tools/wtpak.py`,
+`pipeline/tools/wtpak_verify.py`, `output/_recon-scratch/parse-pak.ps1`,
+`parse-pak2.ps1`, `diag-pak.ps1`, then [`spec-harvest.mdx`](./spec-harvest.mdx)
+in full. Beyond doc reading, every load-bearing claim was **re-measured
+against the live paks** (`A:\SteamLibrary\steamapps\common\Wartales\`,
+read-only, via `wtpak.Reader`) rather than trusted from prose.
+
+Verified clean before the findings (so the arbiter knows what checked out):
+
+- Format contract [§2.2](./spec-harvest.mdx#2-2-byte-layout-implementation-normative)
+  matches `wtpak.py` field-for-field and the live bytes: slack 0, `"DATA"`
+  marker at `[header_size−4..header_size)`, delta-0 span, global position
+  tiling over mixed flags (map.pak walked end-to-end today: breaks 0,
+  covered `[0, 27,888,786,275)` exactly), 1,612 entries above 2³².
+- Ground-truth numbers reproduce exactly from the TSVs: files
+  17,131/15,248/6,886/936; dirs 724/1,225/8/127 (re-counted live, equal);
+  Σsizes all four; flag splits 4,167+12,964 / 4,530+10,718 / 4,250+2,636 /
+  936+0; total 45,238,961,702 B.
+- Integration-smoke constants are real: `data.cdb` stored adler =
+  recomputed adler = `d6bc3d60` (streamed, correct init); both cited
+  `_verify/extract-*` artifacts exist; PAKTool cross-check basis intact.
+- Media carve-out hooks ([§4.2](./spec-harvest.mdx#4-2-media-carve-out-hooks-dR-2026-08-18-media-scope))
+  present and doctrine-correct; no meaningful over-engineering found;
+  two-agent buildability strong except finding 1 below.
+- No patch drift: buildid still 20318128, pak mtimes 2025-10-12, update
+  still queued.
+
+---
+
+## Findings
+
+### 1. BLOCKER — the "ground truth" TSVs' flag-2 offset column is garbage, and the spec asserts it is true
+
+Where: [§1](./spec-harvest.mdx#1-authority-chain) ground-truth bullet
+("Flag-2 rows carry true offsets (e.g. map.pak's first f64 entry sits at
+exactly 2,147,483,648)", ~line 35–37); [§0](./spec-harvest.mdx#0-scope-in-one-line)
+("manifests that reconcile exactly against the recon TSVs"); the normative
+manifest example (~line 150) whose `offset` is `2147483648`; the
+[§2.1](./spec-harvest.mdx#2-1-corrections-vs-recon-2) explanatory note
+(~lines 56–59) whose sole datapoint is that same value.
+
+Evidence (measured today, all four checks independent):
+
+- `parse-pak2.ps1` (the TSV generator, lines 50–55) reads flag-2 fields as
+  four raw u32s under the pre-R2 model and writes the first one into the
+  offset column. The script text on disk cannot have produced the observed
+  values: its `a` would be the low word of the f64, and low words match
+  truth for 0 rows.
+- Full-column comparison, live parse vs TSV, every flag-2 row:
+  size match 2,636/2,636 · 12,964/12,964 · 10,718/10,718; adler match same;
+  **offset equals the true position for 0/N rows and equals true mod 2³²
+  for 0/N rows** (map/assets/content). The diffs have no stable transform.
+- The cited entry `/assets/worldmap/data/normal/normal_x10_y14.dds` truly
+  sits at **2,148,002,816** (= Σ flag-0 sizes — flag-2 payloads begin where
+  flag-0 payloads end), not 2,147,483,648. The TSV column even steps by
+  exactly 2²⁸ across its first rows — synthetic reconstruction, not bytes.
+- Consequence if unfixed: CodeWriter obeys [§0](./spec-harvest.mdx#0-scope-in-one-line),
+  builds an offset diff, and either ships a harness that fails ~all flag-2
+  rows or silently drops the comparison without saying why.
+
+Fix: reconciliation contract is **(path, size, adler) equality on all
+40,201 rows** — which I verified passes 100% — and never offset equality;
+flag-0 offsets may additionally be compared (they chain perfectly), flag-2
+offsets must be marked unusable with one sentence of provenance. Correct
+the [§1](./spec-harvest.mdx#1-authority-chain) claim, fix the manifest
+example to `"offset":2148002816`, and delete or rewrite the explanatory
+note (its "switches encoding at 2³¹" story is plausible but currently
+rests entirely on the corrupted column; as written it is false evidence).
+
+### 2. MAJOR — performance budget contradicts its own arithmetic
+
+Where: [§5](./spec-harvest.mdx#5-environment-and-performance) "a sustained
+≥30 MB/s finishes ≪ the **30-minute cap**" (~lines 243–245); acceptance
+criterion 6 hard-gates < 30 min (~lines 277–279).
+
+Evidence: 45,238,961,702 B ÷ 30 MB/s ≈ 24–25 minutes — not "≪" 30 — before
+40,201 file creates/`os.replace` calls, directory churn, and detect seeks.
+A correct implementation at exactly the stated floor can fail its own gate.
+
+Fix: state the honest expectation (~10–25 min across 30–75 MB/s), keep 30
+min as a fail-loud tripwire wired to the already-defined contingency
+(stop-and-report, parallelism by new spec note), and drop "≪".
+
+### 3. MAJOR — hole #1 (map.pak size conflict) is resolvable now, not at runtime
+
+Where: [§9](./spec-harvest.mdx#9-contract-holes-found) hole 1 (~lines
+329–335) leaves the choice to harvest-time assertion.
+
+Evidence: live `GetFileLength` today gives map.pak = **27,889,015,798 B**
+(recon §1's figure), which satisfies `Σsizes + header_size`
+(27,888,786,275 + 229,523) exactly. R2 §1's 27,890,157,981 leaves a
+Δ = 1,371,706 that matches nothing and is internally inconsistent with its
+own table. R2's figure is the transcription slip.
+
+Fix: pin 27,889,015,798 as the expected size at buildid 20318128 in §2.3,
+keep the delta-0 assert as the drift tripwire it already is — a mismatch
+now means the queued 21238928 patch landed, which is exactly what the
+tripwire is for.
+
+### 4. MINOR — `dataSize` wrap semantics mis-stated
+
+Where: [§2.1](./spec-harvest.mdx#2-1-corrections-vs-recon-2) row 2 /
+[§2.2](./spec-harvest.mdx#2-2-byte-layout-implementation-normative): "wraps
+negative on paks whose sum exceeds 2³¹−1".
+
+Evidence: only content.pak actually reads negative (residue −1,223,561,650);
+assets (+626,799,415) and map (+2,118,982,499) reduce to positive i32.
+Wrap is always mod 2³²; sign depends on the residue.
+
+Fix: say "stored reduced mod 2³² as i32; interpret unsigned; record
+`stored − Σsizes` as the wrap delta". No code path changes — the field is
+already provenance-only.
+
+### 5. MINOR — version byte is pinnable now
+
+Where: [§9](./spec-harvest.mdx#9-contract-holes-found) hole 4 calls it
+unpinned.
+
+Evidence: all four paks carry version byte **0** (read today).
+
+Fix: record 0 in §2.2/EXTRACTION-LOG plan; keep the runtime read-and-record
+behavior.
+
+### 6. MINOR — scratch TSVs are CRLF; spec is silent
+
+Evidence: every row ends `\r\n` (verified with `cat -A`). `wtpak_verify.py`
+survives because `int(x,16)` tolerates `\r`, but any new string-comparison
+fixture (TestWriter will write some) fails silently on column 5.
+
+Fix: one sentence in [§1](./spec-harvest.mdx#1-authority-chain): strip
+`\r` / compare numerically.
+
+### 7. MINOR — idempotency rule needs a media-row exemption
+
+Where: [§3.3](./spec-harvest.mdx#3-3-idempotency-and-resume) "missing ⇒
+re-extract", vs [§4.2](./spec-harvest.mdx#4-2-media-carve-out-hooks-dR-2026-08-18-media-scope)
+rows that never write a file.
+
+Fix: skip verify/extract for `media:true` rows (emit row, count separately);
+add a second-run media-row test to case 11.
+
+### 8. MINOR — Windows long-path policy unstated
+
+Evidence: deep prefab paths plus 255-byte names under `<out>/<pak>/…` can
+cross MAX_PATH 260; NE8K long-path enablement is not asserted anywhere.
+
+Fix: pin policy — `\\?\` prefixing or a LongPathsEnabled preflight check —
+and one test case with a >260-char target.
+
+### 9. MINOR — detect fallback and short-entry behavior undefined
+
+Where: [§4.3](./spec-harvest.mdx#4-3-detect-vocabulary).
+
+Evidence: `u:<8hex>` doesn't say which bytes are hexed; entries shorter
+than the peek window and truncated payloads (peek past EOF) have no defined
+outcome.
+
+Fix: define `u:` = first 4 payload bytes hex; short entry = hash what
+exists; peek past EOF during extract = exit 3 naming the entry.
+
+### 10. MINOR — `--list` column order contradicts its "TSV-compatible" label
+
+Where: [§3.1](./spec-harvest.mdx#3-1-cli): prints
+`path,offset,size,flag,hash`; the scratch TSVs are
+`path,flag,offset,size,hash`.
+
+Fix: align to the scratch order (then `--list` output diffs mechanically
+against row shape) or name what it is compatible with.
+
+### 11. MINOR — acceptance report artifact unnamed
+
+Where: criterion 3 "seed recorded in the report" — no path/format exists
+for that report.
+
+Fix: name it (e.g. `extracted/harvest-report.json`, next to the summaries)
+and list its required keys.
+
+### 12. MINOR — test-spec gaps
+
+Where: [§7](./spec-harvest.mdx#7-test-spec-for-testwriter).
+
+Missing, in priority order: (a) an f64-position entry **above 2³²** (case 3
+stops at 2³¹ — the truncation trap lives at 2³², which is exactly where
+finding 1 bites); (b) implausible-childCount corrupt fixture (the parser
+loops `childCount` times — assert loud failure, not hang/OOM); (c) a note
+that `pipeline/harvest.py` imports `Reader` across a non-package directory
+(no `__init__.py` under `pipeline/tools/`) so TestWriter stubs sys.path
+once instead of discovering it.
+
+---
+
+## Verdict
+
+**NEEDS-REVISION.**
+
+One blocker: finding 1 — the spec's ground-truth contract rests on a TSV
+column that provably carries no usable offsets, and its own example and
+explanatory note repeat corrupted values. The pipeline design itself is
+sound (criteria 2–4 never require offset equality, and the format contract,
+counts, totals, hashes, smoke constants, carve-out, and scope all verified
+clean against the live client), so this is a surgical revision: rewrite the
+reconciliation contract to (path, size, adler), fix two numbers, delete one
+note, then fold in the majors/minors above. With finding 1 fixed this is
+READY-FOR-ARBITER material; findings 2–3 should ride along in the same edit
+since both are already settled by today's measurements.

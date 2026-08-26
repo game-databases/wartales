@@ -1,0 +1,15 @@
+# Brief — Arbiter round 2 (delta-only): harvest build approval
+
+Fresh Arbiter, delta-only. Never spawn subagents, never commit.
+Wartales pack only. Round-2 reviewers both returned CLEAN
+(`docs/review-harvest-code-r2.mdx`, `docs/review-harvest-tests-r2.mdx`).
+Verify their delta claims yourself (run the suite: expect 48/0/3; one
+fresh-out --manifest-only res.pak smoke; py_compile). Spot-check 2-3
+per-fix claims max — the heavy verification is done. Rule on the two
+N-notes the test reviewer escalated (N1 spec amendment item, N4
+orchestrator commit item): ACCEPT as recorded items or REJECT.
+
+Deliverable: `docs/arbiter-harvest-build-r2.mdx` — verdict per
+artifact: APPROVE-FOR-ACCEPTANCE-RUN or FIX (exact list). Also state
+whether the acceptance run (all four paks, full extract per spec §6)
+is cleared. Return ≤6 lines.

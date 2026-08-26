@@ -1,0 +1,53 @@
+# Brief — CodeReviewer: run_all stages 4–6 build (fresh subagent)
+
+Fresh CodeReviewer agent. **Never spawn subagents**; never commit; Wartales
+pack only. Headless: stdout → log; end with your findings list. You did NOT
+write this code; a separate TestWriter's suite exists — do not read or run
+the stage tests as YOUR evidence (the TestReviewer owns them); you may run
+the pipeline itself.
+
+Read first, in full: `wartales/docs/spec-stages-datasets.mdx` (THE
+contract); repo-root `AGENTS.md`; `_foundation/extraction-doctrine.md`;
+`wartales/EXTRACTION-LOG.md` (E1–E6 claims); `pipeline/tools/cdb_emit.py`
++ `cdb_verify.py` (retrofits under review too); `run_all.ps1`.
+
+## Under review (the diff)
+
+- NEW `pipeline/tools/wave_kinds.py`, `promote_drafts.py`,
+  `relink_catalog.py`, `validate_all.py`.
+- Retrofits: `cdb_emit.py`, `cdb_verify.py` (--buildid, scan-scope,
+  pair-name rule), `hbson_emit.py` input repoint.
+- Wiring: `run_all.ps1` three Invoke-* functions + shared step runner;
+  EXTRACTION-LOG E1–E6 + sha256 pins.
+
+## Mission — find bad code
+
+Hunt specifically:
+1. **Real bugs**: race/partial-write windows around `.part`+os.replace,
+   error paths that leave residue, exit-code contract violations
+   (0/1/2/3 semantics per spec), Windows path/encoding traps (UTF-8
+   no-BOM writes, CRLF, long paths).
+2. **Spec violations**: any §3.4 rule 1–7 deviation; freeze-source rule
+   (regenerate from harvest data.cdb, never `_draft`-as-found);
+   equality preconditions ==40/==51 with exit 2; deletion classes.
+3. **Idempotency holes**: anything making rerun-twice hashes drift
+   besides the declared validation-report exemption; hidden wall-clock
+   stamps; dict-ordering nondeterminism in emitted text.
+4. **Retrofit regressions**: does --buildid default preserve recorded
+   outputs byte-for-byte; verifier scan-scope changes breaking older
+   callers (map stage? harvest?).
+5. **Known red lead, verify independently**: TestWriter reports
+   `validate_all.py:175` KeyError 'place' on a non-managed canonical
+   file (crash instead of report record). Confirm + check for siblings
+   of the same class elsewhere (every dict lookup keyed by managed
+   universe).
+6. Boundary: scope creep beyond spec; weakened requirements.
+
+For each finding: severity BLOCKER/MAJOR/MINOR, file:line, proof
+(command output or quoted code path), concrete fix. Verify before
+claiming — no speculative findings.
+
+## Deliverable
+
+`docs/review-stages-code.mdx` — findings table + verdict CLEAN /
+NEEDS-FIXES (ordered list). Facts only.

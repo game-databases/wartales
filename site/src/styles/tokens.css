@@ -1,0 +1,354 @@
+/* ==========================================================================
+   Wartales design tokens — F1
+   Spec: design/spec-tokens.mdx (arbiter-fixed). Authority: owner shadcn
+   directive (design/shadcn-adoption.mdx) under [DR-2026-08-24-wartales-roster].
+   Method: foundation-guide §6.1 — every value below is extracted from the
+   game's own ui/style.css (design/extracted-ui/, adler32-verified) or sampled
+   from the extracted element PNGs; where shots and style.css disagree,
+   style.css wins. `:root` IS dark (dark-first canon — no light theme ships;
+   the --light-rarity-* values are tip-text variants, not a theme).
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Fonts (spec §1) — self-host contract.
+   The game renders all UI in EB Garamond (eb_garamond_{medium,bold,italic}.fnt)
+   and display text in IM Fell English (im_fell_english.fnt); both are
+   identifiable open faces under the SIL OFL 1.1. Font BINARIES ARE NOT COMMITTED
+   (pack convention): they are fetched at build/setup time into site/public/fonts/
+   under the exact filenames below — see site/public/fonts/README.md for sources,
+   subsets and fetch commands. Noto Sans exists in-game only as a CJK/KR fallback:
+   it stays behind the serifs, never the latin face.
+   -------------------------------------------------------------------------- */
+
+@font-face {
+  font-family: "EB Garamond";
+  src: url("/fonts/eb-garamond-latin-400-normal.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "EB Garamond";
+  src: url("/fonts/eb-garamond-latin-ext-400-normal.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
+    U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
+    U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "EB Garamond";
+  src: url("/fonts/eb-garamond-latin-700-normal.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "EB Garamond";
+  src: url("/fonts/eb-garamond-latin-400-italic.woff2") format("woff2");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "IM Fell English";
+  src: url("/fonts/im-fell-english-latin-400-normal.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+:root {
+  /* ------------------------------------------------------------------------
+     Font stacks + type ramp (§1). Serif-first canon: there is no UI sans in
+     the game; --font-sans is re-pointed at the serif so Tailwind's font-sans
+     never leaks a sans chrome face. --font-mono has no game analog — code-ish
+     content rides the serif too.
+     ------------------------------------------------------------------------ */
+  --font-ui: "EB Garamond", serif;
+  --font-flavor: "IM Fell English", "EB Garamond", serif;
+  --font-cjk: "Noto Sans CJK SC", "Noto Sans KR", sans-serif;
+  --font-sans: var(--font-ui);
+  --font-serif: var(--font-flavor);
+  --font-mono: var(--font-ui);
+  --font-weight-bold: 700;
+
+  /* Game ramp in use: 14 ×71 · 16 ×163 · 19 ×142 · 22 ×18 · 25 ×81
+     (one-off outliers 15/17/18/20/21/23/28/35/60 map at component build time,
+     §7 residue). Floor: nothing below 12px anywhere (game min 14 sets it). */
+  --text-sm: 0.875rem; /* 14px — .small */
+  --text-base: 1rem; /* 16px — .default / .bold */
+  --text-dialog: 1.1875rem; /* 19px — dialog body (.italic @19) */
+  --text-lg: 1.375rem; /* 22px — secondary headers */
+  --text-display: 1.5625rem; /* 25px — .big, unit names (--font-flavor anchor) */
+
+  /* ------------------------------------------------------------------------
+     Surfaces (§2.1) — translucent near-black browns over art, dark-first.
+     Each surface ships as a hex plus an RGB triplet so panels can compose
+     over keyart: rgb(var(--bg-N-rgb) / var(--panel-alpha)).
+     ------------------------------------------------------------------------ */
+  --bg-1: #100F0E; /* deepest panel literal (style.css ×1) */
+  --bg-1-rgb: 16 15 14;
+  --bg-2: #141311; /* panel dark (×2) */
+  --bg-2-rgb: 20 19 17;
+  --bg-3: #1B150F; /* item-slot fill literal (×3) — the empty well */
+  --bg-3-rgb: 27 21 15;
+  --bg-4: #242424; /* raised chips/filters (×2) */
+  --bg-4-rgb: 36 36 36;
+  --panel-well: #0C0B09; /* dialogBg.png center fill (sampled rgb 12,11,9) */
+  --panel-well-rgb: 12 11 9;
+  --panel-alpha: 0.7; /* game background-alpha band 0.7–0.8 (130 declarations) */
+
+  --scrollbar-bg: #0A0A0A; /* .scrollbar track — darkest literal in the sheet */
+  --scrollbar-thumb: #676363; /* thumb @ 0.8 */
+
+  /* ------------------------------------------------------------------------
+     Text ramp (§2.2) — warm parchment on near-black. Contrast column of the
+     spec reproduced exactly by tests/tokens.test.ts against these values.
+     ------------------------------------------------------------------------ */
+  --text-main: #9C988A; /* ×160 — 6.26:1 on the well */
+  --text-emph: #DDD8C5; /* ×115 — 12.67:1 */
+  --text-desc: #969696; /* ×90 — 6.12:1 */
+  --text-bright: #BEBDBC; /* ×27 — 9.64:1 */
+  --text-muted: #999999; /* ×59 */
+  --text-disabled: #888888; /* button.disabled text — well surfaces only (see test matrix) */
+  --text-shadow-over-art: 1px 1px 0 rgb(0 0 0 / 0.5); /* mandatory over art, α .3–.7 */
+
+  /* ------------------------------------------------------------------------
+     Accents + semantics (§2.3).
+     Naming note: spec §2.6 fixes shadcn's `--accent` slot to the hover wash
+     #2E2B26 (arbiter F1), so §2.3's "--accent (selection)" gold lives here as
+     --selection, aliased by --primary/--ring below. Gold discipline holds:
+     gold is currency/selection/AP only — never body text, never decoration.
+     ------------------------------------------------------------------------ */
+  --selection: #D8A519; /* destiny-card glow(#d8a519…) outline(0.5,#d8a519) */
+  --accent-bright: #FFCC44; /* counter.gold #tf (#fc4) — currency gold */
+  --accent-soft: #FFBF5F; /* gold family */
+  --accent-soft-deep: #FFAC1D; /* gold family */
+  --positive: #529B52; /* counter.good / progress-bar.ready */
+  --negative-fill: #B63131; /* ×73 — fill only; banned as text (2.99:1 on dark) */
+  --negative: #E4696B; /* the text-facing negative — 5.63:1 on the well */
+  --warning: #B4691E; /* resources-bar .gold.low — constrained surfaces, see §2.3/§6 */
+  --dept: #B63131; /* resources-bar .gold.dept */
+  --chart-1: #D3B25E; /* parchment-chart palette, INDEX shot-13 (×13) —
+                         these five also carry the shadcn --chart-N slots (§2.6) */
+  --chart-2: #529B52; /* ×37 */
+  --chart-3: #E4696B; /* ×3 */
+  --chart-4: #85C1E3; /* ×13 */
+  --chart-5: #B5AADE; /* ×13 */
+
+  /* ------------------------------------------------------------------------
+     Spacing (§2.4) — the game's own 5px-base rhythm 2·3·4·5·8·10·15·20.
+     NOT Tailwind's 4px grid; do not import default spacing uncritically.
+     ------------------------------------------------------------------------ */
+  --space-1: 2px;
+  --space-2: 3px;
+  --space-3: 4px;
+  --space-4: 5px;
+  --space-5: 8px;
+  --space-6: 10px;
+  --space-7: 15px;
+  --space-8: 20px;
+
+  /* Radius (§2.4): every game surface is square — rounded corners are a defect. */
+  --radius: 0rem;
+  --radius-sm: 0rem;
+  --radius-md: 0rem;
+  --radius-lg: 0rem;
+  --radius-xl: 0rem;
+
+  /* ------------------------------------------------------------------------
+     Chrome bevels (§2.4). The game builds panels from 9-sliced textures;
+     dialogBg.png sampling gives outer line #36322A, inner line #494339 over
+     the #0C0B09 fill (all three verified in the PNG palette). Texture path is
+     preferred: the binaries stage into site/public/assets/ui/ per its README;
+     absent them (fresh clone) the layered box-shadow recipe carries the
+     identical read.
+     ------------------------------------------------------------------------ */
+  --bevel-outer: #36322A;
+  --bevel-inner: #494339;
+  --border: #36322A; /* shadcn --border = outer bevel line */
+  --input: #494339; /* inner bevel line */
+  /* --ring (destiny gold focus) is set in the shadcn map below */
+
+  --shadow-panel-double-border: 0 0 0 1px var(--bevel-outer),
+    0 0 0 2px var(--panel-well), 0 0 0 3px var(--bevel-inner);
+
+  /* Texture path contracts (extracted-ui → site/public/assets/ui/):
+     slice margins per style.css `background: url(...) X Y`. */
+  --tex-dialog-bg: url("/assets/ui/dialogBg.png"); /* 47×47, slice 20 20 — dialogs/chips */
+  --tex-header-bg: url("/assets/ui/HeaderBg.png"); /* 245×35, slice 10 10 — section band h35 */
+  --tex-small-entry: url("/assets/ui/SmallEntryBG.png"); /* 245×90, slice 10 10 — body, tucks −10px */
+  --tex-slice-dialog: 20; /* dialogBg.png 9-slice margin (style.css `20 20`) —
+                             unitless: border-image-slice takes a number */
+  --tex-slice-header: 10; /* HeaderBg.png 9-slice margin (`10 10`) */
+  --tex-slice-entry: 10; /* SmallEntryBG.png 9-slice margin (`10 10`) */
+  --tex-button: url("/assets/ui/buttonBg.png"); /* 187×96 vgrid 3, slice 25 5 — normal/hover/pressed */
+  --tex-rarity: url("/assets/ui/RarityBackground.png"); /* 156×105 hgrid 3 — slot frames 52×105 */
+  --tex-list-header: url("/assets/ui/ListHeader.png"); /* 332×18, stretch — list row band (.itemLine normal) */
+  --tex-list-header-highlight: url("/assets/ui/ListHeaderHighlight.png"); /* 332×18 — same band :hover/.selected */
+
+  /* ------------------------------------------------------------------------
+     Effects (§2.5) — the game's domkit interaction vocabulary.
+     Motion: states are texture-frame swaps (near-instant); web eases
+     outline/glow/opacity at 0.2–0.3s, honors prefers-reduced-motion, and
+     motion never gates content.
+     ------------------------------------------------------------------------ */
+  --effect-hover-outline: 0 0 0 1px rgb(255 255 255 / 0.5); /* outline(0.5, white) ×38 */
+  --effect-selected-glow: 0 0 5px 2px rgb(255 255 255 / 0.5),
+    0 0 0 1px rgb(255 255 255 / 0.5); /* glow(white,0.5,5,2,2,true) */
+  --effect-gold-highlight-ring: 0 0 0 1px var(--selection); /* outline(0.5,#d8a519) */
+  --effect-disabled: grayscale(1) opacity(0.5); /* + color: var(--text-disabled) */
+  --duration-fast: 200ms;
+  --duration-base: 250ms;
+  --ease-state: ease-out;
+
+  /* ------------------------------------------------------------------------
+     Rarity (§3) — derived from the game's two coordinated systems, not invented.
+     A. Slot frames (RarityBackground.png hgrid 3, sampled frame fills; common
+        shows NO frame — --rarity-0 is the untinted neutral).
+     B. Tip classes item-tip.rarity_* (#AAF/#BBF, #FFA/#FFB, #F8F/#FBF).
+     Player identity (--player-*) is a SEPARATE co-op system that happens to
+     share hues — never use it as rarity, never rarity as player color.
+     ------------------------------------------------------------------------ */
+  --rarity-0: #BEBDBC; /* common — untinted neutral, no frame */
+  --rarity-1: #151A1E; /* uncommon — steel-blue-black frame fill */
+  --rarity-2: #272310; /* rare — olive-gold-black frame fill */
+  --rarity-3: #251724; /* legendary — violet-black frame fill */
+  --light-rarity-1: #AAAAFF; /* .rarity_u name (#AAF) — 8.53:1 on the well */
+  --light-rarity-2: #FFFFAA; /* .rarity_r name (#FFA) — 17.35:1 */
+  --light-rarity-3: #FF88FF; /* .rarity_legendary name (#F8F) — 8.80:1 */
+  --rarity-1-wash: #BBBBFF; /* .rarity_u tip bg tint (#BBF) */
+  --rarity-2-wash: #FFFFBB; /* .rarity_r tip bg tint (#FFB) */
+  --rarity-3-wash: #FFBBFF; /* .rarity_legendary tip bg tint (#FBF) */
+  --player-1: #85C1E3;
+  --player-2: #D3B25E;
+  --player-3: #AFC073;
+  --player-4: #B5AADE;
+
+  /* Animated border, top tiers (§3 + foundation-guide §7 pattern).
+     Legendary: gradient sheet masked to the border, moveGradient 5s alternate
+     infinite over the violet-black wash. Rare: static olive-gold sheen (the
+     highlight stop is rare's own tip family #FFFFAA — no invented hue).
+     Common/uncommon stay quiet. Reduced-motion freezes the gradient at its
+     first stop; tier stays legible without motion. */
+  --rarity-3-border-gradient: linear-gradient(
+    115deg,
+    #FF88FF,
+    #B5AADE 25%,
+    #FFBBFF 50%,
+    #B5AADE 75%,
+    #FF88FF
+  );
+  --rarity-2-border-gradient: linear-gradient(
+    115deg,
+    rgb(255 255 170 / 0),
+    rgb(255 255 170 / 0.35) 50%,
+    rgb(255 255 170 / 0)
+  );
+
+  /* ------------------------------------------------------------------------
+     shadcn CSS-variable map (§2.6) — every stock variable overridden, one
+     dark theme. Values verbatim from the spec table; provenance comments kept.
+     ------------------------------------------------------------------------ */
+  --background: #100F0E; /* style.css literal ×1 (--bg-1) */
+  --foreground: #9C988A; /* --text-main ×160 */
+  --card: #1B150F; /* item-slot fill literal ×3 (the well) */
+  --card-foreground: #DDD8C5; /* --text-emph ×115 */
+  --popover: #0C0B09; /* dialogBg.png center fill + double border (§2.4) */
+  --popover-foreground: #DDD8C5;
+  --primary: #D8A519; /* destiny-card glow+outline ×6 */
+  --primary-foreground: #1B150F; /* item-slot fill literal ×3 — 8.03:1 on gold */
+  --secondary: #242424; /* raised chip/filter literal ×2 */
+  --secondary-foreground: #BEBDBC; /* --text-bright ×27 */
+  --muted: #1B1816; /* style.css literal ×3 */
+  --muted-foreground: #969696; /* --text-desc ×90 */
+  --accent: #2E2B26; /* buttonBg.png hover frame mean rgb(46,42.8,38.2) — arbiter F1 */
+  --accent-foreground: #FFFFFF; /* white-outline hover vocabulary (§2.5) — 14.10:1 */
+  --destructive: #B63131; /* literal ×73 — fill role */
+  --destructive-foreground: #FFF7DB; /* glow(#FFF7DB,…) ×2 — 5.64:1 on the fill */
+  /* --border/--input are the §2.4 bevel lines declared above (--bevel-outer/
+     --bevel-inner). --chart-1..5 ride the §2.3 palette above. Each declared
+     once — no second edit-site for tests to miss. */
+  --ring: #D8A519; /* destiny gold ×6 */
+
+  /* Companion sidebar (shot-03): surfaces strictly --bg-1/2 + --border;
+     foreground slots ride the text ramp; selection pair mirrors --primary. */
+  --sidebar: #100F0E;
+  --sidebar-foreground: #9C988A;
+  --sidebar-primary: #D8A519;
+  --sidebar-primary-foreground: #1B150F;
+  --sidebar-accent: #141311; /* hover band = --bg-2 */
+  --sidebar-accent-foreground: #DDD8C5; /* hover brightens text (§2.5) */
+  --sidebar-border: #36322A;
+  --sidebar-ring: #D8A519;
+}
+
+/* --------------------------------------------------------------------------
+   Top-tier animated borders (§3). Border-mask pattern: a pseudo-element paints
+   the gradient sheet and is masked down to a 1px ring, so the wash beneath
+   stays the sampled frame fill. Legendary animates; rare is static; reduced
+   motion freezes legendary at its first stop.
+   -------------------------------------------------------------------------- */
+
+@keyframes moveGradient {
+  from {
+    background-position: 0% 50%;
+  }
+  to {
+    background-position: 200% 50%;
+  }
+}
+
+.rarity-tier-2,
+.rarity-tier-3 {
+  position: relative;
+}
+
+.rarity-tier-2::before,
+.rarity-tier-3::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  padding: 1px;
+  pointer-events: none;
+  background-size: 200% 100%;
+  mask: linear-gradient(#FFF 0 0) content-box exclude,
+    linear-gradient(#FFF 0 0);
+}
+
+.rarity-tier-2::before {
+  background-image: var(--rarity-2-border-gradient); /* static sheen */
+}
+
+.rarity-tier-3::before {
+  background-image: var(--rarity-3-border-gradient);
+  animation: moveGradient 5s var(--ease-state) alternate infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rarity-tier-3::before {
+    animation: none;
+    background-position: 0% 50%; /* frozen at first stop — tier stays legible */
+  }
+}
+
+/* Panel recipe (§2.4): the game's dialog chrome without the texture —
+   double bevel over the sampled well, translucent over keyart. */
+.wt-panel {
+  background: rgb(var(--panel-well-rgb) / var(--panel-alpha));
+  box-shadow: var(--shadow-panel-double-border);
+}

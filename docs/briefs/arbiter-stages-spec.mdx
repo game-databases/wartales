@@ -1,0 +1,45 @@
+# Brief — Arbiter: stages 4–6 spec review ruling (fresh subagent)
+
+Fresh Arbiter agent (PrepareTask pass). **Never spawn subagents**; never
+commit; Wartales pack only. Headless: stdout → log; end with your rulings.
+
+Read first, in full: repo-root `AGENTS.md`;
+`_foundation/extraction-doctrine.md`; `_foundation/decision-register.md`
+[DR-2026-08-17-relink], [DR-2026-08-18-pipeline];
+`wartales/docs/spec-stages-datasets.mdx` (artifact);
+`wartales/docs/review-stages-spec.mdx` (review under adjudication);
+`wartales/EXTRACTION-LOG.md`; `wartales/run_all.ps1`;
+`wartales/pipeline/tools/cdb_emit.py`, `cdb_verify.py`; draft dir listing
+(`extracted/data/_draft/`, `extracted/relinks/_draft/`);
+`wartales/docs/data-dig-log.mdx` Digs 7–10 tails (ground truth moved
+mid-review — Dig 7 HBSON decode landed `hbson_emit.py` outputs + upgraded
+three relink pairs to valid:true; Dig 10 added achievement kind).
+
+## Mission
+
+Rule on every reviewer finding — the reviewer can be wrong. For each:
+
+1. **Re-measure disk yourself** (counts, file existence, verifier runs).
+   Ground truth moved during the review window; neither artifact's numbers
+   are automatically current. State what YOU measure now.
+2. VALID / INVALID / PARTIAL per finding, each with proof (command output,
+   byte counts, cited lines).
+3. Hunt holes in the REVIEWER's own judgments: where is its reading of the
+   spec uncharitable or its "contradiction" actually resolvable by a
+   wording change rather than redesign?
+4. Over-engineering check: does any proposed fix exceed doctrine
+   requirements ([DR-2026-08-17-relink] bars, [DR-2026-08-18-pipeline]
+   one-command reproducibility)? Existing spec text wins where the
+   proposed change is churn.
+5. Boundary check: scope creep or silently weakened requirements on
+   either side.
+6. Verdict: APPROVE-FOR-BUILD, or REVISE with an ORDERED fix list
+   (each item: exact section, exact required change, acceptance proof).
+   Where concurrent digs invalidated frozen numbers, rule HOW the spec
+   must pin them (regenerate-at-run vs freeze-and-bump) — do not leave it
+   to the fixer's taste.
+
+## Deliverable
+
+`docs/arbiter-stages-spec.mdx` — per-finding rulings + final verdict +
+ordered fix list. Facts and proofs only.

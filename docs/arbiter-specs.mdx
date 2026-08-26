@@ -1,0 +1,224 @@
+# Arbiter — wartales spec.md + spec-harvest.mdx rulings
+
+2026-08-24 · Fresh Arbiter per
+[`docs/briefs/arbiter-specs.mdx`](./briefs/arbiter-specs.mdx). Read in full:
+root `AGENTS.md`, `_foundation/extraction-doctrine.md`,
+`_foundation/decision-register.md`, `_foundation/localization-architecture.md`,
+FRAMEWORK §2+§4, [`../spec.md`](../spec.md),
+[`review-spec.mdx`](./review-spec.mdx), [`spec-harvest.mdx`](./spec-harvest.mdx),
+[`review-spec-harvest.mdx`](./review-spec-harvest.mdx),
+[`client-recon.mdx`](./client-recon.mdx),
+[`toolchain-validation.mdx`](./toolchain-validation.mdx),
+[`competitor-research.mdx`](./competitor-research.mdx),
+[`tools-plan.md`](../tools-plan.md), [`pieces.mdx`](./pieces.mdx),
+`pipeline/tools/wtpak.py`, `pipeline/tools/_verify/*`,
+`output/_recon-scratch/parse-pak2.ps1` + all four `-pak-entries.tsv`.
+
+## Verification method
+
+No ruling rests on a reviewer's prose. Every load-bearing claim was
+re-derived on this machine against the scratch TSVs and the live paks
+(`A:\SteamLibrary\steamapps\common\Wartales\`, read-only) with an
+**independent second parser** (not `wtpak.py`) implementing the R2 format
+model:
+
+- Tree starts at byte **0x0C**, not 0x10 — zero-slack parse of all four
+  paks, file counts 936 / 17,131 / 15,248 / 6,886, `"DATA"` marker at
+  `[header_size−4..header_size)` on all four.
+- map.pak global position tiling `[0, 27,888,786,275)` — no gap, no
+  overlap, mixed flags; first flag-2 entry sits at exactly **2,148,002,816**
+  = Σ(flag-0 sizes); `/assets/worldmap/data/normal/normal_x10_y14.dds`
+  recomputed adler32 == stored == TSV col 5 at that computed position.
+- Live headers: version byte **0** ×4; i32@0x08 =
+  767,068,478 / +626,799,415 / −1,223,561,650 / +2,118,982,499 (res /
+  assets / content / map) — i.e. Σsizes reduced mod 2³², signed.
+- map.pak on disk measures **27,889,015,798 B** = Σsizes + header_size
+  (229,523) exactly.
+- The 17 `/lang/*` entries were extracted and adler-verified **for the
+  first time ever**: 17/17 MATCH vs stored and vs TSV (see F1).
+- TSVs: CRLF row endings ×4; map.pak flag-2 offset column steps by exactly
+  2²⁸ across its first rows and its max(offset+size) = 4,278,190,208 <
+  data span 27.9e9 — self-impossible, synthetic.
+- Recounts: `.fbx` = 6,946 (assets, 2,091,136,833 B) + 258 (content,
+  34,642,946 B) = **7,204 / 2,125,779,779 B ≈ 2.13 GB** pack-wide;
+  `/content/regions/` = POI 453 / Towns 156 / **Secret 12** / **Secrets
+  103** = 724; map.pak `.json` = exactly one
+  (`/assets/worldmap/data/textures.json`, 2,531 B, flag-2), `.dds` 4,131,
+  `.raw` 2,754.
+
+---
+
+## Rulings — review-spec.mdx (spec.md)
+
+| ID | Verdict | Grounds |
+|---|---|---|
+| F1 locales "extracted & adler-MATCHed" | **ACCEPT** (fix upgraded) | Overclaim confirmed: `_verify/` holds exactly four extract proofs + `data.cdb`; `run-log.txt` never mentions lang. But the underlying fact is TRUE — the arbiter ran the pass: **17/17 lang entries adler-MATCH** live. The fix is therefore to *perform* the verification (minutes; command below) and keep the ✅ with an honest citation, not merely reword. |
+| F2 .fbx counts | **REJECT** | The finding is factually wrong on every clause. Primary TSVs give assets **6,946** `.fbx` (2.09 GB) + content **258** (34.6 MB) = **7,204 ≈ 2.13 GB** pack-wide — exactly what spec.md cites from TOOL §1 and recon §7. The two named sources agree with each other **and** with the entry listings; the reviewer's counter-figure (5,888 + 217 = 6,105 ≈ 1.96 GB) reproduces from no slice of the TSVs (by-dir splits 4,809+2,137; flag split 2,524+4,422). Applying F2 would have corrupted a correct line. No change. |
+| F3 localization filler policy | **ACCEPT** | localization-architecture §5.5 requires the filler policy "declared per pack in its spec"; §5.2 wants game-code ↔ BCP-47 mapping; §5.4 makes `locale_availability.jsonl` an obligation. All three absent. Load-bearing the moment the ja authored-translation lane ships — not merely at future DLC. |
+| F4 map.pak JSON contradiction | **ACCEPT** | TSV truth: exactly one `.json` (`data/textures.json`, texture index). spec.md:171 right; :273–274 "(none exist)" false as absolute. Harmonize as proposed. |
+| F5 audio unit slip | **ACCEPT** | 2,672,143,299 B = 2.49 GiB = 2.67 GB; spec wrote "GiB" with a decimal number. Fix "2.49 GiB (2.67 GB)". |
+| F6 `readiness: verified` on unpinned sheets | **ACCEPT** | FRAMEWORK §4 readiness attaches to an identified source; class / animal-mount / npc-vendor admit the producing sheet is TBD-P1 — nothing for a read-verdict to attach to. Drop those roles to `on-disk`, keep notes verbatim. |
+| F7 Secrets/Secret glob; M4 count | **ACCEPT** | Census: Secret 12 + Secrets 103 (two sibling dirs); the `/Secrets/*.prefab` glob silently drops 12 prefabs. M4 claims "≥12 typed layers", enumerates 11; COMP §7.4 itself lists 11 while its own §3.2 Usikava vocabulary carries the twelfth (**Bandit Reinforcements**). Both halves of the fix stand. |
+| F8 tier enum | **ACCEPT** | Template enum is `A\|B\|C\|D` (FRAMEWORK §4). DR-2026-08-24-wartales-roster ¶2 pins the provisional-umbrella *meaning*; express it as a deferred enum, as proposed. |
+| F9 coordinate-transform unbounded | **ACCEPT** | Template contract is `simple \| rect-per-map`; appending the worst-case bound keeps honesty and gives maps machinery its starting envelope. |
+| F10 ship-order duplication | **ACCEPT** | PLAN §4 carries its own "re-run on every major patch" law; a frozen second copy guarantees divergence on first re-plan. Pointer + scores + flagship flag is enough. |
+| F11 PAKTool version ambiguity | **ACCEPT** | TOOL §1 is muddled (v0.2 / tag `paktool-v0.3` / zip `paktool-0.0.3-win-x64.zip`). The zip is present in `pipeline/tools/`; pin the executed artifact (name or hash) — acceptance criterion 4 of spec-harvest depends on it. |
+
+## Rulings — review-spec-harvest.mdx (spec-harvest.mdx)
+
+| ID | Verdict | Grounds |
+|---|---|---|
+| 1 BLOCKER flag-2 TSV offsets | **ACCEPT** (one sub-fix modified) | Proven beyond the reviewer's own evidence: parse-pak2.ps1 writes the first of four raw u32s (under the pre-R2 model) into the offset column; live parse puts the first map.pak flag-2 entry at **2,148,002,816** (= Σflag-0), not the TSV/example's 2,147,483,648; the column steps by exactly 2²⁸ and cannot address its own pak (max end 4.28e9 < 27.9e9 span). Reconciliation contract becomes (path, size, adler) on all 40,201 rows; never offset equality; flag-0 offsets may additionally be compared; flag-2 offsets marked unusable. *Modification:* **rewrite, don't delete,** the §2.1 explanatory note — the contiguous-model story is now positively proven (gap-free end-to-end tiling; first f64 entry lands just past 2³¹), so the note should cite the tiling proof instead of the corrupted column, and its provenance sentence should say the TSV column predates the R2 resolution and is synthetic reconstruction, not bytes. |
+| 2 performance budget arithmetic | **ACCEPT** | 45,238,961,702 B ÷ 30 MB/s ≈ 25.1 min — "≪" is false. Honest 10–25 min band + 30-min fail-loud tripwire wired to the existing stop-and-report contingency. |
+| 3 map.pak size conflict resolvable now | **ACCEPT** (arithmetic in the review corrected) | Live measurement settles it: **27,889,015,798 B** = Σsizes 27,888,786,275 + header_size 229,523 exactly; R2's 27,890,157,981 leaves a residual of **+1,142,183** (the review's "Δ 1,371,706" is the pre-header delta — same conclusion, wrong number). Pin the expected size at buildid 20318128; keep the delta-0 assert as the patch tripwire. |
+| 4 dataSize wrap wording | **ACCEPT** | Verified live: stored i32@0x08 = Σsizes mod 2³² signed; **only content.pak is negative** (−1,223,561,650); assets (+626,799,415) and map (+2,118,982,499) reduce positive despite sums > 2³¹. "Wraps negative on paks whose sum exceeds 2³¹−1" is false for two of three big paks. Proposed fix correct; the "observed deltas −2³³ / −3×2³³" sentence stays (recomputed exact). |
+| 5 version byte pinnable | **ACCEPT** | 0 on all four paks (live-read). Record it; keep runtime read-and-record. |
+| 6 TSV CRLF | **ACCEPT** | `\r\n` confirmed in all four TSVs. One-sentence contract note. |
+| 7 media-row idempotency exemption | **ACCEPT** | §3.3's "missing ⇒ re-extract" collides with §4.2 catalogue-only rows. Skip verify/extract for `media:true`; extend case 11. |
+| 8 Windows long-path policy | **ACCEPT** | Deep prefab paths + 255-byte names under `<out>/<pak>/…` can cross MAX_PATH; NE8K enablement unasserted. Pin `\\?\` prefix or preflight check + one >260-char test. |
+| 9 detect fallback undefined | **ACCEPT** | Define `u:` = first 4 payload bytes hex; short entry hashes what exists; peek past EOF during extract = exit 3 naming the entry. |
+| 10 `--list` column order | **ACCEPT** | Align to the scratch order `path,flag,offset,size,hash` (then mechanical diff works) or name the compatibility target. |
+| 11 acceptance report unnamed | **ACCEPT** | Name it (e.g. `extracted/harvest-report.json`) and list required keys incl. the RNG seed. |
+| 12 test-spec gaps | **ACCEPT** | (a) f64-position fixture above 2³² (real corpus has 1,612 such entries); (b) implausible-childCount fixture — `wtpak.read_entry` loops `childCount` unguarded, assert loud failure; (c) note the non-package import (no `__init__.py` under `pipeline/tools/`), stub sys.path once. |
+
+## Arbiter-added findings
+
+- **A1 (spec-harvest §2.2, MINOR but normative — ride in the same edit):**
+  the byte-layout block contradicts the seed reader it normatively binds.
+  It claims "Header (16 B)" with the index blob at "[16 .. header_size−4)",
+  but `wtpak.read_header` consumes **12** bytes (magic 3 + version 1 +
+  two i32) and the DFS tree begins immediately at **0x0C** — the index
+  blob is "[12 .. header_size−4)". recon §2 already said "from 0x0C".
+  Proven independently: tree-start 12 gives zero slack and exact counts on
+  all four paks; tree-start 16 fails (slack 229,421 on map.pak). A
+  TestWriter mini-pak writer mirroring §2.2 literally would emit 4 alien
+  bytes that `wtpak.Reader` cannot parse — caught loudly, but only after a
+  wasted cycle and a temptation to fork the reader that §1 forbids. Fix:
+  correct the two boundary lines; add a unit assertion that the synthetic
+  writer's output round-trips through `wtpak.Reader`.
+- **A2 (spec.md missing-data, MINOR — ride in the same edit):** two rows
+  are now resolved by the harvest contract and go stale if untouched:
+  "flag-2 file-node fields (A,B) unresolved" (resolved: bit-2 selects f64
+  position encoding) and "pak header u32@0x08 unresolved" (resolved: i32
+  dataSize, Σsizes mod 2³²). Restate as resolved-by-[`spec-harvest.mdx`](./spec-harvest.mdx)
+  §2.1 pending CodeWriter proof, and backfill the version byte (0) into
+  the EXTRACTION-LOG plan.
+- No further holes found on the brief's hunt list: rule-8 discipline holds
+  (every open question — world↔tile transform, HBSON decode, difficulty
+  parameter sets, achievement conditions, recipe/class containers — is a
+  dataminer P0/P1; pieces.mdx marks frontend data-deps as consumers);
+  D2 provenance classes respected (coverage labels present, license facts
+  repo-only); media carve-out correctly hooked; harvest scope matches
+  piece F3 in [`pieces.mdx`](./pieces.mdx) with the `.gitignore` addition
+  sanctioned as rule-5 hygiene; no over-engineering beyond F10 (default-off
+  `--sha256`/`--fingerprint`, detect vocabulary, and media hooks are all
+  budgeted and doctrine-grounded).
+
+---
+
+## Verdicts
+
+### spec.md — **REVISE** (then APPROVE-FOR-FREEZE by delta re-check; no re-scouting)
+
+Ordered fix list for a fresh Documentator/fixer — execute verbatim, in
+order, no reinterpretation:
+
+1. **F2: touch nothing.** The `.fbx` line (content-policy-holes,
+   "6,946 … 7,204 / 2.13 GB") is correct — verified against the entry
+   TSVs. Do not edit it.
+2. **F1:** run the lang verification pass for real, then keep the ✅ with
+   an honest citation: for each of the 17 `/lang/*` entries,
+   `python pipeline/tools/wtpak.py extract A:/SteamLibrary/steamapps/common/Wartales/res.pak <entry> pipeline/tools/_verify/<name>` —
+   all 17 adler-MATCH (arbiter-verified 2026-08-24); save the 17 artifacts
+   under `pipeline/tools/_verify/`, append one `run-log.txt` line
+   ("lang ×17 extracted, 17/17 adler MATCH"), and reword the spec comment
+   to "✅ extracted & adler-MATCHed ×17 (_verify/, 2026-08-24)". Fallback
+   only if the pass cannot be run: reword to "present ×17 (TSV; sizes
+   cross-checked recon §4); byte-extract pending P1".
+3. **F4:** harmonize the map.pak JSON statements — spec.md:171 gains
+   "sole .json = `/assets/worldmap/data/textures.json` (texture index)";
+   the maps.layers comment (:273–274) replaces "(none exist)" with "no
+   region-shape JSONs; the sole map.pak .json is a texture index".
+4. **F5:** audio line → "Wwise 2.49 GiB (2.67 GB) loose under res/".
+5. **F6:** `class`, `animal-mount`, `npc-vendor` primary-source blocks:
+   `readiness: verified` → `readiness: on-disk`; readiness-notes unchanged.
+6. **F7:** poi-marker container → `/POI/*.prefab + /Secret*/**/*.prefab
+   (115 = Secrets 103 + Secret 12)`; M4 gains Bandit Reinforcements as the
+   twelfth enumerated layer (keep "≥12").
+7. **F8:** `tier:` → `TBD (owner D3 call; provisional umbrella per
+   [DR-2026-08-24-wartales-roster] ¶2–3)`.
+8. **F9:** append to coordinate-transform: "worst case rect-per-map;
+   height/raw x-y pairs may collapse it to simple — resolved by first map
+   dig".
+9. **F10:** replace the ship-order restatement in the tools comment with
+   "Ship order: PLAN §4"; keep scores, flagship flag, exclusions line.
+10. **F11:** legal.tooling → pin the executed cross-check artifact:
+    "PAKTool (`paktool-0.0.3-win-x64.zip`, sha256 at first use) expand of
+    res.pak".
+11. **F3:** add under `source-per-locale`: (a) filler policy — declare
+    omit-until-translated for ja (total coverage makes either defensible;
+    pick omission and say so); (b) code mapping — `zh` client code ships
+    store-named zh-Hans; (c) obligation —
+    `extracted/relinks/locale_availability.jsonl` drives link rows,
+    sitemaps, coverage stats, regenerated per rerun.
+12. **A2:** missing-data list — restate the flag-2 (A,B) row and the
+    u32@0x08 row as resolved by [`spec-harvest.mdx`](./spec-harvest.mdx)
+    §2.1 (pending CodeWriter proof); add version-byte 0 to the
+    EXTRACTION-LOG backfill note.
+
+### spec-harvest.mdx — **REVISE** (then APPROVE-FOR-BUILD by delta re-check)
+
+Ordered fix list for a fresh Documentator/fixer:
+
+1. **Finding 1 (blocker):** (a) §1 ground-truth bullet → "TSVs reconcile
+   on (path, size, adler) across all 40,201 rows — **never offset
+   equality**; flag-0 offsets may additionally be compared (they tile);
+   flag-2 offset columns are unusable — synthetic pre-R2 reconstructions,
+   provably not payload-derived (uniform 2²⁸ steps on map.pak; max
+   offset+size 4.28e9 < 27.9e9 span)"; (b) manifest example →
+   `"offset":2148002816` (live-verified position of that exact entry);
+   (c) replace the §2.1 explanatory note with the tiling proof: one
+   contiguous data region, positions tile `[0, Σsizes)` gap-free across
+   mixed flags end-to-end, first f64-encoded entry sits just past 2³¹ —
+   grounded on the live walk, not the TSV column; (d) §0 "reconcile
+   exactly against the recon TSVs" gains "(path, size, adler)".
+2. **A1:** §2.2 header/index boundary → header is 12 named bytes (u8[3]
+   magic, u8 version, i32 header_size, i32 dataSize); tree occupies
+   `[12 .. header_size−4)`; `"DATA"` trailer at `[header_size−4 ..
+   header_size)`; add the writer-roundtrips-through-`wtpak.Reader` test
+   assertion to §7.
+3. **Finding 3:** §2.3 pins expected map.pak size **27,889,015,798 B** at
+   buildid 20318128 (live-measured; satisfies Σsizes + header_size
+   exactly; R2's 27,890,157,981 is the transcription slip, residual
+   +1,142,183); delta-0 assert stays as the patch-drift tripwire.
+4. **Finding 2:** §5 → honest expectation "≈10–25 min across 30–75 MB/s";
+   30-min cap remains a fail-loud tripwire wired to the defined
+   stop-and-report contingency; delete "≪".
+5. **Finding 4:** dataSize wording → "stored reduced mod 2³² as i32;
+   interpret unsigned; record `stored − Σsizes` as the wrap delta (only
+   content.pak stores negative, −1,223,561,650)".
+6. **Finding 5:** record version byte **0** (all four paks) in §2.2 and
+   the EXTRACTION-LOG plan; runtime read-and-record behavior stays.
+7. **Finding 6:** one sentence in §1: strip `\r` / compare numerically
+   against the CRLF TSVs.
+8. **Finding 7:** §3.3 exempts `media:true` rows from verify/extract
+   (emit row, count separately); extend §7 case 11 with a second-run
+   media-row check.
+9. **Finding 8:** pin long-path policy (`\\?\` prefixing or
+   LongPathsEnabled preflight) in §4.4; add the >260-char target test.
+10. **Finding 9:** `u:<8hex>` = first 4 payload bytes hex; entries shorter
+    than the peek window hash what exists; peek past EOF during extract
+    exits 3 naming the entry.
+11. **Finding 10:** `--list` prints `path,flag,offset,size,hash`
+    (scratch-TSV order) — or, if kept, relabel it as not TSV-shaped.
+12. **Finding 12:** add the §7 cases: f64-position entry above 2³²;
+    implausible-childCount fixture asserting loud failure (reader loop is
+    unguarded); note the sys.path stub for importing `Reader` from the
+    non-package `pipeline/tools/`.
+13. **Finding 11:** name the acceptance-report artifact
+    (`extracted/harvest-report.json`) and list required keys (per-pak RNG
+    seeds, sample paths, adler results, wall seconds, throughput).
+
+Both revisions are editing passes on settled measurements — no re-scouting,
+no re-review of untouched sections; the next Arbiter pass checks the
+listed deltas only.

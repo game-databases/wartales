@@ -1,0 +1,173 @@
+# Visual critic r4 — F1 design tokens: **WOWED**
+
+Round 4 · 2026-08-25 · HARSH critic, per
+[docs/briefs/critic-tokens-r2.mdx](./briefs/critic-tokens-r2.mdx) (the r2
+brief's method, re-shot as r4) and graded against the bar
+[critique-tokens-r3.mdx](./critique-tokens-r3.mdx) set for this round.
+Rendered output only — never builder summaries or captions; the builder's
+own working files in `design/critique/_r4zoom/` were left unread until
+after the blind read was written down.
+
+**Evidence graded:**
+
+- Render: `design/critique/preview-r4.png` (1600×1000) — **my own shoot**,
+  headless Edge `--headless=new`, local `file://` only, from
+  [site/src/styles/tokens-preview.html](../site/src/styles/tokens-preview.html)
+  over [site/src/styles/tokens.css](../site/src/styles/tokens.css).
+- Zoom crops + measurement scripts: `design/critique/_r4zoom/`
+  (`c-display`, `c-ramp`, `c-band`, `c-tip`, `c-tipcorner`, `c-slots-*`,
+  `c-hover` at 2–6×; `z-boldtest*`, `z-synthctl*` for the bold axis).
+- Soul references, side-by-side, opened only after the blind read was
+  written down: shots 02/03/20 in [design/sources/](../design/sources/).
+- Contract state on disk: five woff2 in `site/public/fonts/` (the r3
+  `woff2_` verification twins are gone); `site/public/assets/ui/` now
+  staged with the five element PNGs; token tests 20/20 green
+  (`vitest run`, re-run this round).
+
+## Verdict: WOWED
+
+Say it plainly: this round closes the re-entry bar **5/5**, and for the
+first time the preview survives the blind test completely — with the
+captions covered and no legend, I would attribute the panel anatomy, the
+type voice, and the rarity slots to Wartales' product family before
+considering the palette, which is r1's original bar, met at last. The
+bold axis is a true cut, proven below at the binary, the render, and the
+preview's own pixels. No regression anywhere else: the r4 render is
+pixel-identical to r3's except a single pixel (1600×1000 diff, threshold
+24 — one stray pixel at (568, 675)), which is the cleanest possible
+certificate that the only change this round is the binary, as mandated.
+
+### The r4 bar — 5/5 PASS
+
+| r3 bar condition | State |
+|---|---|
+| 700 byte-distinct from the 400 | ✓ `cmp` differs at byte 11; 25,340 B vs 44,336 B |
+| 700 is a real bold cut, not a renamed 400 | ✓ fonttools: `usWeightClass=700`, `fsSelection` bold bit + `head.macStyle` bold set, name ID 4 = "EB Garamond Bold", **no `fvar`** — a true static instance of the variable original; cmap parity with the 400 (236 = 236 chars, 336 = 336 glyphs, zero missing) — a full instanced cut, not a trimmed subset |
+| Bold renders from real 700 outlines (no synthesis) | ✓ A/B at 4× (`z-boldtest-4x.png`): the 700 line is a genuinely heavier design — thicker stems, tighter fit, different letterforms, advance 128 px vs the 400's 118 px at 22 px — not uniform smear; a synthesis control (`z-synthctl.png`, IM Fell 400 requested at 700) shows what real faux-bold looks like (ink 782 → 1226), and nothing on the page renders that way |
+| All four r3 conditions hold, no regression | ✓ IM Fell identifiable in the 25 px display samples (spiky irregular serifs, crossed-stroke W, no ball terminals), EB Garamond in the 22/19/16/14 ramp, no Georgia in any stack or glyph; band, body, dialog and all three slot frames still render the extracted binaries; uncommon still nameable at arm's length; white hover outline still in the pixels (`c-hover` at 6×); 1-px total diff vs `preview-r3.png` |
+
+One honest mechanism correction, on the record: r3 called the old defect
+"Skia synthetic bold smeared over 400 glyphs." My controls show the truth
+was one layer subtler — the 400 binary is a **variable** font, so
+Chromium was instantiating true `wght=700` outlines from it all along;
+the render never smeared. The defect was nonetheless real and
+round-blocking at the contract layer: a file named `…-700-normal.woff2`
+whose weight class was 400 is a false claim staged into what the site
+ships — r2's mislabeled-specimen defect, one layer down, exactly as r3
+ruled. What r4 fixes is the contract, and the 1-px render diff is the
+proof that the pixels were already the true cut: the fix makes the file
+tell the truth the render was already showing.
+
+### Blind verdict (captions discounted, shots opened after)
+
+- **Panel anatomy — pass.** Band + tucked body + double-hairline bevel +
+  square corners; band titles centered; the 17-column grid fills its body
+  edge to edge; label/value stat rows right-align their values. Against
+  shots 02/03 after the reveal: centered band titles ("Inventory",
+  "Trade", "Defence", "Attributes"), quiet framed wells, the same
+  grammar throughout — same family, no tells left.
+- **Type voice — pass.** Two voices, both true, both identifiable at 4×
+  with no Georgia anywhere; the bold axis is real (above), so the
+  tooltip's hierarchy — bold name, italic desc, bold values, gold price —
+  now rides a cut the game itself has (`eb_garamond_bold.fnt`).
+- **Rarity slots — pass.** Uncommon steel, rare olive + sheen, legendary
+  violet + ring, common untinted and frameless: all four nameable at 1×
+  without the legend, over the game's own `RarityBackground` tiles.
+
+### §5 feel bar
+
+- **Finished-object feel: pass.** The tooltip on real `dialogBg` chrome
+  remains the best object this pack has produced; the inventory reads as
+  holding objects, not demoing a grid.
+- **Empty well honesty: pass.** One quiet same-size rectangle, no caption
+  sentence about it.
+- **Gold discipline: pass.** Currency gold on the price row and the one
+  selected ring only; the `#FFFFAA` name is the game's rare-tip color,
+  not gold creep.
+- **Hover vocabulary: pass.** The white `outline(0.5, white)` state is
+  rendered, bright and legible; captions label what is visible.
+
+### Carried work (recorded so it is not lost — none of it blocks this verdict)
+
+1. **Gap 3 is now the oldest open gap:** panels still composite over flat
+   `--bg-1`; `--panel-alpha` has never been tested against shot-20's
+   firelit art, where the game's own panels float translucently. This was
+   explicitly outside r4's bar, but it is the last token-layer claim no
+   render has ever exercised — it belongs to the next fixer brief or the
+   first page that composites over map art, whichever comes first.
+2. **New hygiene finding — two dangling texture URLs in the served
+   contract:** `tokens.css` declares `--tex-list-header` →
+   `/assets/ui/ListHeader.png` and `--tex-list-header-highlight` →
+   `/assets/ui/ListHeaderHighlight.png`, and **neither binary exists
+   anywhere** — not in `site/public/assets/ui/`, not in
+   `design/extracted-ui/`. Any future consumer 404s silently. One
+   extraction + staging step per the
+   [site/public/fonts/README.md](../site/public/fonts/README.md) pattern;
+   do it before any component consumes those tokens.
+
+**What survives, do not re-litigate:** the extracted token set, the
+palette discipline, the composition set, the tooltip, the chrome wiring,
+the uncommon lift, the hover render, the filled grid, the centered
+titles, gold discipline, empty-well honesty, and the 20 green tests. F1
+tokens are done as a token layer; the next visual round should be spent
+on a page, not on this specimen.
+
+## r5 closeout — fixer verification, 2026-08-25
+
+Facts only from the hygiene-closeout brief (fresh fixer agent; verdicts
+belong to the critics). Evidence: both "Carried work" items above,
+re-verified against disk; render
+[output/_tokens-r5-preview.png](../output/_tokens-r5-preview.png).
+
+**Carried item 2 (dangling `--tex-list-header{,-highlight}` binaries) was
+closed on disk after r4 landed.** Both files now exist staged AND
+extracted, as byte-identical pairs (sha256 + adler32 vs
+[design/extracted-ui/](../design/extracted-ui/EXTRACT-LOG.mdx), which
+already logged them 2026-08-25):
+
+| Binary | Size | sha256 staged = extracted | adler32 |
+|---|---|---|---|
+| `ListHeader.png` | 1,775 B | `135ed3b4a058…45c1b0a` | `631e4e66` |
+| `ListHeaderHighlight.png` | 2,443 B | `30010066f264…c212025f` | `2989a73e` |
+
+Staged copies timestamped 03:18–03:19 today; re-staging per the
+[assets/ui README cp block](../site/public/assets/ui/README.md) was NOT
+needed. The served-refs guard in
+[tokens.test.ts](../site/src/styles/tokens.test.ts) now watches every
+`url()` the contract declares.
+
+**Carried item 1 (`--panel-alpha` never tested over real art) has its
+first render.** [tokens-preview.html](../site/src/styles/tokens-preview.html)
+gains a fourth section: a 1040×500 stage whose only backdrop is
+[shot-20](../design/sources/shot-20-camp-firelight-texture.jpg) — no flat
+`--bg-1` veil beneath anything. Three carriers float on it: the
+`.wt-panel` recipe verbatim (`rgb(var(--panel-well-rgb) /
+var(--panel-alpha))` + double bevel), a `dialogBg.png` slice-20 card, and
+three ListHeader stretch bands (the middle one in the Highlight frame).
+Shot headless via the stealth browse tool over `file://`, dpr 1, full
+page → 1521×1556 PNG. Measured on that PNG with PIL/numpy using element
+rects read back from the live page:
+
+- `.wt-panel` interior median luma **27.1** against **28.0 predicted**
+  for α = 0.7 composited over the art actually behind it; an opaque well
+  would read 11.1. The panel surface tracks the firelight within one
+  luma point of the token's own claim.
+- ListHeader bands render and separate: normal row median 38.2,
+  Highlight-frame row 58.3.
+- The on-art caption line renders through
+  `--text-shadow-over-art` (1,426 bright text pixels in its rect).
+- `dialogBg` card interior reads 12.9 vs 11.1 flat — small because the
+  art behind that corner is dark tent shadow; the texture's own center
+  alpha carries the glass, see the survey below.
+- Global: 23,286 warm firelit pixels, whole-page luma σ 28.2 (not flat).
+
+Texture alpha survey added this round (PIL, `design/extracted-ui/`
+binaries): `dialogBg` center α215 · `SmallEntryBG` α240 · `HeaderBg`
+α254 · `buttonBg` fully opaque · `RarityBackground` center α118 ·
+`ListHeader` α125 · `ListHeaderHighlight` α189. I.e. the game's
+translucency lives partly IN the binaries, not only in `--panel-alpha` —
+relevant to whoever composites the first real page over map art.
+
+**Tests:** `npm test` in `site/` — 24/24 pass, run before AND after the
+preview extension (`vitest run`, 05:32 and 05:41; served-refs guard
+resolves the three new preview refs). No token value changed.

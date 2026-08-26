@@ -1,0 +1,56 @@
+# Wartales site — piece decomposition (orchestrator sequencing artifact)
+
+The app broken into the smallest pieces that can be improved and judged
+on their own (promptForDB decomposition directive). Each piece enters
+the build pipeline only through a PrepareTask spec
+(Documentator → Reviewer → Arbiter), then CodeWriter+TestWriter →
+CodeReviewer+TestReviewer → Arbiter → fix loop, then the per-page-type
+visual critic loop (`design-standard.md` §4: proposals are per page
+type, never one monolithic restyle).
+
+Data-dependency column marks what must exist in `extracted/` before the
+piece can build past stub state (AGENTS.md rule 8 — frontend consumes
+contracts, never derives data).
+
+## Foundations
+
+| ID | Piece | Data dep | Reference bar |
+|---|---|---|---|
+| F1 | Design tokens extracted from game UI screenshots (palette, rarity tiers, fonts, texture language), structured as shadcn theme variables | screenshots only | FRAMEWORK §2.11 + guide §6 + [shadcn-adoption](../design/shadcn-adoption.mdx) |
+| F2 | Published contracts: per-kind JSON schemas + JSON API shape pinning | P1 datasets | contracts/ convention |
+| F3 | In-pack pipeline framework: run_all stages, idempotent, EXTRACTION-LOG | client | DR-2026-08-18-pipeline |
+| F4 | App shell: header/nav/footer, locale routing (EN bare paths, prefixes elsewhere), chrome i18n namespace | locales list | NWG shell + wikily launcher |
+| F5 | Header search field (no /search route; 2-char trigger; in-place swap; same matcher both sides) | search index artifact | DR-2026-08-22-search-is-not-a-page |
+
+## Page types
+
+| ID | Piece | Data dep | Reference bar |
+|---|---|---|---|
+| PT01 | Home page | minimal | new-world.guide home + wikily hub tiles |
+| PT02 | DB landing + taxonomy menu (kind → type → subtype) | kind inventory | NWG db menu |
+| PT03 | Kind list pages (virtualized table, facets, filters as URL state) | datasets | NWG items/weapon |
+| PT04a | Entity page anatomy: sticky tooltip card + share rail + quotable block + locale row | datasets | NWG item page + enka card |
+| PT04b | Entity conditional-tab registry (tab only when data exists) + hover jobs (definition/join) | relink layer | enka §5–6 hovers |
+| PT05 | Dedicated `/map` page (Leaflet custom CRS, layers/filters, pins/notes, URL state) | map pipeline | FRAMEWORK §2.6 |
+| PT06 | Entity inline map module (focused, two-way links) on every location-bearing page | map + markers | design-standard §3 |
+| PT07 | Company/troop build **creator** (flagship): roster, classes/skills/equipment planner, URL+import/export codes | units/skills/items | NWG char-builder (top tool) |
+| PT08 | Published builds gallery + build page (+ratings) | UGC plane | NWG char-builds/beil-bogen |
+| PT09 | Calculators (one piece each from tools-plan scoring: trade profit, XP, capture odds, wages/upkeep…) | logic layer | gaming.tools bar |
+| PT10 | Guides section + article template w/ aggressive entity interlinking | guides content | site-sections §4 |
+| PT11 | News section + patch-diff viewer (`/news/patch/{id}` from extraction diffs) | diff engine | D5 ambition move 3 |
+| PT12 | Lore/documents section | lore dataset | NWG lore-books |
+| PT13 | Quests section (list + quest pages, chains) | quest dataset | NWG quests |
+| PT14 | Trackers/checklists (per-user persistence) | entity ids | NWG trackers |
+| PT15 | UGC: auth/profiles · comments · corrections queue · screenshot uploads | UGC schema | DR-2026-08-19-ugc-accounts |
+| PT16 | SEO/AEO infra: sitemaps, BreadcrumbList/FAQ/Dataset JSON-LD, OG cards, llms.txt, static JSON API | emit stage | seo-standard |
+| PT17 | Branded 404/error/empty states (same art, no absence copy) | none | enka 404 + anti-slop rulings |
+| PT18 | RSS/Atom feeds (news, patch diffs) | news/diffs | seo-standard content feeds |
+
+## Sequencing law
+
+P0 scouts → spec freeze → F2/F3 → P1 extraction waves → rule-8 gate →
+F4/F5 + PT16 skeleton → PT03/PT04 (DB core) → PT05/PT06 (map) → PT07
+(builder) → calculators → content sections → UGC → critic loops per
+page type throughout, e2e smoother between major waves.
+
+<!-- END OF PIECES -->

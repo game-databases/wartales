@@ -1,0 +1,818 @@
+# Wartales — datasets / relink / emit stage spec (run_all stages 4–6)
+
+Status: REVISED r1 (2026-08-25) — applies arbiter fixes F1–F14
+([arbiter-stages-spec.mdx](./arbiter-stages-spec.mdx)) verbatim;
+APPROVE-FOR-BUILD at the next arbiter glance. Authored 2026-08-25 by the
+Documentator from brief
+[`docs/briefs/documentator-stages.mdx`](./briefs/documentator-stages.mdx),
+adjudicated NEEDS_REVISION by
+[review-stages-spec.mdx](./review-stages-spec.mdx).
+Inputs read in full: root `AGENTS.md`,
+[`_foundation/extraction-doctrine.md`](../../_foundation/extraction-doctrine.md),
+[`_foundation/decision-register.md`](../../_foundation/decision-register.md),
+[EXTRACTION-LOG.md](../EXTRACTION-LOG.md), [`run_all.ps1`](../run_all.ps1) +
+[`run_all.sh`](../run_all.sh), [data-dig-log.mdx](./data-dig-log.mdx) Digs
+1–3 (+4–6 where they pin facts), [`pipeline/tools/cdb_emit.py`](../pipeline/tools/cdb_emit.py),
+[`pipeline/tools/cdb_verify.py`](../pipeline/tools/cdb_verify.py),
+[`pipeline/tools/locale_bridge_dig.py`](../pipeline/tools/locale_bridge_dig.py),
+draft corpora `extracted/data/_draft/` (40 managed kinds) +
+`extracted/relinks/_draft/` (51 pair files) +
+`extracted/relinks/locale_availability.jsonl` (frozen numbers re-measured
+2026-08-25, [§2](#2-ground-truth-frozen-numbers-must-reconcile-exactly)),
+[PROOF.md §2](../extracted/PROOF.md), FRAMEWORK §2/§4/§8, pack
+[`spec.md`](../spec.md) (pack README.md / data-acquisition.md do not exist),
+test-suite conventions [`pipeline/tests/test_map_tiles.py`](../pipeline/tests/test_map_tiles.py)
++ `conftest.py`, and the stage-spec format precedents
+[spec-harvest.mdx](./spec-harvest.mdx) · [spec-map-pipeline.mdx](./spec-map-pipeline.mdx).
+Revision r1 reads in addition, in full:
+[review-stages-spec.mdx](./review-stages-spec.mdx) +
+[arbiter-stages-spec.mdx](./arbiter-stages-spec.mdx); every number a fix
+touches was re-measured this session on buildid 20318128 (commands cited
+where the number appears).
+
+## 0. Scope in one line
+
+Flip run_all stages 4–6 from stub to BUILT: **datasets** promotes the
+verifier-proven `_draft` wave-1+2 corpora to canonical
+`extracted/data/<kind>.jsonl`; **relink** promotes the 51 hard-edge seed
+files to `extracted/relinks/*.jsonl` and ships the honest ordered-pair
+catalog `extracted/RELATIONS.md`; **emit** regenerates locale availability
+and lands one machine-readable `extracted/validation-report.json` whose
+checks reconcile everything to the census total 11,473. Every acceptance
+criterion holds **without** the HBSON decode (that dig runs parallel; its
+kinds arrive later as wave 3 — [§9](#9-out-of-scope)).
+
+## 1. Authority chain
+
+- **Doctrine**: extraction-doctrine Principle two ("completeness is PROVEN")
+  + the reproducible single-entrypoint rule [DR-2026-08-18-pipeline] bind the
+  stage shape: each stage idempotent, runnable in isolation, wired into the
+  one entrypoint whose defaults come from EXTRACTION-LOG.md. The relink bare
+  minimum [DR-2026-08-17-relink] defines WHAT stage 5 ships: complete pairwise
+  matrix artifact with per-pair join key, cardinality, mechanism
+  (`hard|logic|inferred`), status (`modeled|partial|missing`); unresolved
+  pairs ledgered with the concrete unblock, never dropped.
+- **Proven capability, not new design**: digs 1–3 already produced every byte
+  this spec promotes — emitter `cdb_emit.py` (waves 1+2, undeclared-key
+  preservation, synthetic key rules), independent verifier `cdb_verify.py`
+  (shares no code with the emitter; census-table cross-check), availability
+  generator `locale_bridge_dig.py` (deterministic: seed = buildid, sorted
+  iteration). This spec wires proven tools; it invents exactly three small
+  ones ([§3.4](#34-promotion-tool-promote_draftspy),
+  [§4.2](#42-catalog-generator-relink_catalogpy),
+  [§5.2](#52-validator-validate_allpy)) and two narrow
+  retrofits ([§10](#10-contract-holes-found) holes 1–2).
+- **The `map` stage is the wiring template**: BUILT gating in
+  `$script:StageInfo`, per-stage `Invoke-*` function, native stdout routed
+  with `| Out-Host` (the captured-return-stream bug, EXTRACTION-LOG §6
+  2026-08-25 entry), `[dry-run]` printing, child exit code propagation.
+- **Spec-sheet discipline** (FRAMEWORK §4): every line carries a field or a
+  citation; measured numbers only — thresholds frozen from measured
+  distributions, never invented (same AC discipline as EXTRACTION-LOG §5).
+- **Input source of truth**: the CastleDB brain consumed by stages 4–6 is the
+  HARVEST OUTPUT `extracted/harvest/res/data.cdb` (6,088,918 B, adler-verified
+  at extract, present on disk) — never the scratch copy
+  `pipeline/tools/_verify/extract-res.pak-data.cdb` (dig-era evidence, not an
+  entrypoint product). Fresh clone + fresh game copy + `run_all.ps1` therefore
+  reproduces stages 4–6 with no second document [DR-2026-08-18-pipeline].
+
+## 2. Ground truth: frozen numbers, must reconcile exactly
+
+**Freeze policy (arbiter F2): regenerate-at-run for every machine-layer
+number here.** The freeze source IS `cdb_emit.py`'s regeneration output from
+`extracted/harvest/res/data.cdb` at buildid **20318128** — *not*
+"`_draft/` as found on disk". Dig-postprocessed `_draft` bytes (e.g. Dig 7's
+`verifiedBy` stamps flipping the 72 unverifiable edges to `valid:true`) are
+dig evidence, never freeze sources; regeneration reproduces the full frozen
+set below exactly, and `cdb_verify` passes clean over it (re-measured
+2026-08-25: emit waves 1+2 into a scratch outdir → `ALL CHECKS PASSED`, 40
+files / 10,207 rows / 51 pairs / 19,130 edges / dangling 0 / unverifiable 72).
+A future patch re-freezes the same way, from a fresh regeneration at the new
+buildid per the EXTRACTION-LOG §5 re-pin procedure.
+
+Numbers frozen 2026-08-25 by that regeneration; sources:
+[cdb-census.mdx](./cdb-census.mdx), data-dig-log Digs 1–3, PROOF.md §2. The
+pytest suite pins these as committed numeric fixtures
+([§7](#7-test-spec-for-testwriter)).
+
+**Census closure (whole-file):**
+
+| Layer | Count | Reconciles |
+|---|---:|---|
+| Census grand total (inline CDB rows, 386 sheets) | **11,473** | cdb-census family sums |
+| Canonical datasets (stage 4): 40 kinds, Σ rows | **10,207** | wave1 3,779 + wave2 6,428 |
+| `extracted/logic/constants.jsonl` (dig 2, NOT re-emitted) | **1,266** | census sheet `constant` |
+| Closure: 10,207 + 1,266 | **11,473** ✓ | whole-file closure (Dig 3) |
+
+Wave-1 kinds ← sheets: `item`←item 2,125 · `skill`←skill 1,373 ·
+`class`←unitClass 281 (= 3,779; also = availability rows, below). Wave-2 =
+the remaining 37 emitted kinds (Dig 3 table: icon 801, sound 848, counter
+622, recipe←craft 667, bonus 495, notify 482, loot 382, fiefEvent 377,
+status 330, trait 214, attribute 27, groupType 97, itemType 96, tutorial 81,
+input 84, env 87, confessions 87, unitPattern 70, credits 67, battle 133,
+effect 66, activity 24, startChoice 29, fiefGoal 55, mission 22, fiefPlace
+19, fiefCondition 20, fiefLaw 43, region 13, kingdom 9, frescos 9,
+fiefAlignment 5, fiefAdministration 15, fiefPopulation 11, amb 11,
+fiefMission 12, condition 18). `constant` is excluded by design (already
+emitted to logic/, Dig 3 deferred-kinds list).
+
+**Relink seeds (stage 5 promotes these bytes):**
+
+| Measure | Value |
+|---|---|
+| Pair files | **51** (8 wave-1 + 43 wave-2) |
+| Edges Σ | **19,130** = 6,636 wave-1 + 12,494 wave-2 |
+| mechanism | `hard` on every edge (all 51 `_meta` blocks) |
+| `valid:false` (dangling) | **0** — pack-wide invariant, nonzero fails the stage |
+| `valid:null` (unverifiable) | **72** = env__place 61 + frescos__place 9 + fiefGoal__element 2 (all datafile-backed targets) — the regeneration-honest machine flag; Dig 7 adjudicates all 72 `true` against the decoded id sets, and that adjudication is carried beside the flag in the RELATIONS.md ledger ([§4.4](#44-danglingunverifiable-edge-policy-frozen)) |
+
+Wave-1 per-pair (verifier's `DIG1_EDGES`, doc-side copy): class__attribute
+1,672 · item__itemType 2,095 · class__item 914 · class__skill 874 ·
+item__attribute 728 · class__itemType 221 · class__groupType 122 ·
+class__region 10. Largest wave-2 pairs: fiefMission__itemType 4,371 ·
+recipe__item 3,515 · loot__item 994 · recipe__icon 460 · notify__notify 329 ·
+counter__icon 319 · fiefEvent__condition 294 · confessions__trait 276 ·
+unitPattern__unitClass 256 (full set per emitter output, Dig 3).
+
+**Locale availability (stage 6 regenerates):**
+
+| Measure | Value |
+|---|---|
+| Rows | **3,779** = item 2,125 + skill 1,373 + class 281 |
+| Locales | **9** = en, fr, de, es, pl, pt-BR, ru, ko, zh (spec `locales.official`, client-verified) |
+| `filler_class_cells` counters | **all == 0** across the generator's whole grid — 3 kinds × 9 locales = **27 keys** (en structurally skipped in the counting loop: 24 incrementable), measured 2026-08-25 by replaying `locale_bridge_dig.py`'s own parser + count loop read-only; the validator asserts this grid from the generator's own report key set |
+| Overlay entities | **29,889** = (1,807+1,236+278) × 9 |
+| textKey bridge coverage | 27 emitted sheets ⊆ 35 sheets in `export_en.xml`, drift-absent 0 |
+
+**Undeclared-key preservation** (Dig 3 defect 2 — principle-zero tripwires;
+re-frozen per arbiter F8/A1 from the emitter's own counter table
+(`undeclared payload keys preserved verbatim`, keyed `sheet@key`) ==
+verifier stdout total, re-measured 2026-08-25): item gains `__ignoreLoc__`
+on **21** rows; skill on **40** top-level rows; the `skill@levels` sub-sheet
+carries undeclared extras of **14 occurrences across 9 distinct keys** —
+`vars` 4 · `isAttack` 2 · `tooltipStatus` 2 · `specialAnim`, `apCost`,
+`flags`, `throwFx`, `needDisengaged`, `hitFx` 1 each. Pack-wide
+preserved-key total **133** (wave-1 76 + wave-2 57), matching verifier
+stdout exactly.
+
+**Matrix size**: 40 canonical kinds ⇒ ordered pairs 40×39 = **1,560**;
+unordered pairs C(40,2) = **780** (RELATIONS.md row count, [§4.3](#43-status-vocabulary-frozen-dr-bar-1-shape)).
+
+## 3. Stage contract — stage 4 `datasets`
+
+### 3.1 Pipeline (exact commands, in order, stop-on-first-nonzero)
+
+`$Cdb` = `extracted/harvest/res/data.cdb` (defaults-block key `CDB`,
+[§6](#6-run_all-wiring-extraction-log-edit-list)); `$BuildId` = defaults
+`BUILDID`; paths pack-relative (run_all does `Set-Location $PackRoot`):
+
+```
+1. python pipeline/tools/cdb_emit.py    <Cdb> --wave wave1 --buildid <BuildId>
+      --outdir extracted/data/_draft --reldir extracted/relinks/_draft
+2. python pipeline/tools/cdb_emit.py    <Cdb> --wave wave2 --buildid <BuildId>
+      --outdir extracted/data/_draft --reldir extracted/relinks/_draft
+3. python pipeline/tools/cdb_verify.py  <Cdb> --datadir extracted/data/_draft
+      --reldir extracted/relinks/_draft --buildid <BuildId>          # GATE
+4. python pipeline/tools/promote_drafts.py --plane data --buildid <BuildId>
+      --datadir extracted/data/_draft --reldir extracted/relinks/_draft
+      --out-data extracted/data                                      # WRITE
+5. python pipeline/tools/cdb_verify.py  <Cdb> --datadir extracted/data
+      --reldir extracted/relinks/_draft --buildid <BuildId>          # GATE
+```
+
+Steps 1–2 regenerate the draft corpus deterministically (row content is a
+pure function of data.cdb; only `_meta.emitted` differs run-to-run — see the
+idempotency rule in [§3.4](#34-promotion-tool-promote_draftspy)).
+Step 3 is the **verifier gate: canonical write happens only after it exits
+0** (`ALL CHECKS PASSED`). Step 4 is the only step that touches canonical
+paths. Step 5 re-runs the same independent verifier over the promoted plane
+to prove promotion fidelity (canonical data × draft seeds multiset equality).
+
+Non-managed entries may lawfully sit in either `_draft` dir; stages 4–6
+never clean, promote, or delete them. The promoter **ignores and enumerates**
+each on stage stdout (file + reason — arbiter F1), and `cdb_verify` skips
+them by the same managed universe
+([§3.3](#33-what-the-verifier-gate-asserts-existing-cdb_verify-unchanged-semantics),
+[§3.4](#34-promotion-tool-promote_draftspy) rule 1).
+
+Exit codes surfacing through the stage: cdb_verify `1` on any failed check;
+promote_drafts `1` drift/stale-tripwire, `2` missing precondition; anything
+nonzero stops the stage and propagates (map-stage behavior).
+
+### 3.2 Canonical layout + `_meta` line schema (unchanged from drafts)
+
+Canonical dataset file = `extracted/data/<kind>.jsonl`; line 1 `_meta`, then
+one JSON object per row, UTF-8, LF, `ensure_ascii=False`. The `_meta` schema
+is the emitter's existing contract (verbatim fields, verified per file by
+cdb_verify):
+
+| field | meaning | example |
+|---|---|---|
+| `kind` | spec kind name | `recipe` |
+| `sourceSheet` | CDB sheet emitted | `craft` |
+| `buildId` | client buildid string | `"20318128"` |
+| `container` | source container pin | `res.pak:/data.cdb (CastleDB JSON, compress=false)` |
+| `rowCount` | data lines that follow | `667` |
+| `emitted` | ISO timestamp of the emitting run | `2026-08-24T20:55:16` |
+| `tool` | emitter path | `pipeline/tools/cdb_emit.py` |
+| `localeTextRoute` | locale-routing note stamped on every dataset by the emitter (`cdb_emit.py:231`; present in all 40 regenerated `_meta`, measured 2026-08-25) | `lang/export_<locale>.xml via textKey refs; leaf addressing pinned by next dig` |
+| `columns[]` | `{name, typeStr, opt, kind}` per column == CDB schema | |
+| `enums` | case tables per enum/flags column (clash-disambiguated `sheet@col`) | |
+| `keyRule` | ONLY on the three id-less sheets | `synthetic: zero-padded row ordinal — sheet \`craft\` has no id column` |
+
+Row contract (pinned by digs 1–3, enforced by cdb_verify per cell): ALL
+original columns under original names; null cells omitted (absent = null);
+localizable text as structured `{"textKey": {bridge, sheet, column, row[, subSheet]}}`
+refs — prose lives in the lang bridge; `6:` ref cells verbatim; keys outside
+the declared schema preserved verbatim (`__ignoreLoc__`, polymorphic
+leftovers); identifiers never stripped (doctrine Principle one). The
+canonical dir also holds the map stage's products (`maps.json`, `cells/`) —
+not `.jsonl`, never touched by this stage.
+
+### 3.3 What the verifier gate asserts (existing cdb_verify, unchanged semantics)
+
+Per dataset: `_meta` contract (buildId, rowCount, tool, columns == CDB
+schema); row count == doc-side census count == source-sheet line count; id
+sequence (native `"0"` column or documented `keyRule`); cell fidelity
+(textKey refs exact — no prose leaks; refs verbatim; lists recurse; deep
+equality elsewhere); schema ⊇ payload per row (nothing dropped); no invented
+keys beyond the synthetic `id`. Per relink file: edge multiset == recount of
+populated `6:` cells walked independently; per-edge `valid` recomputed
+(`True` strict membership / `False` dangling / `None` datafile-backed-or-
+hidden target); dangling must be 0 pack-wide; wave-1 totals cross-checked
+against the dig-log table. **Scan scope** (arbiter F1) comes from the shared
+kind-universe module ([§3.4](#34-promotion-tool-promote_draftspy) rule 1):
+only the 40 managed kinds are verified; a datadir `.jsonl` outside the
+universe, or a reldir file not named `<from>__<to>.jsonl`, is skipped and
+enumerated, never failed (hole 1's name rule covers the relink side).
+Sharing no code with the emitter is the point —
+the gate is an independent re-derivation, not a diff of two runs of one
+implementation; sharing the kind LIST does not dilute that (it is
+membership metadata only), sharing derivation code would.
+
+### 3.4 Promotion tool (promote_drafts.py)
+
+New stdlib-only CLI (Python 3.14, NE8K `C:\Python314`):
+
+```
+python pipeline/tools/promote_drafts.py --plane data|relinks|both
+    [--buildid <id>] [--datadir extracted/data/_draft]
+    [--reldir extracted/relinks/_draft] [--out-data extracted/data]
+    [--out-relinks extracted/relinks]
+```
+
+Behavior contract:
+
+1. **Scope guard — the managed universe is defined (arbiter F1)**: the
+   managed set is exactly the **40 kind↔sheet pairs of `cdb_emit.WAVES`
+   waves 1+2**, carried as membership metadata only (kind↔sheet names and
+   the `craft`→`recipe` mapping) in a neutral module,
+   `pipeline/tools/wave_kinds.py`, consumed by `promote_drafts` (this
+   whitelist), `validate_all` (per-kind checks), and `cdb_verify` (scan
+   scope; it keeps its own census transcription and all derivation logic
+   independent). `--plane data` manages exactly `<kind>.jsonl` for those 40
+   kinds in out-data; `--plane relinks` manages exactly `<from>__<to>.jsonl`
+   pair files in out-relinks. Never touches `maps.json`, `cells/**`,
+   `locale_availability.jsonl`, or anything else — the co-located products
+   of other stages are invisible to it (name-pattern whitelist, not
+   blacklist). Non-managed draft entries are **ignored and enumerated** on
+   stage stdout (file + reason): `achievement.jsonl` (Dig-10 keyless Steam
+   emission — wave-3 promotion decision),
+   `place`/`group`/`element`/`levelProps`.jsonl (Dig-7 HBSON decode — wave
+   3), and the D7 other-plane products `worldmap_overlays.json` +
+   `poi_coordinates.jsonl` ([§4.1](#41-pipeline-exact-commands)).
+2. **Equality rule (idempotency)**: candidate draft file vs canonical target
+   compare equal iff payload lines (line 2…) are byte-equal AND `_meta`
+   equals except the `emitted` timestamp, which is exempt. Equal ⇒ skip
+   (target untouched, mtime preserved, counted `unchanged`). Different ⇒
+   replace atomically: write `<target>.part` then `os.replace` (spec-harvest
+   §3.2 precedent), counted `updated`.
+3. **Stale tripwire**: an existing managed-name canonical file ABSENT from
+   the verified draft set ⇒ exit 1 naming the file; never deleted, never
+   renamed (patch-drift signal handled by the EXTRACTION-LOG §5 re-pin
+   procedure — same fail-loud doctrine as map AC8).
+4. **Precondition**: referenced draft file missing ⇒ exit 2 naming it (the
+   gate order in [§3.1](#31-pipeline-exact-commands-in-order-stop-on-first-nonzero)
+   makes this unreachable through run_all; it protects isolated invocation).
+5. **Provenance**: promoted bytes ARE the verified draft bytes — canonical
+   `_meta.emitted` stays the moment those rows were computed from data.cdb;
+   the promotion act itself is recorded in stage stdout (`unchanged` /
+   `updated` counts) and the commit's EXTRACTION-LOG history entry.
+6. **Deletion semantics — one per class (arbiter F5)**: managed planes
+   **restore-and-pass** on deletion — a managed-name canonical target
+   missing while its draft exists is recreated from the draft (counted
+   `updated`, exit 0): drafts are the declared source of truth (rule 5's
+   provenance logic) and the corpus is fully reproducible from `data.cdb`.
+   Fail-loud stays where it belongs: ghost/stale managed-name canonical
+   files absent from the draft set tripwire at rule 3 (exit 1 naming the
+   file), and *consumer* boundaries fail loud through preconditions
+   ([§4.1](#41-pipeline-exact-commands)/[§5.1](#51-pipeline-exact-commands),
+   exit 2 naming the owning stage). Regenerated stage products
+   (`locale_availability.jsonl`, `RELATIONS.md`, `matrix.json`,
+   `validation-report.{json,md}`) are exempt from every tripwire here —
+   their owning stage regenerates them on demand.
+7. **Buildid drift gate (arbiter R8 — compliant, sanctioned by
+   [§3.6](#36-required-retrofit-buildid-flag-on-both-cdb-tools))**: run_all
+   passes defaults `BUILDID` on every invocation; with `--buildid <id>`
+   given, every selected draft file's `_meta.buildId` must equal `<id>` —
+   any mismatch ⇒ exit 1 naming the file, BEFORE any write (the same
+   fail-loud doctrine rules 3–4 serve, strictly stronger than promoting
+   first and failing at the verify gate). Without the flag the check is
+   skipped — isolated-invocation convenience; the stage vectors
+   ([§3.1](#31-pipeline-exact-commands-in-order-stop-on-first-nonzero),
+   [§4.1](#41-pipeline-exact-commands)) always pass it.
+8. Summary stdout: per-file action + totals; exit 0.
+
+### 3.5 Deferred-kinds honesty list (carried forward)
+
+The datasets stage emits 40 of 45 top-level sheets' worth of kinds. The
+honest remainder is FIXED content this spec freezes; stage 6 embeds it
+verbatim in `validation-report.json.deferred[]` ([§5.2](#52-validator-validate_allpy))
+and RELATIONS.md carries the same kinds in its matrix
+([§4.4](#44-danglingunverifiable-edge-policy-frozen)):
+
+| deferred | why (measured) | unblock |
+|---|---|---|
+| `location-place`(sheet `place`), enemy `group`s, npc/dialogue (`element`), poi/battle-scene vocab (`levelProps`) | **decoded (Dig 7, `hbson_emit.py`): datasets already sit in `_draft`** — place 536 / group 791 / element 5,180 / levelProps 5,982 occurrences (235 distinct payloads), re-measured 2026-08-25; NOT promoted by stages 4–6 (non-managed, [§3.4](#34-promotion-tool-promote_draftspy) rule 1). Origin of the deferral unchanged: the four top-level sheets carry **zero inline rows** — payloads are the HBSON prefab corpus; the CDB side ships their schema via hidden sub-sheets (Dig 1 finding 3) | wave-3 promotion pending id-registry wiring + levelProps/id-uniqueness shape rulings ([§9](#9-out-of-scope); PROOF R1) |
+| `achievement` | **emitted keyless (Dig 10): 235-row dataset sits in `_draft`** (`buildId:"n/a"`); not a CDB sheet — Steam `GetSchemaForGame` surface; client half ships in `counter.jsonl` incl. `counter@props.achievements`; NOT promoted by stages 4–6 (non-managed, [§3.4](#34-promotion-tool-promote_draftspy) rule 1) | wave-3 promotion decision; keyed Steam call (PROOF R2) adds `iconGray` + the authoritative id list |
+| `constant` | already emitted as `extracted/logic/constants.jsonl` 1,266 rows (dig 2) — deliberately NOT duplicated into data/ | none — closure counts it ([§2](#2-ground-truth-frozen-numbers-must-reconcile-exactly)) |
+| potion/food, trade-good/price, path/title, ghost/curse views | subset views over emitted datasets, not sheets (itemType ids Food/CookedMeat/TradeGoods/Recipe; traits RawFood/Trader/Cook/SonOfTrader; constants TradeGood*; unitClass Ghost* ×6 + groupType GhostPack* + status GhostLeader*) — derivable by joins on shipped files, no separate emission owed (Dig 3) | none — joins |
+
+### 3.6 Required retrofit: buildid flag on both CDB tools
+
+`cdb_emit.py` and `cdb_verify.py` hardcode `BUILD_ID = "20318128"`. A patch
+rerun at buildid 21238928 would silently stamp and require the OLD id —
+unacceptable for the one-command re-pin (EXTRACTION-LOG §4). Required
+change: accept `--buildid <id>` (default `20318128`, preserving current
+behavior and all recorded outputs); emitter stamps it into `_meta.buildId`
+and relink `_meta`; verifier requires equality. run_all passes defaults
+`BUILDID` on every invocation ([§6](#6-run_all-wiring-extraction-log-edit-list)).
+This is the only touch to proven tools besides hole 1 in
+[§10](#10-contract-holes-found); both tools' sha256 pins in
+EXTRACTION-LOG §2 refresh in the same commit (AGENTS.md rule 5).
+
+## 4. Stage contract — stage 5 `relink`
+
+### 4.1 Pipeline (exact commands)
+
+Preconditions (checked in `Invoke-Relink` before any child runs; else exit 2
+naming `run_all.ps1 datasets`): canonical data holds **exactly the 40
+managed kinds** AND `extracted/relinks/_draft/` holds **exactly 51**
+`<from>__<to>.jsonl` pair files — equality, not ≥ (arbiter F11; wave-3
+growth re-freezes per the EXTRACTION-LOG §5 procedure). The non-pair orphan
+`poi_coordinates.jsonl` (D7 marker-carrier plane, 607 rows) is skipped by
+the ignore-and-enumerate ledger ([§3.4](#34-promotion-tool-promote_draftspy)
+rule 1) — never promoted, never deleted; its marker rows land later under
+`maps.json marks[]` per the A2 contract (EXTRACTION-LOG §5).
+
+```
+1. python pipeline/tools/promote_drafts.py --plane relinks --buildid <BuildId>
+      --datadir extracted/data/_draft --reldir extracted/relinks/_draft
+      --out-relinks extracted/relinks
+2. python pipeline/tools/cdb_verify.py <Cdb> --datadir extracted/data
+      --reldir extracted/relinks --buildid <BuildId>                 # GATE
+3. python pipeline/tools/relink_catalog.py --datadir extracted/data
+      --reldir extracted/relinks --bridge extracted/harvest/_lang-bridge/export_en.xml
+      --out-md extracted/RELATIONS.md --out-json extracted/relinks/matrix.json
+```
+
+Step 1 promotes the seed pair files (same tool/equality/tripwire rules as
+[§3.4](#34-promotion-tool-promote_draftspy), relink plane).
+Step 2 re-verifies BOTH canonical planes together — the first time the
+verifier sees the exact shipped layout. Step 3 derives the catalog from the
+canonical bytes; it performs no extraction and invents no edges — every
+modeled fact it prints cites a canonical file.
+
+### 4.2 Catalog generator (relink_catalog.py)
+
+New stdlib-only tool. Inputs: canonical datasets (kind universe + row counts
++ `keyRule`s), canonical pair files, en bridge (for textKey coverage counts).
+Outputs:
+
+- `extracted/relinks/matrix.json` — machine-readable. **Full shipped
+  envelope (arbiter F13), all keys TOP-LEVEL — there is no nested
+  `header` object; declared here so T8/F13-style pins cite the spec, not
+  the implementation:** `{buildId, kindCount: 40, pairCount: 780,
+  totals{files, edges, validTrue, validFalse, validNull,
+  modeledDirections, orderedDirections, selfPairFiles,
+  deferredTargetFiles}, pairs[], selfPairs[], deferredTargetPairs[],
+  textKeyCoverage{usedSheets, bridgeSheets, covered[], driftAbsent[]}}`.
+  One `pairs[]` record per unordered kind pair `{a, b, forward: {status,
+  joinKeys[], edges, cardinality, mechanism[], validCounts{true,false,null},
+  unblock}, reverse: {...}, unblock}` — each direction carries its own
+  `unblock`, null exactly on a modeled direction. `selfPairs[]` records
+  `{kind, file, joinKeys[], edges, cardinality, mechanism[],
+  validCounts{true,false,null}}`, sorted by `kind`.
+  `deferredTargetPairs[]` records `{fromKind, target, file, joinKeys[],
+  edges, cardinality, mechanism[], validCounts{true,false,null}, state,
+  unblock, adjudication}`, sorted by `file` — `state` ∈ the two
+  [§4.4](#44-danglingunverifiable-edge-policy-frozen) ledger states,
+  `unblock` = `R1`. `covered[]`/`driftAbsent[]` are sorted sheet-name
+  lists (`driftAbsent == []` pinned by tests).
+  **Ordering rule (arbiter F13)**: each unordered pair is stored `{a, b}`
+  lexicographic by kind name; `forward` = the a→b direction, `reverse` =
+  b→a — stated once here, enforced deterministically by T8/T9 on shuffled
+  input order. **Stamp policy (arbiter F9/m1)**: no wall-clock `generated`
+  anywhere in `matrix.json` or `RELATIONS.md` — both are derived DATA
+  artifacts whose content is a pure function of canonical bytes, so
+  rerunning stage 5 twice yields byte-identical files (asserted by T12 and
+  I2's hash before/after); the run REPORTS `validation-report.{json,md}`
+  keep their `generated` deliberately — the declared exemption beside
+  [§10](#10-contract-holes-found) hole 3.
+- `extracted/RELATIONS.md` — human catalog rendered FROM matrix.json
+  (row-for-row parity asserted by tests, [§7](#7-test-spec-for-testwriter) T9).
+
+### 4.3 Status vocabulary: frozen, DR bar 1 shape
+
+Every one of the 780 unordered pair rows carries BOTH directions, each
+direction one of:
+
+- `modeled` — canonical pair file exists for this direction with ≥1 edge and
+  cdb_verify PASSED over it. Row fields: join keys = sorted distinct
+  `column` paths in that pair file (e.g. `type`, `places[].place`); edges =
+  edge count; cardinality = mechanical triple (edges E, distinct fromId F,
+  distinct toId T) rendered `many:1` when F==E∧T<E, `1:many` mirrored,
+  `1:1` when F==T==E, else `many:many`; mechanism = `hard` (current seed
+  vocabulary — `logic`/`inferred` are declared vocabulary of this column and
+  arrive with the upgrade dig, [§9](#9-out-of-scope)); `validCounts` carries
+  the true/false/null split.
+- `partial` — the relation family is evidenced (reverse direction modeled,
+  or a spec relation chain M1–M8/E1–E8 names it, or edges exist here only to
+  unverifiable targets) but this direction lacks complete coverage. Example
+  frozen by measurement: `skill__*` — the skill subtree contains ZERO
+  hard-reference columns (Dig 1 finding 4), so every skill direction other
+  than targets-of (`class__skill` 874, `battle__skill` 58,
+  `unitPattern__skill` 42 — counts re-measured from the pair files
+  2026-08-25) is partial with
+  unblock R3 (decompiler).
+- `missing` — no evidence either way yet. Every non-modeled direction MUST
+  carry exactly one unblock pointer: an R# from PROOF.md §3, a named dig
+  queue item, or `ordered-pair upgrade dig` — never blank, never prose
+  ([DR-2026-08-17-relink] bar 1).
+
+The upgrade dig (logic/inferred edges, full ordered-pair completion) fills
+this scaffold; this stage SHIPS the scaffold honestly marking all 1,560
+directions. Bars 2 (UI-link coverage map) and 3 (competitor floor applied
+delta) stay open items tracked in [§9](#9-out-of-scope); bar 3's applied
+delta already lives in spec relations M1–M8/E1–E8 via COMP §7 and is
+cross-referenced from RELATIONS.md, not re-done here.
+
+RELATIONS.md fixed sections: header `_meta` block (buildid, tool,
+totals 51/19,130/0/72 — **no wall-clock `generated`**, arbiter F9:
+[§4.2](#42-catalog-generator-relink_catalogpy)) · modeled-pair index table (pair | direction | join
+keys | edges | cardinality | mechanism | valid true/false/null) · full 780-row
+matrix grouped by from-kind · unverifiable-edge ledger (the 72, per pair,
+each with unblock R1 **and the Dig-7 adjudication column** —
+[§4.4](#44-danglingunverifiable-edge-policy-frozen)) · dangling policy ([§4.4](#44-danglingunverifiable-edge-policy-frozen))
+· deferred-kinds list ([§3.5](#35-deferred-kinds-honesty-list-carried-forward)).
+
+### 4.4 Dangling/unverifiable edge policy (frozen)
+
+- **Dangling (`valid:false` — target id absent from a target sheet that HAS
+  inline ids)**: count must be **0** at every gate; any positive count fails
+  cdb_verify (exit 1) and therefore the stage. Policy: a dangling edge is an
+  emitter/verifier disagreement or real authoring drift — it is never
+  silently shipped, downgraded, or dropped; diagnose before rerun.
+- **Unverifiable (`valid:null` — declared target sheet has no inline lines:
+  hidden sub-sheets or the datafile-backed roots place/group/element/
+  levelProps)**: allowed to ship, never counted as dangling, MUST stay
+  enumerated — regeneration-honest population exactly **72**
+  (env__place 61, frescos__place 9, fiefGoal__element 2). The ledger
+  splits each entry into one of two states (arbiter F2):
+  - *unknown* — no decoded evidence either way yet; unblock **R1
+    (HBSON decode)**.
+  - ***dig-adjudicated pending wiring*** — all 72 current entries: Dig 7's
+    decoded-id-set adjudication resolved them `true` (`hbson_emit.py`;
+    as-found `_meta` carries `"verifiedBy": "Dig D7 (hbson_emit.py)
+    against the decoded HBON id set"`, `unverifiableBefore` 61 / 9 / 2,
+    `allEdgesVerifiedTrue: true`). The machine flag stays
+    regeneration-honest `null` until id registries enter the pipeline
+    (wave 3, unblock R1); the RELATIONS.md ledger renders the adjudication
+    text beside the flag instead of lumping these pairs with unknowns.
+    Regeneration drops the D7 stamps every run by design (the
+    [§2](#2-ground-truth-frozen-numbers-must-reconcile-exactly) freeze
+    policy) — that is the knowledge-preservation debt, carried as the
+    named wave-3 unblock, not a dataflow contradiction (arbiter B1).
+  When registry wiring lands, its id registries turn `null` → `true|false`
+  and the count re-freezes (EXTRACTION-LOG §5 procedure). The count is
+  asserted per-pair by tests ([§7](#7-test-spec-for-testwriter) F3/I2), so
+  silent growth or shrinkage of the ledger fails the build.
+
+## 5. Stage contract — stage 6 `emit`
+
+Honest scope: **validation only** — this stage produces no new data planes.
+There is nothing else to emit until datasets/relink run, and after they run
+there is still nothing beyond validation owed here (site-plane artifacts,
+search indexes, CDN sets are frontend/pack-product work outside `extracted/`
+doctrine outputs; icon crops live under `output/cdn/` per Dig 4 and are not
+touched).
+
+### 5.1 Pipeline (exact commands)
+
+Preconditions (checked in `Invoke-Emit`, exit 2 naming the owning stage):
+canonical data holds **exactly the 40 managed kinds**; canonical relinks
+hold **exactly 51 pair files** (equality, arbiter F11); `extracted/
+RELATIONS.md` exists (stage 5); drafts exist for the wave-1 kinds
+(`run_all.ps1 datasets` regenerates them — availability regeneration reads
+them, see hole 5). `locale_availability.jsonl` is deliberately NOT a
+precondition: emit's own step 1 produces it, so demanding it beforehand was
+circular on a fresh tree (arbiter F6) — ownership is stage 6's alone.
+
+```
+1. python pipeline/tools/locale_bridge_dig.py        # availability regen (deterministic)
+2. python pipeline/tools/validate_all.py --cdb <Cdb> --buildid <BuildId>
+      --datadir extracted/data --reldir extracted/relinks
+      --report extracted/validation-report.json
+      --md extracted/VALIDATION-REPORT.md
+```
+
+`locale_bridge_dig.py` runs UNCHANGED: fixed inputs (`_draft` wave-1 kinds +
+harvest lang bridge), fixed seed = buildid, sorted iteration — reruns are
+byte-identical (overlays 29,889 entities into `extracted/locales/<locale>/`,
+availability 3,779 rows into `extracted/relinks/locale_availability.jsonl`;
+regenerate-on-every-rerun is localization-architecture §5.4). Generalizing
+its kind set to the 37 wave-2 kinds is queued work (PROOF R9), not silently
+claimed here (hole 5).
+
+### 5.2 Validator (validate_all.py)
+
+New stdlib-only tool; exits 0 iff every check passes; exit 1 otherwise; exit
+2 on missing inputs. It obtains its verifier evidence by INVOKING
+`cdb_verify.py` as a child (exit code + `ALL CHECKS PASSED` line embedded)
+— one independent verification truth, no reimplementation. Checks, each a
+report record `{id, expected, actual, pass}`:
+
+| id | assertion (all numbers from [§2](#2-ground-truth-frozen-numbers-must-reconcile-exactly)) |
+|---|---|
+| `census-closure` | Σ canonical dataset rows (per-kind `_meta.rowCount` == actual data-line count) == 10,207; + **1,266 sourced from `cdb_verify.CENSUS['constant']`** — the verifier's own independent transcription, never a disk read of the unwired dig-era file — == 11,473 (arbiter F3, fresh-clone-safe). Conditional drift tripwire: when `extracted/logic/constants.jsonl` exists its data-line count must equal 1,266 else fail; absence passes. Report envelope carries `counts.constants = {rows: 1266, source: "verifier census", producer: "pipeline/tools/formula_emit.py (dig 2; wiring queued with the formulas/decompile track)"}` |
+| `census-per-kind` | each of the 40 kinds equals its census-table value |
+| `relink-integrity` | 51 pair files; Σ edges 19,130; `valid:false` == 0; `valid:null` == 72 with per-pair decomposition env__place 61 / frescos__place 9 / fiefGoal__element 2; all mechanisms `hard` |
+| `verifier-gates` | embedded child cdb_verify run over canonical dirs exited 0 |
+| `availability-regenerated` | 3,779 rows; per-kind 2,125/1,373/281; locale set == 9 client locales; `filler_class_cells` grid asserted from the generator's own report key set — 3 kinds × 9 locales = 27 keys (en structural zero), all == 0 (arbiter F7) |
+| `catalog-parity` | matrix.json pairCount == 780; every non-modeled direction carries an unblock; RELATIONS.md rendered from the same matrix (byte-derived marker embedded in both); the rendered MD is read from beside the tree under test (`--reldir`, `<reldir>/../RELATIONS.md`), never from the tool's own pack root, so out-of-tree validation parity-checks its own render |
+| `deferred-present` | `deferred[]` non-empty and matches the revised [§3.5](#35-deferred-kinds-honesty-list-carried-forward): the four Dig-7-decoded kinds (datasets in `_draft`; wave-3 promotion pending id-registry wiring + levelProps/id-uniqueness rulings), `achievement` (emitted keyless, Dig 10; wave-3 promotion decision), and `constant`-not-duplicated — each carrying its unblock pointer (arbiter F1) |
+| `hbson-independent` | no `place|group|element|levelProps.jsonl` anywhere under canonical dirs (the parallel-dig guarantee, AC11) |
+
+Report envelope: `{buildId, generated, tool, pass, checks[], gates{},
+counts{}, deferred[]}`. Sibling human file `extracted/VALIDATION-REPORT.md`
+is rendered by the same run from the same records (AGENTS.md rule 4 pack
+convention: extracted/ carries VALIDATION-REPORT.md) — a table of the same
+check ids with expected/actual/pass; no prose beyond what the numbers say.
+
+## 6. run_all wiring: EXTRACTION-LOG edit list
+
+Follow the map-stage pattern exactly. `run_all.sh` needs NO change (thin
+forwarder). Edits to `run_all.ps1`:
+
+1. `$script:StageInfo`: `'datasets'`, `'relink'`, `'emit'` → `status='BUILT'`,
+   updated `desc`, **delete their `stub` keys** (only NOT-BUILT stages carry
+   one; `decompile` keeps its stub untouched).
+2. Three new `Invoke-*` functions mirroring `Invoke-MapRegistry`: build the
+   arg-vector list of [§3.1](#31-pipeline-exact-commands-in-order-stop-on-first-nonzero)/[§4.1](#41-pipeline-exact-commands)/[§5.1](#51-pipeline-exact-commands);
+   `if ($DryRun)` prints EVERY step as `[dry-run] datasets i/N would run: …`
+   (quoted-token style identical to harvest/map) and returns 0; otherwise
+   runs steps sequentially — print `[stage] <quoted cmd>`, then
+   `& $Python @args | Out-Host` (**the Out-Host fix on every native call** —
+   native stdout flowing into the function return stream made PASS read as
+   FAILED once; it is load-bearing, EXTRACTION-LOG §6), stop and return
+   `$LASTEXITCODE` on the first nonzero; return 0.
+3. Dispatch: add `elseif ($stage -eq 'datasets'|'relink'|'emit')` branches
+   BEFORE the stub `else`, passing `-Cdb $script:Defaults['CDB'] -BuildId
+   $script:Defaults['BUILDID'] -Python $script:Defaults['PYTHON']`.
+   Preconditions ([§4.1](#41-pipeline-exact-commands)/[§5.1](#51-pipeline-exact-commands))
+   are checked inside `Invoke-Relink`/`Invoke-Emit` returning 2.
+4. `Read-Defaults` required-keys array gains `'CDB'`; `--list` prints the
+   resolved `CDB` line.
+5. Header comment: document the three stages' commands + the `CDB` default;
+   if header lines are added, bump the `TotalCount 32` literal in
+   `Write-UsageAndExit` so usage still prints the whole block.
+
+Edits to `EXTRACTION-LOG.md` (same commit — AGENTS.md rule 5):
+
+| # | Location | Edit |
+|---|---|---|
+| E1 | Defaults block | insert line `CDB: extracted/harvest/res/data.cdb` (ASCII, verbatim-key contract; parser picks it up unchanged) |
+| E2 | §2 tool table | add rows for `promote_drafts.py`, `relink_catalog.py`, `validate_all.py` (local-only¹, sha256+bytes pinned at commit); refresh sha256+bytes for `cdb_emit.py` / `cdb_verify.py` after the [§3.6](#36-required-retrofit-buildid-flag-on-both-cdb-tools)/hole-1 edits |
+| E3 | §3 stage table rows 4–6 | flip to **BUILT**; Produces/Notes per stage: datasets — waves 1+2 → `_draft`, verify gate, promote, canonical re-verify ([spec](./spec-stages-datasets.mdx) §3); relink — promote 51 pair seeds, canonical verify, RELATIONS.md + matrix.json (§4); emit — availability regen + validation-report.json + VALIDATION-REPORT.md (§5) |
+| E4 | §3 trailing paragraph | update: stages 4–6 execute in isolation (`run_all.ps1 datasets` …) while the full no-args walk STILL halts at decompile exit 3 until that stage builds — fail-loud doctrine intact |
+| E5 | §4 re-run section | note stages 4–6 join the one-command rerun; census/relink expectations re-freeze per the §5 procedure on a new buildid |
+| E6 | §6 Log history | append dated entry: wiring landed, proofs (`--list`, `--dry-run` ×3 stages, stage PASS runs), hole-1/hole-2 retrofits named |
+
+## 7. Test spec for TestWriter
+
+New suite `pipeline/tests/test_stages_datasets.py` under the existing
+conventions (marker `integration` + `--run-integration` opt-in registered in
+`conftest.py`; default `python -m pytest pipeline/tests -q` green without A:)
+and the test_map_tiles discipline: written against THIS SPEC, cases needing
+not-yet-landed modules skip with a clear reason; committed fixtures carry
+NUMERIC expectations only (numbers are not game data); every threshold here
+is frozen from the measured distributions in [§2](#2-ground-truth-frozen-numbers-must-reconcile-exactly),
+never invented. The real data.cdb and extracted tree appear ONLY under the
+integration mark.
+
+Fixture layer (always runs):
+
+- **F1 Closure arithmetic**: Σ census values == 11,473; wave1 3,779 +
+  wave2 6,428 == 10,207; + constants 1,266 == 11,473.
+- **F2 Wave membership**: wave1 = {item,skill,class}←{item,skill,unitClass};
+  wave2 = 37 kinds; disjoint; union of source sheets == census keys −
+  {constant}; `craft`↔`recipe` mapping asserted once.
+- **F3 Relink arithmetic**: wave-1 8 pairs Σ 6,636 (per-pair table); +12,494
+  == 19,130; 8+43 == 51 files; unverifiable 61+9+2 == 72; dangling 0.
+- **F4 Availability arithmetic**: 3,779 == 2,125+1,373+281; locales == 9 ==
+  spec `locales.official`; `filler_class_cells` grid = 27 keys (en
+  structural zero), all 0; overlays 29,889.
+- **F5 Bridge coverage**: 27 used ⊆ 35 en sheets; drift-absent 0.
+- **F6 Preservation pins** (arbiter F8 re-freeze; computed from the emitter
+  counter table == verifier `extra_preserved`, so fixtures pass against
+  regenerated drafts): item `__ignoreLoc__` **21**; skill `__ignoreLoc__`
+  **40** top-level; skill levels sub-sheet undeclared extras **14
+  occurrences / 9 distinct keys** (`vars` 4, `isAttack` 2, `tooltipStatus`
+  2, `specialAnim`/`apCost`/`flags`/`throwFx`/`needDisengaged`/`hitFx`
+  1 each); pack-wide preserved-key total **133**.
+- **F7 Matrix size**: kinds 40; directions 1,560; unordered rows 780.
+- **F8 Deferred-list shape**: exactly the [§3.5](#35-deferred-kinds-honesty-list-carried-forward)
+  rows, each carrying its unblock token.
+
+Tool layer (skips until modules land; synthetic mini-CastleDB fixtures — two
+sheets, a `6:` ref column, a localizable column, an `8:` list with nested
+ref, an undeclared payload key, a datafile-backed empty target sheet; NO A:):
+
+- **T1** Mini-CDB round-trip: emit(waves on mini wave maps) → verify PASS.
+- **T2** Planted dangling ref in mini fixture → verify exit 1 naming the
+  edge (dangling≠0 policy).
+- **T3** Empty-target-sheet ref → `valid:null`, verify PASS, dangling 0
+  (defect-1 rule pinned).
+- **T4** `--buildid`: emit stamps X; verify passes with X, fails with Y≠X;
+  default absence keeps `20318128`.
+- **T5** Promoter idempotency: second run all-`unchanged`, mtimes untouched;
+  tampered payload row → exactly that file `updated`; tampered ONLY
+  `_meta.emitted` → skipped (exempt-field rule).
+- **T6** Promoter trips: ghost canonical `<kind>.jsonl` / pair file → exit 1
+  naming it, nothing deleted; `maps.json`/`cells/x.json`/
+  `locale_availability.jsonl` ignored in both planes; planted non-managed
+  draft entries (`achievement.jsonl`, `place.jsonl`, `worldmap_overlays.json`,
+  `poi_coordinates.jsonl`) are skipped and enumerated on stdout, never
+  promoted (arbiter F1).
+- **T7** Promoter atomicity: injected mid-copy failure leaves no `.part`
+  residue and the previous target intact.
+- **T8** Catalog on synthetic canonical set: 3 kinds ⇒ 3 rows; modeled
+  direction carries joinKeys/cardinality triple/mechanism; reverse of a
+  one-way pair renders partial-or-missing WITH unblock; deferred-target
+  pairs carry R1.
+- **T9** Parity: every RELATIONS.md row equals its matrix.json record.
+- **T10** Validator truth-table: green synthetic tree → exit 0, `pass:true`;
+  each injected fault (row count ±1, one dangling edge, one availability row
+  removed, deferred list emptied, matrix/MD divergence, planted
+  `place.jsonl`) flips exactly its named check and exits 1.
+- **T11** Exit-code surface of the new tools: 0/1/2 per
+  [§3.4](#34-promotion-tool-promote_draftspy)/[§5.2](#52-validator-validate_allpy).
+- **T12** Stage-5 product byte-stability (arbiter F9): generating the
+  catalog twice over the same synthetic canonical set yields byte-identical
+  `matrix.json` and `RELATIONS.md` — no wall-clock `generated` in either;
+  `validation-report.{json,md}` are the declared exemption and keep it.
+
+Integration layer (`--run-integration`, NE8K only, real harvested data.cdb):
+
+- **I1** Stage-4 chain end-to-end ([§3.1](#31-pipeline-exact-commands-in-order-stop-on-first-nonzero)):
+  gate PASS, promotion, canonical re-verify PASS, per-kind counts == census, Σ 10,207.
+- **I2** Stage-5 chain: canonical verify PASS with 19,130/0/72 and the exact
+  per-pair null decomposition; RELATIONS.md rows == 780; a second
+  `run_all.ps1 relink` leaves `matrix.json` + `RELATIONS.md`
+  byte-identical (hash before/after — arbiter F9 proof).
+- **I3** Stage-6: availability rerun byte-stable; validator exit 0; report
+  reconciles 11,473; validator exits 0 with `logic/constants.jsonl`
+  deleted (fresh-clone posture) and exits 1 with a tampered data-line
+  count when present (arbiter F3 proof).
+- **I4** Entrypoint: `--dry-run datasets|relink|emit` prints the exact
+  vectors and changes no mtimes; `run_all.ps1 datasets` → PASS exit 0;
+  full no-args run still stops at decompile exit 3.
+
+## 8. Acceptance criteria
+
+Each verifiable by command exit code or file assertion on NE8K. All hold
+WITHOUT the HBSON decode landing (parallel dig; wave-3 joins later).
+
+1. **AC1 Datasets canonical**: `run_all.ps1 datasets` exits 0;
+   `extracted/data/` holds exactly the 40 managed `<kind>.jsonl` files (the
+   [§3.4](#34-promotion-tool-promote_draftspy) rule 1 universe); each line 1
+   `_meta` carries kind/sourceSheet/buildId/rowCount/container/tool and
+   rowCount == actual data lines; per-kind counts == census; Σ 10,207
+   (assert: validator `census-per-kind` + `census-closure` pass).
+2. **AC2 Gate actually gates** (arbiter F4 — executable surfaces only;
+   steps 1–2 regenerate the drafts first, so a seeded draft cell cannot
+   fault the entrypoint path): (i) an isolated step-3 `cdb_verify`
+   invocation over a seeded-corrupt draft COPY exits 1 naming the edge;
+   (ii) a corrupted `data.cdb` copy run through `run_all.ps1 datasets`
+   exits nonzero with canonical bytes+mtimes untouched; (iii) T2 covers the
+   mini-fixture analog. Restored inputs → reruns exit 0.
+3. **AC3 Idempotency**: immediate second `run_all.ps1 datasets` reports all
+   files `unchanged`; zero payload diffs; canonical mtimes untouched.
+4. **AC4 Deferred honesty**: no `place|group|element|levelProps.jsonl` in
+   canonical dirs; `validation-report.json.deferred[]` names the
+   [§3.5](#35-deferred-kinds-honesty-list-carried-forward) set with unblocks
+   (`hbson-independent` + `deferred-present` checks pass).
+5. **AC5 Relinks canonical**: `run_all.ps1 relink` exits 0; canonical
+   relinks = **exactly 51 pair files** (equality); Σ edges 19,130;
+   `valid:false` == 0; `valid:null` == 72 decomposing 61/9/2; every
+   mechanism `hard` (`relink-integrity` pass; any drift exits ≠0).
+   `locale_availability.jsonl` is NOT claimed here — it is stage-6 output,
+   asserted at AC8 (arbiter F6).
+6. **AC6 Catalog**: `extracted/RELATIONS.md` + `matrix.json` exist; 780
+   unordered rows covering all 40 kinds; every direction labeled
+   modeled/partial/missing; every non-modeled direction carries exactly one
+   unblock pointer; MD↔JSON parity holds (`catalog-parity` pass); rerunning
+   `run_all.ps1 relink` leaves both files byte-identical — no wall-clock
+   stamps (arbiter F9).
+7. **AC7 Validation report**: `run_all.ps1 emit` exits 0;
+   `extracted/validation-report.json` parses, `pass:true`, embeds
+   11,473 closure, gates block, counts block, buildId;
+   `extracted/VALIDATION-REPORT.md` states the same per-check results.
+8. **AC8 Availability**: regenerated file has 3,779 rows (2,125/1,373/281),
+   9 locales, `filler_class_cells` counters == 0 across the generator's
+   whole grid — 3 kinds × 9 locales = 27 keys (en structurally skipped);
+   rerun is byte-identical (arbiter F7).
+9. **AC9 Drift semantics — one per class** (arbiter F5): planting a
+   ghost/stale managed-name canonical kind/pair file makes the owning stage
+   exit 1 NAMING it; deleting a managed canonical file restores it from its
+   draft on the next owning-stage run at exit 0 (counted `updated` — drafts
+   are the declared source of truth); deleting one and invoking a consumer
+   stage alone instead exits 2 naming the owning producer; regenerated
+   products (`locale_availability.jsonl`, `RELATIONS.md`, `matrix.json`,
+   validation-report files) are exempt — their owning stage regenerates
+   them on demand. Never a silent reshape or delete.
+10. **AC10 Entry-point surface**: `run_all.ps1 --list` shows six stages with
+    4–6 BUILT; unknown flag → usage exit 2; `--dry-run` executes nothing
+    (no mtime changes); decompile stub still exits 3 with its pointer;
+    `run_all.sh --list` behaves identically through the forwarder.
+11. **AC11 Parallel-dig independence**: the full AC1–AC10 set passes on a
+    tree containing zero HBSON-decode artifacts (asserted by
+    `hbson-independent`); no AC references place/group/element/levelProps
+    inline rows or any logic/inferred edge.
+
+## 9. Out of scope
+
+HBSON decode + wave-3 kinds (place/group/element/levelProps rows, REG POI
+coords, basePrice payloads — PROOF R1, parallel dig); the ordered-pair
+UPGRADE itself (logic/inferred edges, reverse-direction completion — next
+dig queue item, fills the [§4.3](#43-status-vocabulary-frozen-dr-bar-1-shape) scaffold);
+UI-link → schema coverage map (DR bar 2); competitor-floor delta application
+beyond the already-applied COMP §7 chains (DR bar 3); decompile stage (own
+spec line, PROOF R3); achievements Steam pull (R2); wave-2 locale overlays +
+texts_<l>.xml UI chrome layer (R9); patch-diff harness and fr-vintage stamp
+rule (R5); icon CDN promotion out of `output/` (Dig 4 owns it); audio/media
+offload + MEDIA-CATALOGUE.md (R4); VALIDATION-REPORT.md content beyond
+rendering the report records; any user-facing surface (repo/data layer only
+— AGENTS.md rule 3); emitting id-set sidecars from the HBSON decode,
+teaching emit/verify to consume them, and promoting the four decoded kinds
+(arbiter F2 — the registry wiring IS the named wave-3 unblock); repointing
+`hbson_emit.py`'s input off the scratch copy
+`pipeline/tools/_verify/extract-res.pak-data.cdb` onto the harvest output
+`extracted/harvest/res/data.cdb`, required before any wave-3 product can be
+pipeline-gated ([§1](#1-authority-chain) input-source rule; recorded here so
+the constraint survives this session — arbiter F14/A2).
+
+## 10. Contract holes found
+
+1. **cdb_verify cannot scan the canonical relink dir as-is**: it treats every
+   `*.jsonl` under `--reldir` as a pair file, so `locale_availability.jsonl`
+   (mandated AT that exact path by localization-architecture §5.4) would
+   fail `_meta.edges` parsing. Required fix (part of E2's hash refresh):
+   consider a reldir file a pair file iff its name matches
+   `<kind>__<kind>.jsonl`; list-and-count anything else as skipped. The
+   wave corpora in both draft dirs are unaffected; the non-pair
+   `poi_coordinates.jsonl` sitting in `relinks/_draft/` since Dig 7 is
+   caught by the same name rule — skipped and enumerated, never parsed
+   (the live `KeyError: 'fromKind'` on today's own draft dir is the proof
+   the rule is needed now).
+2. **Hardcoded BUILD_ID in both tools** breaks the one-command patch rerun —
+   retrofitted as [§3.6](#36-required-retrofit-buildid-flag-on-both-cdb-tools).
+3. **`_meta.emitted` defeats byte-idempotency**: the emitter stamps wall-clock
+   time, so reruns can never be byte-stable; the promote equality rule
+   exempts exactly that field ([§3.4](#34-promotion-tool-promote_draftspy)
+   rule 2) rather than weakening idempotency to "row counts equal".
+   Declared exemption (arbiter F9/m1): run REPORTS
+   (`validation-report.{json,md}`) keep their wall-clock `generated` on
+   purpose — a report that cannot say when it ran is a worse defect than a
+   git diff. Derived DATA artifacts (`matrix.json`, `RELATIONS.md`) get no
+   stamp and are byte-stable across reruns
+   ([§4.2](#42-catalog-generator-relink_catalogpy)).
+4. **Full walk still gates on decompile**: flipping 4–6 to BUILT does NOT
+   make a no-args run reach them — stage 3 fails loudly first (exit 3, its
+   pointer). Isolation mode is the supported path until the decompiler
+   lands; documented in E4, not worked around.
+5. **Availability regenerator reads `_draft`, not canonical**: wave-1-only,
+   by design of the locale-bridge dig; stage 6 keeps it unchanged because
+   stage 4 always regenerates drafts before emit can run (precondition),
+   and the generalization is queued (R9). Recorded so nobody mistakes the
+   3-kind availability scope for the 40-kind dataset scope.
+6. **Kind-vs-sheet naming trap**: `craft` emits as kind `recipe`;
+   `class` as kind `class` from sheet `unitClass`; three sheets take
+   synthetic ids (`frescos` on its unique `place` ref; `env`/`craft`
+   zero-padded ordinals, `keyRule` in `_meta`). Every join key, matrix row,
+   and filename uses KIND names; cardinality on synthetic-keyed kinds is
+   computed on the synthetic id. Tests pin the mapping once (F2).
+7. **`pipeline/tools/` is git-swallowed**: the root `.gitignore` `tools/`
+   rule makes all three NEW tools local-only until negation lines land
+   (EXTRACTION-LOG §2 footnote ¹ precedent) — hash-pin discipline continues;
+   a fresh clone restores by hash. Recorded, not papered over.

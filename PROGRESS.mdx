@@ -1,0 +1,202 @@
+# Wartales Database — Live Progress
+
+Live progress page for the Wartales pack (`wartales/`). Updated by the
+orchestrator after every completed unit. Question queue for owner-gated
+items lives at the bottom.
+
+- **Game:** Wartales (Shiro Games, Heaps.io/HashLink engine)
+- **Client:** `A:\SteamLibrary\steamapps\common\Wartales\` · Steam appid
+  `1527950` · buildid `20318128`
+- **Host:** NE8K (this machine holds both the repo and the client)
+- **Started:** 2026-08-24 (fresh pack bootstrap; previous orchestrator was
+  fully stopped — no prior state existed)
+
+---
+
+## Phase board
+
+| Phase | Status |
+|---|---|
+| P0 Bootstrap & research (recon, toolchain, competitors, locales, spec) | **DONE — spec FROZEN 2026-08-24** (arbiter delta APPROVE-FOR-FREEZE) |
+| P1 Extraction: harvest → decompile → datasets → relink → PROOF | **NEARLY CLOSED** — run_all stages 1 harvest + 2 map BUILT; **stages 4–6 BUILT** (blind parallel CodeWriter+TestWriter landed; review pair running). Residue ledger: R1 HBSON **CLOSED** (dig 7, 3,536/3,536 byte-exact) · R2 achievements **RESOLVED** keyless (235 rows, dig 10) · R3 disassembler **COMPLETE** (dig 8, 2.5M ops; structured-text step = dig 13 in flight) · R6 sdlboot **CLOSED** (dig 9) · R7 battle terrain **CLOSED** (dig 12, 97 scenes decoded) · R8 world↔tile transform **CLOSED** (dig 11, px=wx·4/py=wy·4 proven). Open: R3b decompiler (running), R9 locale wave-2 overlays, R10 relink matrix upgrade, R5 fr stamping rule |
+| P2 Data-completeness gate (rule 8 arbiter) | opens after R3b/R9/R10 land + stages review chain clears |
+| P3 Site build (DB, map, builder, calculators, guides/news, i18n, UGC, SEO/AEO) | F1 tokens **DONE** (r4 verdict + r5 closeout measured); rest gated on P2 |
+| P4 Visual critic loop vs references + e2e smoother | not started |
+| P5 Definition-of-done verification + missingdata.md | not started |
+
+## Log
+
+### 2026-08-25 — wave 1+2 results: R1/R2/R6/R7/R8 closed; stages built under review
+
+- **Dig 7 HBSON decoder — R1 CLOSED** (top unblock since Dig 1): grammar
+  reversed with three-oracle agreement (`docs/hbson-format.mdx`);
+  3,536/3,536 blobs zero-slack + byte-exact re-encode + independent
+  second implementation; deferred kinds emitted (place 536 / group 791 /
+  element 5,180 / levelProps 5,982); **607 POI/town/secret coordinates**;
+  layers2D value→id tables; basePrice = measured negative (no carrier;
+  fallback is dead code); all 72 unverifiable relink edges flipped
+  valid:true.
+- **Dig 8 disassembler — R3 complete**: every function operand-resolved
+  (52,114 fns / 2,508,050 ops → 1,584 `.dis.hx` mirrors); op-28 decoded;
+  CFG 504k blocks; **capture odds fully decoded**, XP composition, trade
+  distance gradient w/ 50-unit free radius, guard cap/pierce/backstab,
+  MaxLevelLock=15 semantics. Structured-text decompiler = dig 13 running.
+- **Dig 9 sdlboot**: same game linked vs SDL/GL backend (92.66% opcode
+  mass identical); nothing game-mechanics-unique — hlboot stays canonical.
+- **Dig 10 achievements — R2 RESOLVED keyless**: 235 rows via community
+  stats + keyless global-percent endpoint; id alignment solver (tie-block
+  bipartite matching); Steam locales proven en-only for achievements
+  (honest availability rows, no fake overlays); client join 212/216;
+  soundtrack app 3533110 first enumerated non-content app.
+- **Dig 11 world↔tile transform — R8 CLOSED**: single global affine
+  px=wx·4, py=wy·4 from carrier arithmetic (not raster fitting);
+  509/518 marker→region labels via the client's own formula; maps.json
+  `coordinateTransform` pinned; AC9 roundtrip budget frozen; pytest 93/0.
+- **Dig 12 battle terrain — R7 CLOSED**: 97 scenes × 1,470 tiles × 4
+  roles (h/n/i/w), 64 m tiles double-derived vs engine `Terrain.hx`,
+  normals proven (R²=0.997), **tactical cell = 1 m measured** across 230
+  arena markers; CDB join 108/108.
+- **Stages 4–6 BUILT through the full PrepareTask chain**: spec drafted
+  (re-measured numbers) → reviewer NEEDS_REVISION (3 blockers) → arbiter
+  REVISE F1–F14 → fixer applied w/ proofs → arbiter r2 **APPROVE-FOR-
+  BUILD** → blind parallel CodeWriter (4 tools + wiring, self-tests green)
+  + TestWriter (54 cases, 34+20) landed. Fresh CodeReviewer +
+  TestReviewer now running; fix loop next per verdicts.
+- Gateway flakiness tonight: repeated 429/empty-200 agent deaths — all
+  recovered by fresh relaunches, zero work lost.
+
+### 2026-08-25 — orchestrator relaunch (previous orchestrator fully stopped) + wave 1
+
+- **State reconciled from disk** (PROGRESS was stale): run_all stage 1
+  harvest + stage 2 map registry BUILT and committed (`ff66d0d`, 62-test
+  map suite green; 1,836 albedo tiles); datasets drafts complete for all
+  40 CDB kinds (10,207 rows + 1,266 constants = census closure, verifier
+  proven); relink seeds 51 files / 19,130 edges / 0 dangling; locale
+  bridge ×9 locales proven (55,350/55,350 cells, zero fillers);
+  hl-structure complete (zero-slack + crashlink cross-check); PROOF.md
+  drafted with residue ledger R1–R10; F1 tokens **done** per critic r4.
+- **Wave 1 launched** (4 parallel agents, briefs in `docs/briefs/`):
+  Dig 7 HBSON prefab decoder (R1 — gates deferred kinds, POI/town coords,
+  worldmap overlays, basePrice), Dig 8 HL operand disassembler (R3 step —
+  gates formula recovery for calculators), stages 4–6 Documentator spec
+  (datasets/relink/emit promotion into run_all), tokens r5 fixer (r4
+  carried hygiene: texture staging verify + panel-alpha-over-shot-20
+  proof).
+- Requirement chain re-read in full by the new orchestrator (AGENTS.md,
+  decision-register, domain/site-sections/seo/localization/design/
+  extraction doctrine+host, FRAMEWORK §2/§6–§8, spec.md, tools-plan.md).
+
+### 2026-08-24 — scout wave results
+
+- **Client recon delivered** (`docs/client-recon.mdx`, verified on disk):
+  7,089 files / 48 GB reconciled to Steam manifest within 1 byte; Shiro
+  `PAK\0` format fully decoded read-only (no encryption/compression, two
+  data regions, Σsizes == span, delta 0 on all four paks); 40,201 packed
+  entries inventoried (assets 17,131 · content 15,248 · map 6,886 ·
+  res 936) with reusable TSVs; **game brain in res.pak** — `data.cdb`
+  CastleDB 6 MB + `formulas.hx` + 12 hscript sources + `names.yml`;
+  **9 client locales verified** (de/en/es/fr/ko/pl/pt-BR/ru/zh, master
+  texts.xml is French — dev pivot); `export_*.xml` CDB export = 35
+  sheets / 9,912 text leaves = entity↔text relink bridge; hlboot.dat =
+  HLB v4 ~16 MB logic layer; audio loose in res/audio (Wwise 2.49 GiB,
+  clean offload set); zero video; .dds 31.7 GB map tiles inside paks.
+- **Planning risk recorded**: Steam queues patch TargetBuildID 21238928
+  (~3.66 GB). Decision: proceed against pinned buildid 20318128 now;
+  pipeline re-runs on the new build when it lands → first patch-diff
+  dataset for free.
+- **Design sources delivered** (`design/sources/`, INDEX tracked, shots
+  local): 20 verified official UI shots covering inventory, character,
+  combat, both maps, fief, tavern, arena, naval, dialogue, logo, camp
+  texture. Rarity = slot background tints on near-black quilted panels;
+  serif-first medieval typography; gold reserved for currency/selection.
+- **Documentator launched** (detached) for `spec.md` draft per FRAMEWORK
+  §4; competitor + toolchain reports still in flight → [PENDING-SCOUT]
+  holes expected in first draft.
+
+### 2026-08-24 — bootstrap
+
+- Requirement chain read in full: root AGENTS.md, decision-register,
+  domain-doctrine, site-sections, seo-standard, localization-architecture,
+  design-standard, extraction-doctrine, extraction-host, FRAMEWORK §2/§4/§6/§7/§8,
+  foundation-guide, NWG deep-dive, enka feel notes.
+- Client located and identified: **Heaps.io/HashLink** (not Unity) — four
+  `.pak` archives (`assets/content/map/res`), `hlboot.dat` bytecode,
+  `texts_en.xml` + `export_en.xml` at root. Buildid pinned above.
+- No prior Heaps writeup exists in the knowledge base → toolchain is
+  net-new work; a KB writeup ships with it.
+- Pack scaffold created (`contracts/ data/ pipeline/ output/ design/
+  docs/ site/`); master task list stood up (29 tracked tasks).
+- Piece decomposition shipped (`docs/pieces.mdx`): F1–F5 foundations +
+  PT01–PT18 page-type pieces.
+- Scout wave running (4 parallel agents): client recon, toolchain
+  validation, competitor research, design-source gathering.
+- Note#5 substitution recorded: `codex` CLI absent → bailian `bl image`
+  is the image-generation fallback.
+
+### 2026-08-24 — toolchain + tools-plan finals
+
+- **Toolchain R2 verdicts**: wtpak.py reconciles 0-mismatch against all
+  40,201 recon rows; extractions proven past the 4 GiB boundary
+  (1,612 map.pak entries); PAKTool cross-proven byte-identical
+  (secondary); no crypto gate anywhere. **Wartales ships a HashLink
+  fork** — public hlbc fails on novel type-kinds ≥19; seeded probe
+  (`hlboot_probe.py`) strict-parses the header and decodes all 75,321
+  strings (52,114 functions / 46,891 types / 34,258 globals); the
+  types-walk continuation is mechanical. **`data.cdb` extracted:
+  CastleDB JSON, 386 sheets — data-layer core readable as-is.**
+- **Tools-plan finals**: market vacuum — no dedicated Wartales tooling
+  observable anywhere. Top-5: company builder (flagship MVP =
+  single-companion editor, shareable-URL state, computed from
+  data.cdb + decompiled formulas), trade route planner + price atlas,
+  owned map, recipe/blueprint explorer, interrogation DB. 20 mechanics
+  enumerated; P0-DIG cells = the moat.
+
+### 2026-08-24 — review pass + parallel digs
+
+- **Both spec reviews delivered**: spec review = 11 findings / 0
+  blockers / ~30 traced claims all clean → NEEDS-REVISION (editing
+  pass only). Harvest review = 1 PROVEN blocker: the recon TSVs'
+  flag-2 offset column is synthetic (0/N live matches, values step by
+  2²⁸) → reconciliation contract moves to (path, size, adler);
+  pipeline design otherwise sound.
+- **Arbiter running** on both artifacts (verdicts → freeze / build).
+- **Three parallel data digs launched** (all unblocked by earlier
+  verdicts): ① hlboot types-walk continuation (fork's novel
+  type-kinds, zero-slack proof standard, structure registries to
+  `extracted/logic/hl-structure/`); ② F1 design-tokens spec
+  (Documentator extracts the game's own `ui/style.css` + `.asl` via
+  wtpak.py first — owner's shadcn-upgrade directive is the canon);
+  ③ CastleDB census (`data.cdb` already extracted: 386 sheets) →
+  kind map → first three canonical JSONL kinds + hard `ref`-edge
+  relink seeds.
+
+### 2026-08-24 — harvest build approved by reviewers; datasets reach CDB closure
+
+- **Harvest build round 1**: CodeFixer 10/10 (blocker dead with live
+  proof), TestFixer suite to **48 passed / 0 failed / 3 skipped**;
+  round-2 delta reviews both **CLEAN** — "fit for the full four-pak
+  run". Acceptance Arbiter verifying (provider 429s retrying).
+- **Datasets: CDB closure proven** — 40 kinds / 10,207 rows + 1,266
+  constants = census grand total (11,473, independent verifier);
+  relink graph **51 files / 19,130 hard edges / 0 dangling**; deferred
+  kinds honestly listed (HBSON-prefab-gated, Steam-surface
+  achievements, subset views).
+- **Localization: key convention proven exhaustively** — 55,350/55,350
+  leaf re-extractions × 9 locales; coverage 82.5–98.9% (limiter =
+  engine-internal CDB↔export drift, counted); **zero fillers needed**
+  among official locales; fr-export vintage anomaly flagged (patch-diff
+  carrier gap).
+- **Tokens spec**: arbiter-fixed 8/8; F1 CodeWriter building
+  tokens.css + parity tests + critic preview page.
+- Ops note: tonight's API gateway intermittently kills agents
+  (empty-200s, 429s) — every loss recovered by fresh-continuation
+  relaunch; no work lost (file-based tracking).
+
+## Question queue (owner-gated)
+
+| # | Question | Why it blocks | Workaround in flight |
+|---|---|---|---|
+| Q1 | Domain placement for Wartales (dedicated vs hybrid vs hub path)? Not on the 51-product roster yet. | D3 domain+trademark is an owner-only gate. | Localhost-first build proceeds regardless; provisional roster entry recorded in decision-register. |
+| Q2 | **C: drive at 7.7 GB free (100% warning)** — ~16 GB of other packs' scratch sits in `Temp` per the stages TestWriter's environment note; not wartales-owned, not cleaned by this pack. | Repo drive exhaustion would break every concurrent pack build on NE8K. | This pack keeps its scratch in gitignored `wartales/output/` (~0.6 GB total) and temp-on-D: where needed; owner call on cross-pack Temp cleanup. |
+
+<!-- END OF PROGRESS — updated after every completed unit -->

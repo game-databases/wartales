@@ -1,0 +1,343 @@
+# F1 — Design tokens spec (from the game's own stylesheet)
+
+**Status:** piece spec, ready to build. **Authority:** owner shadcn directive
+([shadcn-adoption.mdx](./shadcn-adoption.mdx) — primitives UPGRADED to game
+fidelity, never a reskin) under [DR-2026-08-24-wartales-roster]. **Token
+method:** `_foundation/foundation-guide.md` §6.1 — every value below is
+extracted from the game's own `ui/style.css`, not sampled from screenshots.
+Where style.css and `design/sources/` shots disagree, style.css wins
+(shadcn-adoption evidence hierarchy, level 1).
+
+## 0. Evidence base (already extracted, verified)
+
+All in [`extracted-ui/`](./extracted-ui/EXTRACT-LOG.mdx) — entry paths,
+byte sizes, adler32 MATCH records, magic bytes:
+
+- `style.css` — the game's domkit stylesheet: 32,113 lines, 7,138 rule
+  blocks, 96 distinct 6-digit + 42 real 3-digit hex colors (930 occurrences),
+  5 font faces, 225 referenced textures (860 refs), 361 filter declarations.
+- `RarityBackground.png` (156×105, 3-frame hgrid 52×105) — the rarity slot
+  frames. `HeaderBg.png` / `SmallEntryBG.png` / `dialogBg.png` — panel chrome
+  9-slice sources. `BattleIcons96PX.png`, `Icons_Resources.png` (1920×1920
+  icon sheets). `ap.png` (48×16 strip — actually movement/threat tile
+  overlays: blue / black / red, not AP pips).
+- `Style.asl`, `HealStyle.asl` — `8BSL` Photoshop style libraries
+  (artist-side layer-style presets packed with the game; binary, not
+  runtime styles — a separate dig, not needed for tokens).
+
+**Follow-up extraction (builder, one-liners with `pipeline/tools/wtpak.py`):**
+the component textures style.css cites for chrome this spec maps —
+`ui/elements/buttonBg.png` (3-frame state strip — already extracted for the
+§2.6 `--accent` sample, EXTRACT-LOG entry), `ListHeader.png`,
+`ListHeaderHighlight.png`, `smallSeparator.png`, `CraftBoardBg.png`,
+`XpBar.png`, `dot.png`, `separator.png`. **Required:** `ToolTipBg.png` —
+the tooltip's actual skin texture (×6 refs, `tip-content .with-title`
+family, slices `5 50` / `10 50`); without it the §4 Tooltip canon ships
+unsampled chrome. **Recommended:** `EquipementSlot.png`,
+`TrinketSlot.png`. Log them in EXTRACT-LOG.mdx.
+
+## 1. Font system (style.css `#defaultFonts` / `#dialogFonts`)
+
+| Game class | Face (.fnt) | Size | Web token | Value |
+|---|---|---:|---|---|
+| `.default` | `eb_garamond_medium` | 16 | `--font-ui` / `--text-base` | `"EB Garamond", serif` @ 16px |
+| `.bold` | `eb_garamond_bold` | 16 | `--font-weight-bold` usage | 700 |
+| `.italic` (dialog body) | `eb_garamond_italic` | 16 (19 in dialogs) | `--text-dialog` | italic 19px |
+| `.small` | `eb_garamond_medium` | 14 | `--text-sm` | 14px |
+| `.big` | `im_fell_english` | 25 | `--font-flavor` / `--text-display` | `"IM Fell English", "EB Garamond", serif` @ 25px |
+| CJK fallback | `noto_sans_cjk_regular` (+`noto_sans_kr_regular` in pak) | — | `--font-cjk` | `"Noto Sans CJK SC", "Noto Sans KR", sans-serif` |
+
+- The game's faces are identifiable open fonts: **EB Garamond** (all UI text)
+  and **IM Fell English** (display — unit names, `--font-flavor` anchor per
+  [INDEX shot-19](./sources/INDEX.mdx)). Self-host both (woff2); never
+  substitute a generic serif as the primary.
+- **Serif-first canon** (INDEX typography observation, now confirmed by the
+  stylesheet): there is no UI sans in the game. Noto Sans exists only as a
+  CJK/KR fallback — keep it in the stack behind the serifs, never as the
+  latin face.
+- Size ramp in use: 14 (71×) · 16 (163×) · 19 (142×) · 22 (18×) · 25 (81×);
+  outliers 15, 17, 18, 20, 21, 23, 28, 35, 60 → residue table §7. Web floor:
+  the smallest game size (14) is already above the 12px owner floor
+  (design-standard §3); no token may go below 12px.
+
+## 2. Token contract — guide §6.1 names, game values
+
+### 2.1 Surfaces (near-black layered browns, dark-first)
+
+| Token | Value | Game source |
+|---|---|---|
+| `--bg-1` | `#100F0E` | deepest *panel* literal in style.css (the `.scrollbar` track `#0A0A0A` is darker) |
+| `--bg-2` | `#141311` | panel dark (2×) |
+| `--bg-3` | `#1B150F` | **item-slot fill** (`background: #1b150f 0.5` — the empty well, 54×54) |
+| `--bg-4` | `#242424` | raised chips/filters |
+| `--panel-well` | `#0C0B09` | dialogBg.png center fill (sampled) |
+| `--scrollbar-bg` / `--scrollbar-thumb` | `#0A0A0A` / `#676363` @ 0.8 | `.scrollbar` rules |
+| panel translucency | `background-alpha` 0.7–0.8, `alpha` 0.5/0.7 | 130 + 307 declarations |
+
+Surfaces are **translucent near-black browns over art**, not opaque grey —
+carry `--bg-*` as RGB triplets plus `--bg-alpha` so panels can sit over
+keyart (INDEX shot-02 dialogue panel). Empty wells are `--bg-3` at 50% in a
+1px `--border` frame, exactly `item-slot` (§4 Card/empty-well rule).
+
+### 2.2 Text ramp (warm parchment on near-black)
+
+| Token | Value | Uses | Contrast on `#1B150F` |
+|---|---|---:|---:|
+| `--text-main` | `#9C988A` | 160× | 6.26:1 ✓ AA |
+| `--text-emph` | `#DDD8C5` | 115× | 12.67:1 ✓ |
+| `--text-desc` | `#969696` | 90× | 6.12:1 ✓ |
+| `--text-bright` | `#BEBDBC` | 27× | 9.64:1 ✓ |
+| `--text-muted` | `#999999` | 59× | — ✓ |
+| `--text-disabled` | `#888888` | `button.disabled text` | 5.10:1 ✓ |
+| `--text-shadow` | `1px 1px #000` (α .3–.7) | 28× | mandatory over art |
+
+### 2.3 Accents and semantics
+
+| Token | Value | Game source |
+|---|---|---|
+| `--accent` (selection) | `#D8A519` | destiny-card highlight `glow(#d8a519,0.5,40,1,1,true) outline(0.5,#d8a519)` |
+| `--accent-bright` (currency) | `#FFCC44` | `counter.gold #tf { color: #fc4 }` |
+| `--accent-soft` | `#FFBF5F` / `#FFAC1D` | gold family |
+| `--positive` | `#529B52` (text) | `counter.good #tf`, `progress-bar.ready #bar` |
+| `--negative` | `#B63131` (fill) / `#E4696B` (text on dark) | 73×; **2.99:1 as text — banned as text color**, see §6 |
+| `--warning` | `#B4691E` | `resources-bar .gold.low`; measured 4.29:1 on `--card` (4.40 on `--bg-2`, 3.68 on `--bg-4`; ≥4.5 only on the darkest wells `--bg-1` 4.54 / `--panel-well` 4.67) — **constrained surfaces**: body-size text only on `--bg-1`/`--panel-well`; elsewhere ≥19px-bold/≥25px display sizes or fill/border use only (§6 matrix) |
+| `--dept` | `#B63131` | `resources-bar .gold.dept` |
+| `--chart-1..5` | `#D3B25E`, `#529B52`, `#E4696B`, `#85C1E3`, `#B5AADE` | parchment-chart palette (INDEX shot-13) |
+
+**Gold discipline** (INDEX surfaces observation, enforced): gold is
+currency/selection/AP only — never body text, never decoration. Violet as a
+secondary accent exists in the game (arena cards, shot-15) via the rarity
+scale, not as chrome.
+
+### 2.4 Spacing, radius, borders
+
+- **Spacing scale: 2 · 3 · 4 · 5 · 8 · 10 · 15 · 20** (5px base; `spacing:`
+  5×125 + 10×104 dominate, `padding:` 5×92 + 10×92 — census rules per §6.4). Tokens `--space-1..8`
+  in that order. Not a 4px grid — do not import Tailwind's default spacing
+  rhythm uncritically.
+- **Radius: 0.** Every game surface is square (9-slice corners are square).
+  `--radius: 0rem`; rounded corners anywhere are a defect.
+- **Border/bevel recipes** — the game builds chrome from 9-sliced textures
+  (`background: url(...) X Y` = slice margins; (10,10) 76×, (20,20) 38×):
+  - **Double border** (dialogs, popovers, tips): outer `#36322A` 1px, 1px
+    gap, inner `#494339` 1px, fill `#0C0B09` (sampled from dialogBg.png,
+    47×47, slice 20 20). Web: `border-image` from the extracted PNG, or the
+    layered `box-shadow: 0 0 0 1px #36322A, 0 0 0 2px #0C0B09, 0 0 0 3px #494339`
+    recipe — texture path preferred (shadcn-adoption: the game's panel, not
+    a SaaS card).
+  - **Section header band**: `HeaderBg.png` slice 10,10, height 35, title
+    `#969696` EB Garamond 19, `offset-y -3` → web `translateY(-3px)`.
+  - **Section body**: `SmallEntryBG.png` slice 10,10, padding 10,
+    padding-bottom 15, `margin-top: -10` (body tucks under the header band —
+    keep the overlap).
+  - **Filter chips / small wells**: `dialogBg.png` slice 20,20, height 30.
+  - **Button**: `buttonBg.png` **vgrid 3 frames** (normal/hover/pressed),
+    slice 25 5, padding 5 25, height 30, label EB Garamond **bold** 16
+    `#DDD8C5`.
+
+### 2.5 Effects — the game's interaction vocabulary → web
+
+| Game (domkit filter) | Recipe | Web translation |
+|---|---|---|
+| `outline(0.5, white)` ×38 | hover on buttons/chips/filters | `box-shadow: 0 0 0 1px rgb(255 255 255 / .5)`; text brightens to `#FFFFFF` |
+| `glow(white, 0.5, 5, 2, 2, true)` | **selected** state (filters, tabs) | `box-shadow: 0 0 5px 2px rgb(255 255 255 / .5)` + white outline |
+| `glow(#d8a519, 0.5, 40, …) outline(0.5, #d8a519)` | destiny-card highlight — the gold "featured" treatment | gold ring + 40px gold bloom (§3 top-tier border) |
+| `glow(<player-color>, 1, 5, 1, 1, true)` | co-op identity glow | per-player token glow (§7 note) |
+| `grayscale() + alpha .5 + text #888` | **disabled** (100 rules) | `filter: grayscale(1); opacity: .5; color: #888888` |
+| `brightness(0.05/0.1/0.2)` | inactive/dimmed panels | `filter: brightness()` or dark overlay |
+| `saturate(-0.4..-1)` | desaturated states | `filter: saturate()` |
+| `text-shadow: 1 1 black` | all text over art | `text-shadow: 1px 1px 0 #000` |
+
+Motion (foundation-guide §7): the game's states are texture-frame swaps
+(vgrid) — near-instant. Web: 0.2–0.3s ease-out on outline/glow/opacity only;
+`prefers-reduced-motion` honored; motion never gates content.
+
+### 2.6 shadcn CSS-variable map (every variable overridden, one dark theme)
+
+`:root` **is** dark (dark-first canon; no light mode is shipped —
+`--light-rarity-*` in §3 are text variants, not a theme).
+
+| shadcn var | Wartales value | Game source |
+|---|---|---|
+| `--background` / `--foreground` | `#100F0E` / `#9C988A` | style.css literal ×1 (`--bg-1`, deepest *panel*) / `--text-main` ×160 |
+| `--card` / `--card-foreground` | `#1B150F` (well) / `#DDD8C5` | item-slot fill literal ×3 / `--text-emph` ×115 |
+| `--popover` / `--popover-foreground` | `#0C0B09` + double border (§2.4) / `#DDD8C5` | dialogBg.png sampled (center fill `#0C0B09`; border lines `#36322A`/`#494339` both in the PNG's palette) |
+| `--primary` / `--primary-foreground` | `#D8A519` / `#1B150F` | destiny-card `glow`+`outline` literal ×6 / item-slot fill literal ×3 |
+| `--secondary` / `--secondary-foreground` | `#242424` / `#BEBDBC` | raised chip/filter literal ×2 / `--text-bright` ×27 |
+| `--muted` / `--muted-foreground` | `#1B1816` / `#969696` | style.css literal ×3 (`background:` declarations) / `--text-desc` ×90 |
+| `--accent` / `--accent-foreground` | `#2E2B26` (hover wash) / `#FFFFFF` | buttonBg.png hover frame — `button:hover { background-tile-pos: 1 }`, opaque-pixel mean of tile 1 (EXTRACT-LOG entry); foreground per the white-outline hover vocabulary (§2.5) |
+| `--destructive` / `--destructive-foreground` | `#B63131` (fill) / `#FFF7DB` (5.64:1 on fill ✓) | literal ×73 / `glow(#FFF7DB,…)` literal ×2 |
+| `--border` / `--input` / `--ring` | `#36322A` / `#494339` / `#D8A519` | dialogBg.png sampled border lines (§2.4 double border) / destiny gold ×6 |
+| `--radius` | `0rem` | square 9-slice corners (§2.4) |
+| `--font-sans` | EB Garamond stack (`--font-ui`) — Tailwind `font-sans` re-pointed; the site has no sans chrome | `#defaultFonts` → `eb_garamond_medium.fnt` (§1) |
+| `--chart-1..5` | §2.3 | parchment-chart palette (INDEX shot-13); every hex also in style.css (×13/37/3/13/13) |
+| `sidebar-*` | mapped to `--bg-1/2` + `--border` (companion sidebar, shot-03) | same sources as `--bg-1/2`, `--border` above |
+
+**`--accent` provenance (arbiter F1):** the previous value `#26221B` has zero
+occurrences in style.css and is retired. Resolved via route (a): extracted
+`ui/elements/buttonBg.png` (187×96, vgrid 3-frame strip, adler32 MATCH —
+EXTRACT-LOG entry) and sampled the hover frame (`background-tile-pos: 1`):
+opaque-pixel mean **rgb(46, 42.8, 38.2) → `#2E2B26`**. Hover differs from
+normal only in a warm border tint (diff-px mean rgb ≈120,96,62); the pressed
+frame (tile 2) brightens wholesale and is not the wash analog.
+
+## 3. Rarity system (derived, not invented)
+
+The game encodes quality in **two coordinated expressions** — both in
+style.css:
+
+**A. Slot frames** — `item-slot > #rarityBackground`:
+`hgrid("ui/elements/RarityBackground.png", 3)`, 54×54 (107 for 2-wide/2-tall),
+`visible: false` by default — **a common item shows no frame at all**.
+Frames sampled from the extracted PNG (quilted-diamond alpha texture):
+
+| Tile | Tier | Frame fill | Web token (wash) |
+|---|---|---|---|
+| 0 | uncommon | `#151A1E` steel-blue-black | `--rarity-1: #151A1E` |
+| 1 | rare | `#272310` olive-gold-black | `--rarity-2: #272310` |
+| 2 | legendary | `#251724` violet-black | `--rarity-3: #251724` |
+| — | common | no frame | `--rarity-0: #BEBDBC` (untinted neutral) |
+
+**B. Tip classes** — `item-tip.rarity_*`: name + background-tint pairs:
+
+| Class | Name color | Tip bg tint | Web tokens (light) |
+|---|---|---|---|
+| `.rarity_u` | `#AAF` | `#BBF` | `--light-rarity-1: #AAAAFF`, `--rarity-1-wash: #BBBBFF` |
+| `.rarity_r` | `#FFA` | `#FFB` | `--light-rarity-2: #FFFFAA`, `--rarity-2-wash: #FFFFBB` |
+| `.rarity_legendary` | `#F8F` | `#FBF` | `--light-rarity-3: #FF88FF`, `--rarity-3-wash: #FFBBFF` |
+
+Contrast of all three light tiers on `#1B150F`: 8.53 / 17.35 / 8.80 — AA ✓
+(§6 matrix). `icon.qualitystar` (20–22px) marks quality beside tip names —
+reuse the extracted icon, one icon vocabulary (design-standard §5.3).
+
+This **reconciles and corrects** the INDEX screenshot reading: the
+olive-gold wash (shot-03 helm) = *rare*, violet wash (shot-02) = *legendary*,
+steel-blue wash = *uncommon*. The four hues INDEX listed also contain the
+co-op **player-identity palette** — `#85C1E3`/`#D3B25E`/`#AFC073`/`#B5AADE`
+are `player-1..4` (text+tint+outline+glow, 13 rules each), a separate system
+that happens to share hues with the frames. Do **not** use player colors as
+rarity tokens; keep both sets (`--player-1..4`) for co-op surfaces.
+
+**Animated border, top tiers** (foundation-guide §7 pattern): legendary
+gets the oversized-gradient-sheet border mask, `moveGradient` 5s alternate
+infinite, gradient `#FF88FF → #B5AADE → #FFBBFF` over the `#251724` wash;
+rare gets a static texture gradient (olive-gold); common/uncommon stay
+quiet. Reduced-motion: gradient freezes to its first stop — tier stays
+legible without motion.
+
+## 4. Component canon — shadcn primitive → Wartales pattern
+
+Per [shadcn-adoption.mdx](./shadcn-adoption.mdx) §layers: each primitive
+keeps Radix behavior and inherits structure + interactions + motion +
+typography + look from the canon above. "shadcn with a palette swap" fails
+the round (adoption §Verification).
+
+| Primitive | Game pattern | Must inherit |
+|---|---|---|
+| **Combobox** (locale) | game dropdowns (`.drop`, classDD) | double-border popover (§2.4), EB Garamond 16, native names in list, typed text accepted (design-standard §5.3), gold `--ring` focus, selected row = white glow recipe; locale in the URL (DR-2026-08-20-locale-urls) |
+| **Command** (header search) | no in-game analog — web-native, dressed in game chrome | header field per DR-2026-08-22-search-is-not-a-page (no route; grows across the nav row; results replace page content in place at 2 chars); results on `--bg-2` panels, hover = white outline, selected = white glow; icons from the extracted sheets |
+| **Tabs** (conditional registry) | tabbed screens such as Fief Management Governance/Development/Assignments; mechanism `unit-info .tabSelector .tabElement` (×19) | `ListHeader`/`ListHeaderHighlight` band chrome; selected tab = white glow + bright text; a tab renders only when the entity has that data (foundation-guide §5) |
+| **Tooltip** (hover jobs) | `item-tip .with-title`: width 350, header band with rarity-colored name + qualitystar, desc `#DDD8C5`, bonuses list (vertical, spacing 10), price row gold `#FFCC44` | every data-bearing field keeps its hover job (definition / locale-correct table / bidirectional join — Enka bar); rarity name colors from §3B; `text-shadow` over art |
+| **HoverCard** | deeper inspection popovers | same chrome, locale-correct skill/ability tables, bidirectional stat highlight |
+| **Dialog** | game windows: dialogBg double border, `#0C0B09` fill, HeaderBg band, offset close icon | confirmations/choices; choice buttons = Button canon; backdrop dims via `brightness(0.05)` recipe |
+| **Card / panel** | section anatomy: HeaderBg 35px band + SmallEntryBG body tucked −10px | header title `#969696` 19px; empty wells = `#1B150F` @ 50% + 1px border, same grid cell as filled (design-standard §5.1 honesty — the game itself does this) |
+| **Button** | `buttonBg.png` vgrid 3 frames, slice 25 5, h30, pad 5 25, bold 16 `#DDD8C5` | hover: white outline + text `#FFFFFF`; active: frame 3 (pressed); disabled: grayscale + 0.5 + `#888888`; destructive text `#E4696B` on dark |
+| **Table** (TanStack + Virtual, FRAMEWORK §2.20) | `ListHeader` header band, row hover outline, stat columns right-aligned (`attribute-row #value`) | currency cells gold `#FFCC44`; deltas `#529B52`/`#E4696B`; no Updated column (DR-2026-08-21); numbers stand alone (DR-2026-08-22) |
+| **ScrollArea** | `.scrollbar` `#0A0A0A` track, `#676363` @ 0.8 thumb | exact colors, square thumb |
+| **Progress** | `progress-bar #bar` fill `#529B52` (ready), `XpBar.png` skins the **fill** (never a track element), min-height 17 | fill token `--positive`; 16px web height |
+| **Badge / chip** | rarity badge, currency counter (`icon.gold` + `counter.gold`) | rarity §3; currency chip = gold icon + `#FFCC44`; no word-chips on numbers (DR-2026-08-21) |
+| **Select / DropdownMenu / Popover** | same popover family as Combobox | dialogBg chrome, `--bg-*` translucency, square corners |
+
+## 5. Acceptance criteria
+
+1. **Compiles.** `site/src/styles/tokens.css` builds clean in the site's
+   Tailwind pipeline (CSS-variable theme per FRAMEWORK §2.20) — zero errors,
+   zero unresolved `var()` fallbacks. Self-hosted faces land at
+   `site/public/fonts/*.woff2` (§1).
+2. **Every shadcn variable overridden.** The full stock variable set
+   (`--background` … `sidebar-*`, `chart-*`, `--radius`, fonts) is defined
+   in `:root` with §2.6 values; no stock default survives anywhere
+   (component CSS included).
+3. **≥90% value accounting.** A census script (`site/tests/census.mjs`,
+   §6.1) counts every color and
+   font literal in `style.css` (96 six-digit + 42 three-digit colors, 930
+   occurrences; 5 faces, 14 sizes). Pass = ≥90% of occurrences mapped to a
+   named token in this spec, and 100% either mapped or listed in the
+   residue table §7 with its game context. No silent leftovers.
+4. **Side-by-side critic pass.** Rendered components compared against
+   `design/sources/` frames — minimum shot-02 (inventory/trade/dialogue),
+   shot-03 (character panel), shot-07 (data rows), shot-17 (combat
+   chrome) — graded against design-standard §5 and shadcn-adoption
+   §Verification: must read as "the game's panel on the web", not "shadcn
+   with a palette swap". A fail sends the builder back per adoption §Verification.
+
+## 6. Test spec
+
+1. **Token parity** (vitest over built CSS; token tests live under
+   `site/tests/`): (a) no stock shadcn literals
+   remain — assert against the shipped default set (`oklch(1 0 0)`,
+   `0 0% 100%`, `--radius: 0.625rem`, default `--ring`, Tailwind palette
+   classes in component files); (b) every shadcn variable name is defined;
+   (c) rarity wash tokens equal the sampled frame fills
+   `#151A1E/#272310/#251724` and light tiers equal `#AAAAFF/#FFFFAA/#FF88FF`
+   — byte parity with `extracted-ui/` evidence; (d) `--radius` is 0.
+   *Path note (F1 r1, orchestrator decision 2026-08-25):* the token tests
+   ship at `site/src/styles/tokens.test.ts`, beside the file they parse —
+   that path is authoritative over the `site/tests/` mention above.
+2. **Contrast** (WCAG AA matrix): every `--text-*`, `--light-rarity-*`,
+   `--positive`, `--negative`-text, `--warning` token × every `--bg-*`/`--card`
+   surface it can ship on: ≥4.5:1 body sizes, ≥3:1 ≥19px bold / ≥25px (the game's
+   own display sizes). Known constraint baked in: `#B63131` fails as text on
+   dark (2.99:1) — the test asserts text-facing negative is `#E4696B`
+   (5.63:1) and `#B63131` appears only as a fill under `#FFF7DB` (5.64:1).
+3. **12px floor** (Playwright, design-standard §3): crawl every built
+   template × canonical locale; assert `getComputedStyle().fontSize >= 12px`
+   on every visible text node; assert no token below 12px exists (game's
+   smallest, 14, is the floor-setter).
+4. **Census script** (`site/tests/census.mjs`, criterion 5.3) ships beside
+   the token tests and fails the
+   build only when an unmapped **color or font literal** appears in style.css
+   without a residue-table row — other style.css churn (spacing tweaks,
+   selector moves, cosmetic patch noise) re-census without gating. Keeps the
+   accounting honest across game patches (re-run on
+   buildid change, spec automation `update-trigger: build-id`).
+   **Census definition:** the script and every inline count in this spec
+   share one rule set — word-boundary property matching (`text-shadow:`
+   matches; `hspacing:`/`vspacing:` do not), selector-vs-value
+   discrimination (filter functions such as `outline(0.5, white)` count as
+   declaration values), and texture counting over the `ui/*.{png,dds}`
+   reference pattern. Inline counts restated 2026-08-24 under these rules
+   (§0 textures 225/860, §2.2 shadow ×28, §2.4 spacing/padding, §2.5
+   outline ×38).
+
+## 7. Residue ledger (documented, unmapped-at-token-level)
+
+- **58 six-digit colors with ≤3 occurrences each** — combat reds
+  (`#FF0000/#C50B0B/#8B0000/#F82121`), map legend states
+  (`#68DE84` liberated-green, `#9E22A5/#AA00AA/#D04BD8` magenta markers,
+  `#225DFF/#3589B9/#D1EAFF` blues), DLC-specific accents (black-market
+  violet family). Each gets claimed by the component that owns its surface
+  (combat overlay, map legend, market cards) at that component's build time;
+  until then they live here, not in tokens.
+- **Player identity palette** `--player-1..4` (`#85C1E3/#D3B25E/#AFC073/#B5AADE`)
+  — tokenized, reserved for co-op identity surfaces only (§3 warning).
+- **Font-size outliers** 15/17/18/20/21/23/28/35/60 — one-off display sizes
+  (start-screen destiny cards, debrief headers, loading screens); map at
+  component build time, never below the 12px floor.
+- **domkit-only mechanisms** with no direct CSS equivalent —
+  `color-adjust: gain()/saturate()`, `background-alpha: 1.2/1.5/2`
+  (multipliers over 1), `hgrid/vgrid` state strips, `pad-*` gamepad props.
+  The state-strip *semantics* (normal/hover/pressed frames) translate to
+  §2.5 recipes; the properties themselves do not carry over.
+- **`.asl` style libraries** — binary Photoshop presets; bevel/stroke
+  recipes for icons are observable in the PNGs themselves; decoding is a
+  separate dig if icon-recipe parity ever needs it.
+
+Relinks: [shadcn-adoption.mdx](./shadcn-adoption.mdx) ·
+[sources/INDEX.mdx](./sources/INDEX.mdx) ·
+[extracted-ui/EXTRACT-LOG.mdx](./extracted-ui/EXTRACT-LOG.mdx) ·
+`_foundation/foundation-guide.md` §6.1 (token contract), §7 (animation) ·
+`_foundation/design-standard.md` §3 (12px floor), §5 (feel bar) ·
+`_foundation/decision-register.md` [DR-2026-08-24-wartales-roster],
+[DR-2026-08-22-search-is-not-a-page], [DR-2026-08-20-locale-urls] ·
+`FRAMEWORK.md` §2.20 (stack profile).

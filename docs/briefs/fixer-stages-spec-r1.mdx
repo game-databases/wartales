@@ -1,0 +1,27 @@
+# Brief — Fixer r1: stages spec revision per arbiter F1–F14 (fresh subagent)
+
+Fresh small fixer agent. **Never spawn subagents**; never commit; Wartales
+pack only. Headless: stdout → log; end with per-item acceptance proofs.
+
+Read first, in full: `wartales/docs/spec-stages-datasets.mdx` (the artifact
+you edit); `wartales/docs/arbiter-stages-spec.mdx` (rulings F1–F14 — your
+exact work order); `wartales/docs/review-stages-spec.mdx` (context only);
+`wartales/docs/data-dig-log.mdx` Dig 7 tail; `extracted/PROOF.md` R1/R2
+rows; `extracted/data/_draft/` + `extracted/relinks/_draft/` listings;
+`pipeline/tools/cdb_verify.py` CLI surface.
+
+## Task
+
+Apply every arbiter fix item F1–F14 to `docs/spec-stages-datasets.mdx`
+exactly as ruled — including the freeze policy (regenerate-at-run for all
+machine-layer numbers; freeze source = emitter output at pinned buildid,
+never `_draft`-as-found; D7 adjudications carried in the RELATIONS.md
+ledger). Do NOT redesign beyond the rulings; do NOT touch code, drafts,
+or any other file. Where a ruling requires a number, re-measure it on
+disk yourself and cite the command used.
+
+For each F-item in your final report: what changed (section anchor),
+and the arbiter's stated acceptance proof demonstrated (command + result).
+
+Deliverable: revised `docs/spec-stages-datasets.mdx` + this report.
+Nothing else.

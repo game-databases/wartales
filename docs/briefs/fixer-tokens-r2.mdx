@@ -1,0 +1,23 @@
+# Brief — CodeFixer: F1 tokens round 2 (fresh subagent)
+
+Fresh CodeFixer. Never spawn subagents, never commit. Wartales pack
+only. Read `docs/critique-tokens-r2.mdx` in full — meet its r3
+re-entry bar EXACTLY in `site/src/styles/tokens-preview.html`:
+1. Real font files rendering: wire IM Fell English (display/flavor)
+   + EB Garamond (UI ramp) from their existing contracts — @font-face
+   with local files if present under design/extracted-ui/ or site
+   assets, else the documented CDN contract path with graceful
+   fallback; Georgia must appear NOWHERE in any stack.
+2. At least one panel carries the REAL 9-slice/texture chrome from
+   `design/extracted-ui/` (the game's own panel/border textures —
+   border-image or background slices; reference the actual extracted
+   files).
+3. Uncommon slot tint must be nameable at arm's length (strengthen
+   the slot fills within the extracted values — verify against the
+   PNG samples, don't invent).
+4. White hover outline visible in the render itself (static :hover
+   state shown via a rendered duplicate element, since screenshots
+   can't hover).
+Keep 20/20 tests green (`npm test`); keep zero JS; keep every value
+token-derived. Return: ≤8-line summary — per-demand ✓ + how chrome
+was wired.

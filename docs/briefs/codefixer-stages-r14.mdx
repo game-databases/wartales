@@ -1,0 +1,34 @@
+# Brief — CodeFixer r2: validate_all.py R12–R14 (fresh subagent)
+
+Fresh small CodeFixer agent. **Never spawn subagents**; never commit;
+Wartales pack only. Headless: stdout → log; end with per-item proofs.
+
+Read first: `wartales/docs/review-stages-code-r2.mdx` (items R12–R14 are
+your entire scope); `pipeline/tools/validate_all.py`;
+`wartales/docs/spec-stages-datasets.mdx` §5 (report semantics you must
+preserve).
+
+## Task
+
+1. **R12**: anchor `os.path.relpath` (line ~429) to PACK_ROOT so
+   cross-drive invocation cannot raise ValueError — one-line-class fix,
+   no behavior change for in-tree runs.
+2. **R13**: make `catalog-parity` read RELATIONS.md from the SAME root
+   as matrix.json (`--reldir`), not the tool's own PACK_ROOT — one
+   source of truth per invocation.
+3. **R14**: guard the validator's own JSON/field parsing so corrupt
+   input yields a failed report record (check-level failure) instead of
+   discarding the whole report post-recording.
+
+Then update the ONE coupled test note if any assertion depends on the
+old PACK_ROOT read path (coordinate with the fact that the tamper leg's
+atomic-backup hardening stays — it protects the shared file regardless).
+
+Proofs required: cross-drive invocation rc=0 with report (the exact
+crash repro from the review); out-of-tree validation reads the --reldir
+RELATIONS.md (plant divergent copies, assert the named one wins);
+corrupt-matrix-input run lands a report whose failing check names the
+parse fault, exit nonzero. Live `emit` PASS + rerun-twice stable after.
+
+Touch ONLY `pipeline/tools/validate_all.py` (+ at most the single
+coupled test leg). No refactors.

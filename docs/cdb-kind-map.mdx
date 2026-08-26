@@ -1,0 +1,164 @@
+# Wartales kind map — census families → spec entity kinds
+
+Derived from the [cdb-census.mdx](cdb-census.mdx) (386 sheets, buildid
+20318128) against the `entities:` block of [spec.md](../spec.md). Column
+type codes (`6:<sheet>` hard refs, `8` lists, localizable text, …) are
+defined in the [census type table](cdb-census.mdx#column-type-system-every-type-encountered-payload-verified).
+
+Route shorthands:
+
+- **key** — stable id = value of the sheet's `"0"` (id) column; slugs are
+  added at normalize time, never replacing ids.
+- **bridge** — name/description resolves through
+  `res.pak:/lang/export_<locale>.xml` (35 sheets mirror CDB schema;
+  client-recon §4), extracted to
+  [harvest/_lang-bridge/](../extracted/harvest/_lang-bridge/). Datasets
+  carry `{"textKey": {bridge, sheet, column, row}}` refs, not prose.
+- **datafile** — sheet carries no inline rows; rows live in HBSON
+  `.prefab`/`.l3d` payloads under `content/` (`"17"` columns +
+  `props.dataFiles`). Join key to the PRE container is the row id.
+
+## Spec corrections this census settles
+
+1. **`class` has a dedicated sheet: `unitClass`** (281 rows) — spec's
+   "no dedicated class sheet — unresolved-P1" is resolved. Player-facing
+   starting classes additionally ride `startChoice` (29).
+2. **`recipe` has a container: `craft`** (667 rows) — spec's "recipe
+   container unresolved" is resolved in CDB. It is absent from the EXP 35
+   bridge and carries zero localizable columns: a recipe is *named by its
+   output item* (hard ref `craft.item` → item).
+3. **Four kinds' primary sheets are datafile-backed**: `place`
+   (location-place), `group` (unit-enemy roaming groups), `element`
+   (npc-vendor / world elements / dialogue), `levelProps` (battle-scene /
+   poi vocabulary). Their rows ARE the PRE prefab corpus — CDB supplies
+   the id registry + column schema, HBSON the payload.
+4. **`skill` has zero hard-reference columns in its entire subtree** —
+   skill↔status/effect/item links are logic-layer (hscript `script`
+   column + effect chains), not CDB refs. Any such edge we ship will be
+   `logic`/`inferred`, never mislabeled `hard`.
+
+## Family → kind coverage
+
+| census family | spec kinds served |
+|---|---|
+| items & economy | item, recipe(craft), loot tables |
+| skills & combat | skill, status-trait(status), battle-scene(battle/env) |
+| units & classes | class(unitClass/startChoice), companion(traits), unit-enemy(groupType/group), animal-mount(mountData) |
+| world & places | region, faction-kingdom(kingdom), location-place(place), poi-marker(levelProps.kind), lore(frescos) |
+| fief governance | fief (+ its nine sub-kinds) |
+| quests, dialogue & world elements | quest(mission/confessions/tutorial/fiefMission), npc-vendor(element), building-camp(activity) |
+| meta, UI & audio | achievement(counter), icon/atlas, notify journal, constants(logic), input/sound |
+
+## Per-kind detail
+
+### item — sheet `item` (2,125 rows)
+- key: `id`; variant axis: `rarity` enum `[C,U,R,Legendary]`;
+  content-status `done` enum `[TODO,Coded,Ok,Wait]` → 251 TODO + 70 Coded
+  rows flagged as cut-content candidates (dig log).
+- route: `name`,`desc` bridge; icon atlas descriptor col (`14`) → UIA.
+- visible hard edges: `type`→itemType (2,095 of 2,125 populated);
+  `baseBonus[].attribute`→attribute (728). Sub-tree lists:
+  `props.bonuses` (conditions/effects as enums+ints — logic layer),
+  `tool.*` job bonuses, `fief.effects`.
+
+### skill — sheet `skill` (1,373 rows)
+- key: `id`; route: `name`,`desc`(×2 incl. hidden sub-sheet) bridge.
+- shape lives in enums: `mode` `[TargetUnit…Switch]`, `range.type`
+  `[Disc,Cone,Square]`, `range.allowedTargets` 8-case, damage/flags AI
+  masks (`10:` bitmask cols).
+- hard edges: **none** (see correction 4). Emitted dataset still carries
+  all columns incl. hscript `script` bodies.
+
+### class — sheet `unitClass` (281) + `startChoice` (29)
+- key: `id`; route: `name` bridge (startChoice: `desc`,`introText`).
+- hard edges emitted (class.jsonl): `equipment[].weapon|helmet|armor|leftHand`→item
+  (914), `baseSkills[].skill|requires`→skill (874),
+  `stats[].attribute`→attribute (1,672), `weaponTypes[].wp`→itemType (221),
+  `equipment[].group`→groupType (122), `equipment@regions[].region`→region
+  (10, region-gated equipment variants).
+- display: `model` file-col (`13`) → CHARS HMD/portrait assets.
+- flags enum (24 cases: CanCapture, IsChampion, IsBoss, NotSentient…) is
+  the enemy/companion/mount discriminator surface.
+
+### companion — `element@npc` subtree (datafile) + trait
+- recruit economics (`recruitCost`, `recruitRegions`), traits list,
+  equipment, skills — payload in PRE; schema pinned by hidden sheets.
+  `trait` (214) itself is inline with bridge names + condition enum
+  (19 trigger cases) — trait↔unitClass via `trait.gen` flags.
+
+### unit-enemy — `groupType` (97) + `group` (datafile) + `loot` (382)
+- groupType: hunt/tavern/aggro subtrees, `pattern`→unitPattern,
+  `parentCategory`→groupType self-ref. group: units/classes/movement/
+  battleRules + loot lists (payload-side). M8 chain evidence present.
+
+### battle-scene — `battle` (133) + `env` (87) + `levelProps` (datafile)
+- battle variants/traps/effects subtrees; `env.battle`→battle ref;
+  genSetting numeric blocks = spawn-generation logic-in-data.
+  `levelProps.kind` 36-case enum (BountyBoard, HuntTrackStart, Spawner,
+  Navmesh…) is the POI/battle vocabulary for poi-marker + battle-scene.
+
+### recipe — `craft` (667)
+- hard edges (next emit wave): `item`→item (output), `tool`→item,
+  `recipe[].item`→item (ingredients, qty'd), `recipe[].itemType`→itemType,
+  `learnCost[].item`→item; station/profession via `jobLevel` int +
+  `props` datafile → activity prefabs. Bridge-absent: identity rides the
+  output item (correction 2). Feeds M2/E2 directly.
+
+### quest — `mission` (22) + `confessions` (87) + `tutorial` (81) + `fiefMission` (12)
+- mission: title/mapDescription bridge; inherited-groups filter subtree.
+- confessions: interrogation choices with full gains trees
+  (item/status/trait/relation/XP/injury/jobXP/prisonerTrust…) — the M7
+  strongest client rows; `counter.props.confession`→confessions ref.
+- tutorial: steps/texts subtrees; element dialog trees carry
+  choices/gains/conditions (dialogue-choice↔outcome graph).
+
+### region / faction-kingdom — `region` (13) + `kingdom` (9)
+- `region.kingdom`→kingdom hard ref (M1 anchor); region props: meteo,
+  population generation (face/hair/beard repartition), bounties,
+  counters. Region adjacency & hunt tables live REG/HBSON side.
+
+### location-place / npc-vendor — `place` (datafile) + `element` (datafile)
+- place props subtree: arena rules, sport, warEffort rewards, produces,
+  population, rivalTavern — town services model. element: elementType
+  enum (GarnisonManager, Peddler, Dock, BeastTrack…), items containers
+  (Trade/Steal/Gather/Chest/Treasure), dialog trees. Vendor stock joins
+  ride element@items + prices via economy constants.
+
+### fief — nine-sheet subsystem (377-row fiefEvent largest)
+- fiefPlace→place alignment; laws (incompatibleWith self-refs), events
+  with conditions/consequences ASTs, goals, administration, population,
+  alignment. All inline, bridge-routed descs.
+
+### animal-mount — `unitClass@props.mountData` (+skills) 
+- capture/fodder/carry stats ride unitClass rows flagged by
+  mountData presence + trait.gen Animal; CHARS models via file col.
+
+### building-camp — `activity` (24) + PRE camp/buildings
+- activity: prefab file-cols (`13`), miniGamePrefab; buildingKind enum on
+  fiefPlace `[District,Unique,Production,Service,Trade,Special]`.
+
+### lore-document / achievement — bridge + counter side
+- confessions text + frescos (9) + `texts_*.xml` groups (237 @en).
+- achievements: NOT a CDB top-level sheet — `counter@props.achievements`
+  subtree + Steam GetSchemaForGame per spec; 235-count reconciliation
+  stays a Steam-surface task.
+
+### cross-cutting logic surfaces (not entity kinds)
+- `constant` (1,266): balance/economy constants incl. difficulty variants
+  (`valueDifficulty` enum Easy..Extreme) — E5 scaling parameter sets.
+- `bonus` (495)/`effect` (66)/`condition` (18)/`attribute` (27): the
+  modifier algebra every other sheet composes; `9:` customTypes carry
+  recursive typed-arg cases (BattleFilter And/Or trees, TargetDesc).
+- `icon` (801): atlas registry, DLC separators; `notify` (482): journal
+  gains vocabulary; `input` (84)/`sound` (848)/`amb` (11): UI/audio
+  registries; `credits` (67).
+
+## Relation-edge inventory status
+
+Emitted now (draft seeds, mechanism=hard, 0 dangling):
+[item](../extracted/relinks/_draft/) — `item__itemType`,
+`item__attribute`, `class__attribute`, `class__item`, `class__skill`,
+`class__itemType`, `class__groupType`, `class__region` (6,636 edges).
+Next waves: craft→item family, groupType/env/loot refs, fief internal
+refs, then datafile-backed joins once HBSON decodes, then logic-layer
+edges (skill effects) per doctrine Principle one.

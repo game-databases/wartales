@@ -1,0 +1,94 @@
+# Wartales design sources — official visual identity index
+
+Input pool for the F1 design-tokens piece (`_foundation/foundation-guide.md`
+§6.1 token method: sample the game's own UI screenshots). 20 verified
+frames, `shot-NN-<slug>`, all official Shiro Games material pulled from
+Steam's store CDN (base game + DLC store pages) and the official Steam
+news feed. `_staging/` keeps the unselected overflow (≈70 more official
+frames + contact sheets) for later passes.
+
+## Shot → UI → token family
+
+| Shot | What it shows | Informs |
+|---|---|---|
+| `shot-01-combat-tiles.jpg` | Tactical combat: blue/white movement tiles, red enemy-zone tiles, HP pips over units, distance markers | accent pair (ally-blue vs enemy-red), overlay language |
+| `shot-02-inventory-trade-dialogue.jpg` | Inventory grid + trade panel + dialogue box + top resource bar + bottom action bar | bg surfaces, text ramp, rarity slot tints, fonts |
+| `shot-03-character-panel.jpg` | Character panel (defence bars, equipment slots, skills, attributes, traits) + companions sidebar + inventory | text ramp, rarity tiers, panel chrome, fonts |
+| `shot-04-map-hunt-regions.jpg` | "Hunt Map" panel: parchment region map + region checklist (Tiltren, Ludern, Vertruse, Grinmeer…) | map screen chrome, parchment texture, fonts |
+| `shot-05-map-strategic-regions.jpg` | "Strategic Map" panel: region map + legend (Adversary/Liberated banners in red/green), points of interest | map legend colors (red/green status), map chrome |
+| `shot-06-fief-district-tooltip.jpg` | Fief region view with district icons and a "Build a district" tooltip | tooltip chrome, map-marker chip language |
+| `shot-07-fief-management.jpg` | "Fief Management" panel: Governance/Development/Assignments tabs, district stat rows | tab group, data-table rows, fonts |
+| `shot-08-fief-government-select.jpg` | "Select a government" choice cards (Free Trade Company, Elders' Council, Mighty Maker's Right…) | card/panel chrome, gold accent on selection |
+| `shot-09-combat-troop-initiative.jpg` | "Troops on initiative" battle-order panel: troop cards, wounds/armor stats, Change/Assign buttons | list card, stat chips, button chrome |
+| `shot-10-caravan-faction-dialogue.jpg` | Caravan panel: companions grid, Thieves' Guild standing, dialogue choice buttons | faction accent colors, dialogue choice chrome |
+| `shot-11-tavern-staffing.jpg` | Tavern "Staffing" panel: Employees / Civilians Management / Available Companions grids | roster grid, empty wells |
+| `shot-12-tavern-daily-targets.jpg` | Tavern "Daily Targets": Profile/Finance/People/Explorations columns, Staff/Income tables | data table, small-stat ramp |
+| `shot-13-tavern-earnings-chart.jpg` | "Earnings Management": line chart drawn on parchment | chart-on-parchment treatment, data-viz language |
+| `shot-14-tavern-recipe-crafting.jpg` | Tavern "Recipe Menu": Staffing/Recipes/Alcohol tabs, ingredient list, dish cards | crafting UI, ingredient chips |
+| `shot-15-arena-black-market.jpg` | Arena Black Market: bet cards with violet/purple accent frames | secondary accent (violet), card chrome |
+| `shot-16-arena-risk-market.jpg` | Arena Risk Market: gold tier slider with diamond markers, bet panel | gold accent, tier-marker language |
+| `shot-17-combat-skill-bar.jpg` | Combat bottom bar: unit portrait card, HP/armor bars, AP diamond pips (gold→yellow), skill icons, cyan hourglass buff | combat chrome, AP accent, skill icon frames |
+| `shot-18-naval-leaderboard.jpg` | "Lords of the Sea" harbor-advantage leaderboard: ranked rows + portrait card | ranked table, portrait card |
+| `shot-19-logo-keyart-typography.png` | "Fires in the Capital" key art: WARTALES logo lettering, DLC title lockup | `--font-flavor` reference (logo serif), key-art palette |
+| `shot-20-camp-firelight-texture.jpg` | Camp scene: campfire light pool, canvas tent, cookware — no UI | bg warmth, firelight accent, texture language |
+
+## Observations (F1 extracts exact values later)
+
+**Rarity/tier coding.** The inventory does not shout tier: item slots carry
+thin warm-grey borders on near-black cells, and higher-quality items read
+through a **slot background tint** — olive/gold wash on the equipped helm
+(`shot-03`), violet wash and steel-blue wash on rarer goods (`shot-02`),
+against neutral dark cells for commons. Count numbers are cream; currency
+totals are gold. Combat adds a hard ally/enemy pair — pale-blue movement
+tiles vs red threat tiles (`shot-01`) — and the strategic map legend codes
+Liberated green vs Adversary red (`shot-05`). Violet appears as a
+deliberate secondary accent in arena betting cards (`shot-15`).
+
+**Typography.** Medieval serif everywhere, no clean sans in sight: panel
+titles ("Inventory", "Equipment", "Attributes") are a spaced serif in warm
+parchment tone; dialogue body is an old-style serif (Garamond/Caslon feel)
+on near-black translucent panels with a thin double border (`shot-02`
+zoom); attribute labels are serif while their values are the same serif in
+green/gold/white. The logo lockup (`shot-19`) is a heavier display serif
+with flared terminals — the natural `--font-flavor` anchor; a quiet serif
+or humanist sans can carry `--font-ui` if legibility demands, but the
+game's own voice is serif-first.
+
+**Surfaces.** Panels are layered near-black browns (quilted-diamond
+texture on the inventory frame), 1px warm-grey borders, gold reserved for
+currency/selection/AP pips. Empty inventory cells are quiet dark
+rectangles — the game itself uses honest empty wells.
+
+## Gaps and failures (recorded honestly)
+
+- **wartales.com unreachable** — connection refused on both attempts
+  (browser UA, then crawler UA per owner Note#6). Its media, if any, is
+  not in this set.
+- **Shiro Games press assets** — shirogames.com carries no Wartales
+  screenshot gallery; the four Steam-clan images on the game page are
+  other Shiro titles (Frostrail, Space Craft, Farever) and were discarded.
+- **Not UI**: most base-game store shots are atmosphere/cinematic frames;
+  UI coverage was recovered from DLC store pages (Fief, Tavern, Pits,
+  Pirates, Skelmar, Rigel, Beast Hunt, Fires in the Capital).
+- **No tooltip close-up at native size** — `shot-06` carries a tooltip but
+  at gameplay scale; a dedicated hi-res tooltip crop may need the client
+  corpus later.
+- **Steam Summer Sale banner** in the news feed is Valve-template art —
+  not game identity, excluded.
+
+## Provenance (repo-only)
+
+- Base-game screenshots: Steam store appdetails API, app 1527950
+  (8 frames, `?t=1786542853` CDN revision).
+- DLC screenshots: store appdetails per DLC appid — 3899740 (Fief),
+  2903960 (Tavern), 2692400 (Pirates of Belerion), 4165520 (Curse of
+  Rigel), 3112270 (Pits), 3335020 (Skelmar Invasion), 3559560 (Beast
+  Hunt), 4490120 (Fires in the Capital).
+- News-feed images: official Steam news RSS for app 1527950 (dev-post
+  banners and infographics).
+- Raw API response kept at `../sources-appdetails.json`; overflow pool and
+  contact sheets in `_staging/`.
+
+Relinks: `_foundation/foundation-guide.md` §6.1 (token extraction
+method) · `_foundation/design-standard.md` §1 (dual mandate — this pool
+serves the game's-soul half).

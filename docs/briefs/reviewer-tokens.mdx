@@ -1,0 +1,23 @@
+# Brief — Reviewer: design/spec-tokens.mdx (fresh subagent)
+
+Fresh Reviewer (PrepareTask). Never spawn subagents, never commit,
+findings only. Wartales pack only. Read root AGENTS.md;
+`_foundation/design-standard.md` in full; foundation-guide §6–§7;
+`wartales/design/shadcn-adoption.mdx` in full; the game's extracted
+`wartales/design/extracted-ui/` (style.css + EXTRACT-LOG); 3-4 of the
+`design/sources/` shots; then `wartales/design/spec-tokens.mdx` in full.
+
+Mission — holes before CodeWriter builds:
+1. Evidence fidelity: do the token values actually come from the game's
+   style.css / screenshots (spot-check ≥8 values against the extracted
+   files)? Any invented value is a blocker.
+2. Canon conformance: shadcn-adoption layers respected (upgrade not
+   reskin); every shadcn CSS variable covered; rarity first-class;
+   fonts ≥12px floor; texture plan; motion rules (guide §7).
+3. Completeness for CodeWriter+TestWriter: acceptance criteria
+   measurable (parity test, AA contrast, coverage %); test spec
+   concrete; file layout declared.
+4. Over-engineering hunt.
+
+Write `docs/review-spec-tokens.mdx`: numbered findings w/ severity +
+verdict READY-FOR-ARBITER or NEEDS-REVISION. Return ≤8-line summary.

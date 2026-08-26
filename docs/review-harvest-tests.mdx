@@ -1,0 +1,178 @@
+# TestReview — pipeline/tests/test_harvest.py (harvest suite)
+
+Reviewer: fresh TestReviewer continuation (ox-alpha) · 2026-08-24 · verdict
+at bottom. Inputs read **in full**: `docs/spec-harvest.mdx` (§7 + §2 + §6;
+whole file read), `pipeline/tests/test_harvest.py`,
+`pipeline/tests/conftest.py`, `pipeline/tools/wtpak.py` (the seed reader
+the fixtures lean on). **`pipeline/harvest.py` NOT read** per brief — the
+suite is judged against the spec. Its *existence* was checked (it has
+landed), so layer 2 runs live.
+
+Probes run: full default invocation `python -m pytest pipeline/tests -q -p
+no:cacheprovider` → **32 passed / 3 failed / 3 skipped, ~3.4 s**; re-run of
+the failures for attribution. No integration flag, no A: access, no game
+data written.
+
+**Attribution of the 3 reds — implementation defect, not suite defect.**
+All three (`test_s7_case10_list_and_manifest_only` :787,
+`test_s7_case3_wrapdelta_in_summary` :922,
+`test_s7_case13_manifest_offset_exact_above_2pow32` :938) die at one root:
+harvest writes `<out>/<stem>.manifest.jsonl` under `--manifest-only`
+without creating the output root → uncaught `FileNotFoundError`, exit 1.
+Every passing manifest test does a full extract, where payload mkdirs
+create the root as a side effect — only the manifest-level paths expose
+the bug. This is exactly CodeReviewer's B1, confirmed independently
+through the suite. Route to CodeWriter; the tests are working as designed.
+
+---
+
+## Findings
+
+### HIGH
+
+None on the test side. The fixture writer is byte-sound (mission-4 audit
+below) and every §7-mandated case is present and biting.
+
+### MEDIUM
+
+**M1. Multi-pak invocation (`--pak` ×N) has zero coverage.** The CLI's
+headline form (§3.1 "repeatable up to four times") is never exercised —
+every tool-layer test passes exactly one pak. Bugs this lets slip:
+per-pak state bleed (results/report keyed by stem — two paks sharing a
+basename silently overwrite each other's summary/manifest/report block),
+report carrying one pak's seed for another, aggregate byte totals
+double-counting. None observable through single-pak tests; §6's "per-pak
+RNG seeds" plural structure is unpinned even at unit level. *Fix:* one
+two-pak test (distinct stems) asserting both manifests, both summaries,
+two report seed entries; plus one same-stem collision expectation if the
+spec wants it loud.
+
+**M2. 30-minute tripwire (§5 stop-and-report contingency): untested and
+untestable as designed.** Nothing exercises the preflight projection or
+its stop-and-report path; with the tool driven by subprocess there is no
+monkeypatch seam. Bug this lets slip: estimate math silently broken or
+tripwire never armed → sanctioned budget overrun discovered after the
+fact (doctrine PROOF discipline violation). Same family: the §4.4 #2
+free-space gate's exit-2 path is untestable without a seam. *Fix:* expose
+the estimator as an importable function plus a hidden
+`--max-projected-minutes` (or env) knob; then unit-test both the
+projection arithmetic and that exceeding it stops-and-reports rather than
+proceeds.
+
+**M3. `--no-strict` × integrity-failure interaction unpinned.**
+Spec §3.1: downgrades apply to §2.2 *invariants*; "integrity failures
+still exit non-zero". Only the downgradeable invariant (slack) is tested
+lenient (:1063); nothing runs bad-magic or tampered-adler under
+`--no-strict`. Bug this lets slip: lenient mode accidentally downgrades
+adler/magic integrity to rc 0 warnings → corrupt corpus extracted as
+good, the exact catastrophe strict mode exists to prevent. *Fix:*
+parametrize case-8 flavors × {strict, no-strict} with expected codes.
+
+**M4. Media hook tested by name only; the magic half of §4.2 is
+unguarded.** Case 11 (:947) plants `.wem`/`.bik` names; the spec's second
+trigger — "or whose detected magic is an audio/video container" — has no
+fixture planting AV container magic (RIFF/WAVE, OggS, fLaC, BIKe…) inside
+innocuously named entries, despite the pack thesis that extensions lie
+systematically. Bug this lets slip: a future patch smuggles in-pack media
+past the carve-out into the raw layer with honest-magic/dishonest-name
+(or vice versa), breaking [DR-2026-08-18-media-scope] accounting
+silently. *Fix:* add two detect-table rows with AV magics under benign
+names expecting `media:true`.
+
+### LOW
+
+**L1. Near-tautology: `test_wrap_delta_recorded_for_small_pak` :902.**
+Asserts `128 in nums and 0 in nums` over *all* ints anywhere in the
+summary; `0` is supplied regardless by `counts.skipped_reuse=0`, so the
+wrap-delta-arithmetic bug this exists to catch cannot fail it. Coverage
+net survives via `test_s7_case3_wrapdelta_in_summary` (exact −2³² match —
+that one has teeth). *Fix:* assert the specific key path / exact
+stored==Σ==128 triple.
+
+**L2. Manifest type-pinning gaps.** `type(offset) is int` is pinned
+(:812) but `flag in (0, 2)` passes `False` (False == 0) and float-typed
+`size` slips (16.0 == 16). Bug this lets slip: bool/float-typed fields in
+the machine-read manifest consumed downstream. *Fix:* add `type(...) is
+int` for flag and size.
+
+**L3. Summary value fidelity unpinned.** Measured size/mtime are checked
+by needle-name only; `sum_entry_bytes` value never exactly asserted at
+unit level (manifest-side Σ is pinned at :944; summary-side isn't), and
+measured-size == actual on-disk pak size is never checked. Bug this lets
+slip: Σ-bytes accounting off-by-header/empty-entry classes invisible
+until integration — which covers only res.pak. *Fix:* assert
+`s["sum_entry_bytes"] == info.total` and measured size ==
+`stat().st_size` in the existing summary test.
+
+**L4. Integration prereq list omits `_verify` landmarks.**
+`_integration_prereqs` :1090 checks only RES_PAK + RES_TSV; missing
+`tools/_verify/extract-res.pak-{sealordMap10Placeholder.png,data.cdb}`
+would make `test_integration_res_seeded_samples_and_landmarks` FAIL
+(FileNotFoundError) instead of skip — false red on a partially
+provisioned host reads as a harvest regression. *Fix:* add both files to
+the prereq check.
+
+**L5. Dead parameter + stale status claims.** `write_pak`'s
+`data_size_override` (:167) is used by no test — either exercise it (a
+cheap wrapped-field unit without the 2 GB session fixture) or drop it.
+Case-14's docstring says the test "stays red BY DESIGN until harvest
+pre-validates childCount" — it now PASSES (harvest validates; the
+silent-empty-dir seed-reader hole, verified real against wtpak.py:73's
+signed `_i32`, is compensated upstream). Docstrings asserting live status
+should carry dates; stale ones mislead the next arbiter about what is red
+and why.
+
+---
+
+## Mission answers (brief items 1–5)
+
+1. **§7 coverage — complete.** All 14 cases + smoke present and mapped:
+   flat tiling (case 1), small-f64 mix (2), >2³¹ wrap reader+summary (3),
+   unicode incl. exact 255-BYTE ceiling name (4), empty/deep/sibling dirs
+   (5), duplicate + case-clash exit 4 nothing-written (6), zero-byte (7 +
+   `empty` token on disk via detect table), five corrupt flavors + source
+   tamper exit 3 (8), idempotency/self-heal (9), --list/--manifest-only
+   purity (10), media catalogue-only + identical re-emission + exemption
+   from reuse counting (11), >260-char path dual-expectation (12), >2³²
+   parse+manifest exactness (13), implausible childCount loud naming node
+   (14). Sparse-fixture doctrine (holes not zeros) keeps cases 3/13
+   honest-tiled at KB cost.
+2. **Assertions bite.** Audited for tautologies: found one near-tautology
+   (L1); everything else asserts concrete values, negative controls exist
+   where the subject is a comparator (:585–625 perturbs size/adler/path/
+   flag-0-offset and demands mismatches). Proven empirically: the three
+   reds are true positives catching a real contract break.
+3. **Markers correct.** conftest registers `integration`, adds skip to
+   marked items unless `--run-integration`; observed 3 skips on bare
+   invocation; prereq check is a second belt. Unit layer provably A:-free
+   (constants build paths, no import-time I/O; all fixtures tmp_path).
+   Green-on-skips structurally intact — `require_harvest()` precedes any
+   side effect in every layer-2 test (audited each).
+4. **Fixture writer SOUND — hand-verified against §2.2.** Header = 12 B
+   (magic3+version+`<ii` header_size/dataSize) ✓; index blob occupies
+   [12, header_size−4), DATA trailer [header_size−4, header_size) —
+   matches reader's `read(header_size−16)` window after the 12-byte
+   header ✓; u32 0x41544144 LE ≡ literal b"DATA" ✓; DFS pre-order with
+   encode/walk order-lock ✓; nameLen = UTF-8 BYTES incl. dir nodes ✓;
+   bit-2 selects `<d` else `<i` position ✓; u32 size/adler ✓; positions
+   tile from 0 gap-free ✓; adler masked & ground-truthed vs zlib incl.
+   the 65520/65521/65522 mod-boundary triple ✓; `signed_u32` implements
+   the §2.1 i32 interpretation (case-3 delta exactly −2³²) ✓; pads kept
+   < 2³¹ because wtpak parses entry size as SIGNED i32 — documented and
+   correct ✓; NTFS seek+truncate holes read as zeros everywhere ✓.
+5. **Missing families:** multi-pak (M1), tripwire + free-space seam (M2),
+   no-strict×integrity (M3), media-magic half (M4), summary value
+   fidelity (L3). Present and sound: exit codes 0/2/3/4, --list order,
+   RNG seed (unit presence + integration functional reuse), resume/
+   idempotency, manifest field types (modulo L2).
+
+## Verdict
+
+**NEEDS-FIXES** — surgical, not structural. The suite's core (fixtures,
+contract pinning, marker hygiene) is sound and already earning its keep:
+it caught harvest's B1 within seconds of the implementation landing.
+Required before sign-off: M1–M4 amendments (~6 small tests, one seam
+decision on M2 owned by the orchestrator since it touches
+`harvest.py`'s CLI). L1/L2/L4 are one-line tightenings; L5 cleanup at
+discretion. The 3 current reds belong to CodeWriter (B1), not to this
+suite.

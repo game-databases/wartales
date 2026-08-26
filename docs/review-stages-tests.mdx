@@ -1,0 +1,158 @@
+# Review — TestReviewer, stages 4–6 test suite
+
+Status: FINAL (2026-08-25). Reviewer: fresh TestReviewer agent per
+[`docs/briefs/review-stages-tests.mdx`](./briefs/testwriter-stages.mdx)
+contract (stdout log). Inputs read in full: root `AGENTS.md`,
+`_foundation/decision-register.md`,
+[`spec-stages-datasets.mdx`](./spec-stages-datasets.mdx),
+[`pipeline/tests/test_stages_datasets.py`](../pipeline/tests/test_stages_datasets.py),
+[`pipeline/tests/test_stages_toolchain.py`](../pipeline/tests/test_stages_toolchain.py),
+[`pipeline/tests/test_map_tiles.py`](../pipeline/tests/test_map_tiles.py),
+`pipeline/tests/conftest.py`,
+[`output/testwriter-stages.log`](../output/testwriter-stages.log).
+The landed implementation (`promote_drafts.py`, `relink_catalog.py`,
+`validate_all.py`, `wave_kinds.py`, `cdb_emit/cdb_verify`,
+`locale_bridge_dig.py`) was read **only** where needed to prove a case's
+blindness. No tests were modified; nothing committed.
+
+## Verdict: NEEDS-FIXES (ordered list at the end)
+
+The fixture/parity/regeneration layers are sound and every frozen number I
+re-measured independently is correct (table below). The suite's defects
+concentrate in two places: (a) the integration layer I1–I2 is dead-on-arrival
+— it has never executed and cannot as written, so AC1/AC3's designated
+executable verifiers do not actually exist; (b) three proven blindness holes
+where planted faults leave the whole suite green.
+
+## 1. Baseline (this host, this session)
+
+```
+$ python -m pytest pipeline/tests/test_stages_datasets.py \
+                   pipeline/tests/test_stages_toolchain.py -q
+1 failed, 48 passed, 5 skipped in 25.64s
+```
+
+Matches the writer's own report exactly. The one failure is the RED case
+(finding F14 below — a correct test over a real implementation defect); the
+5 skips are T2b + I1–I4 (integration opt-in).
+
+## 2. Frozen numbers re-measured independently — ALL CORRECT
+
+Re-derived from corpus bytes without going through the suite or its helpers
+(`D:\_rev-tmp\remeasure.py`):
+
+| Pin | Suite value | Independent re-measure | Verdict |
+|---|---|---|---|
+| Census grand total / sheets | 11,473 / 386 | 11,473 / 386 | ✓ |
+| constant | 1,266 | 1,266 | ✓ |
+| item·skill·unitClass·craft | 2125·1373·281·667 | same | ✓ |
+| data.cdb size (§1) | 6,088,918 B | 6,088,918 B | ✓ |
+| Pair files / edges / dangling | 51 / 19,130 / 0 | same | ✓ |
+| Null decomposition | env__place 61 · frescos__place 9 · fiefGoal__element 2 | same | ✓ |
+| Mechanisms | all `hard` | `['hard']` | ✓ |
+| Canonical kinds / Σ rows / buildId | 40 / 10,207 / 20318128 | 40 / 10,207 / uniform `20318128` | ✓ |
+| Preservation | 21 · 40 · 14 occ/9 keys | 21 / 40 / {vars 4, isAttack 2, tooltipStatus 2, +6×1} = 14 | ✓ |
+| Availability rows / locales | 3,779 = 2125+1373+281 / 9 | same, exact locale set | ✓ |
+| Overlay entities | 29,889 = (1807+1236+278)×9 | 3,321 × 9 = 29,889 (counted from `extracted/locales/*/*.json` keys) | ✓ |
+| Deferred drafts | place 536 · group 791 · element 5180 · levelProps 5982 · achievement 235 | same (from `_draft` bytes) | ✓ |
+| Bridge coverage | 35 en sheets, 27 used, drift-absent 0 | 35 / usedSheets 27 / driftAbsent `[]` | ✓ |
+| Matrix size / MD rows | 40 kinds, 780 pairs, 780 rows | same (`kindCount`/`pairCount` top-level; 780 `| \`` rows under `## Full matrix`) | ✓ |
+| Wave-2 spot pairs (fiefMission__itemType 4371, recipe__item 3515, loot__item 994, battle__skill 58, …) | §2 table | all match canonical pair files | ✓ |
+
+No wrong pinned number found anywhere in either file.
+
+## 3. Mutation experiments
+
+Expect-red (plant the fault the case claims to catch; all six went red on
+today's tools — `D:\_rev-tmp\reds.py`):
+
+| # | Planted fault | Observed |
+|---|---|---|
+| R1 | payload row dropped in canonical copy → validate_all | exit 1, `census-per-kind=False`, report written ✓ |
+| R2 | dangling `toId` in pair copy → cdb_verify | exit 1, edge named ✓ |
+| R3 | draft removed behind live canonical → promote_drafts | exit 1 naming `trait.jsonl`, tree untouched ✓ |
+| R4 | wrong `--buildid` → cdb_verify | exit 1 ✓ |
+| R5 | runpy-injected `os.replace` failure → promoter | nonzero, no `.part`, prior target intact ✓ |
+| R6 | missing draft dir → promoter | exit 2 naming it ✓ |
+
+(The suite's own T10 fault legs 1–4 also demonstrably went red inside the
+green baseline run.)
+
+Adjacent faults (plant what NO case claims to catch — these are the holes):
+
+| # | Adjacent fault | Result |
+|---|---|---|
+| H-A | mutant `meta_equal() -> True` (exempt ALL `_meta` fields, not just `emitted`) in a relocated tool copy; run T5 + AC9 against it | **2 passed — suite green under the mutant**. Positive control: the real promoter *does* update on a buildId-only tamper, so a pinning test would pass today. The behavior is right; no test guards it. |
+| H-B | falsify ONE rendered RELATIONS.md row (`modeled · E=4371 … v=4371/0/0` → `missing · E=0 … v=0/0/0`), matrix.json untouched → validate_all | **`catalog-parity pass=True`** (`markerMatch=True; mdMatrixRows=780`). The check only sha-compares the marker and counts rows; MD content divergence is invisible to it and to every case (T10 fault 4 tampers matrix.json only; T9 pins generation-time rendering only). |
+| H-C | truncate one availability row's `availableLocales` 9→3 (row count intact) → validate_all | **`availability-regenerated pass=True`** — the validator checks `set(row[...]) <= EXPECTED_LOCALES` (subset, not equality) plus counts; grid comes from the generator's self-report. No suite case mutates locale sets. |
+| H-D | execute I1's own first step: mini world emitted, then gate REAL CDB × mini drafts | **rc=1** (`_meta.columns diverge from CDB schema` et al.) — I1's opening assert can never hold. |
+| H-E | load real `matrix.json`, apply I2's assertion | **KeyError `'header'`** — envelope keys are top-level (`buildId, deferredTargetPairs, kindCount, pairCount, pairs, selfPairs, textKeyCoverage, totals`). |
+| H-F | plant `poi_coordinates.jsonl` in a reldir → cdb_verify | behaves correctly (`relink skipped (not <from>__<to>.jsonl): 1`), but grep proves **no test drives cdb_verify over a non-pair reldir entry** — the exact defect spec §10 hole 1 cites as motivation can regress silently. |
+
+## 4. Findings
+
+Severity applies to the SUITE (test completeness), not the tools. File:line
+per finding; each with the concrete missing test.
+
+| # | Sev | Where | Finding | Proof | Missing-test sketch |
+|---|---|---|---|---|---|
+| F1 | **BLOCKER** | `test_stages_toolchain.py:1169-1192` | **I1 is dead-on-arrival and tests the wrong world**: it gates the REAL CDB against the MINI session drafts (`:1176`), which provably exits 1 (H-D), then "promotes" mini bytes and asserts Σ 10,207 — a number true of the mini world by construction, not of any real stage-4 chain. AC1/AC3's designated executable verifier (spec §7 I1) therefore verifies nothing and can never pass. Masked forever by the integration skip. | H-D experiment; baseline skip list | Rewrite I1 to spec §3.1 verbatim: emit waves 1+2 from `HARVEST_CDB` into tmp (the regen fixture already does exactly this), promote those drafts, re-verify, count == census per kind. Delete the `mini` reuse. |
+| F2 | MAJOR | `test_stages_toolchain.py:1241` | **I2 asserts a nonexistent envelope key** (`doc["header"]["pairCount"]`) — KeyError on the real artifact (H-E). Same root cause as F1: the I-layer was never executed. | H-E experiment; `relink_catalog.py:267-288` envelope | Fix to `doc["pairCount"]`; add a cheap always-run parity case asserting the matrix envelope keys the suite relies on (`kindCount`, `pairCount`, `pairs[]`, `totals`) so envelope renames fail fast outside `--run-integration`. |
+| F3 | MAJOR | `validate_all.py:264-290`; `test_stages_toolchain.py:1104-1113` | **RELATIONS.md content falsification is invisible**: catalog-parity sha-checks only the embedded matrix marker and counts `| \`` rows (H-B: status+edges falsified, check stays green). T10's divergence fault tampers matrix.json only; nothing tampers the MD side. Spec AC7 ("MD states the same per-check results") + catalog-parity intent ("rendered from the same matrix") are under-pinned. | H-B experiment | Add a validator sub-assertion (spot-render ≥1 modeled row from matrix records and require the identical line in the MD section), and a T10 fault leg that edits an MD row (mirroring H-B) expecting `catalog-parity=False`. |
+| F4 | MAJOR | `validate_all.py:238-239`; `test_stages_toolchain.py:1095-1102` | **Availability locale sets checked by subset, not equality** — a row claiming fewer locales than measured passes the gate (H-C), i.e. shipped availability can silently under-report while `pass:true`. No case mutates locale sets (fault 3 drops a row only). | H-C experiment | Validator: require `set(row["availableLocales"]) == EXPECTED_LOCALES-or-generator-row-value` (equality). Suite: T10 fault leg truncating a row's locale set expecting `availability-regenerated=False`. |
+| F5 | MAJOR | `promote_drafts.py:65-71`; `test_stages_toolchain.py:503-548` | **Equality rule pinned only for payload-tamper and emitted-only-tamper**: a mutant exempting ALL `_meta` fields keeps T5+AC9 green (H-A) — `_meta.buildId/tool/rowCount` drift in a canonical target is unpinned. Behavior currently correct (positive control updates). | H-A mutant run | One T5 leg: tamper ONLY `_meta.buildId` in target → expect `updated` (and conversely a leg asserting `emitted`-only stays `unchanged` already exists — keep both symmetric). |
+| F6 | MAJOR | spec `spec-stages-datasets.mdx:243-245,444-447`; `test_stages_toolchain.py:424-447` | **§3.3/§4.4's "dangling must be 0 fails cdb_verify" is not enforced by the landed verifier** — it counts and prints. T2b handles this honestly (probe-skip naming the gap, arming when the gate lands), but today the pack-wide invariant holds only via stage 6's `relink-integrity` backstop; the stage-5 gate the spec names does not enforce it and NOTHING tracks the open gap beyond a skip message. | T2b skip in baseline; writer log finding | Keep T2b as the armed case (correct form). Additionally assert at fixture level that the verifier stdout's dangling total feeds a nonzero-exit decision once landed — i.e., flip T2b's probe to hard-assert when `--run-integration` is set, so NE8K runs surface the gap red instead of skipped. |
+| F7 | MAJOR | `test_stages_toolchain.py:115-238`; spec `:611-613` | **Mini world diverges from the §7 sketch without disclosure**: of the six required fixture features, the localizable column, the undeclared payload key, and the id-less/keyRule sheet are absent (every mini sheet carries a native id column; no textKey-bearing cell; no preserved-key row). The keyRule/synthetic-id path (hole 6, §3.2) and textKey fidelity therefore ride ONLY on the corpus-conditional regen layer — a fresh clone without harvest output shows green while exercising none of them. The docstring says "census-shaped", never admits the omissions. | `_mini_db()` body vs sketch; grep: no `textKey`/`keyRule`/undeclared key in the mini builder | Add to the mini world: one localizable column producing a textKey ref (assert verify checks it), one row carrying an undeclared payload key preserved verbatim, and ONE id-less sheet emitted under `keyRule` (assert synthetic ids + verifier acceptance). Disclose remaining divergences in the docstring. |
+| F8 | MINOR | `test_stages_datasets.py:121`; `relink_catalog.py:284-287` | F5's third clause "**drift-absent 0**" has no case anywhere — the matrix ships `textKeyCoverage.driftAbsent` but neither T8/T9 nor validate_all nor any fixture asserts it empty; only the literal `27 ⊆ 35` is pinned (tautology). | grep `driftAbsent` in tests → comment only | One assertion wherever matrix.json is loaded (T8): `doc["textKeyCoverage"]["driftAbsent"] == []`. |
+| F9 | MINOR | `wave_kinds.py:58-101`; `test_stages_datasets.py:145-151` | **Parity asymmetry for the deferred honesty list**: F8 pins the test file's OWN transcription, never `wave_kinds.DEFERRED`; validate_all's `deferred-present` compares the module to itself. Editing the module's unblock tokens breaks nothing. | grep: no import of `wave_kinds` in either test file | Parity case mirroring `test_parity_*`: assert `wave_kinds.DEFERRED` ids/kinds/unblock tokens equal the fixture tables. |
+| F10 | MINOR | `test_stages_datasets.py:294-334,341-342,437-453` | Several always-run fixtures are pure tautologies over the file's own literals (overlays 29,889; bridge 27/35; filler zeros; matrix-size arithmetic; the scan-scope/drift-class tables). They anchor nothing external; their live forms exist only under I3/integration. Acceptable as arithmetic documentation, but they read as coverage they don't provide. | inspection | Either mark them clearly as arithmetic-only in names/docstrings, or move their live measurement into the regen layer where cheap (bridge sheet count from export_en.xml needs no writes). |
+| F11 | MINOR | `test_stages_toolchain.py:1039-1145` | **T10 couples six fault legs behind one skippable setup**: if `_green_tree` ever skips (drafts absent / seeds ≠ 51) or the exit-2 probe trips, ALL legs vanish together — including the RED case. A single regression then hides behind one skip reason. | structure; map-suite convention is small parametrized cases | Split into `test_t10_green` + parametrized fault cases sharing a session green-tree fixture; let the RED-case leg run independently of the availability/matrix legs' preconditions. |
+| F12 | MINOR | `test_stages_toolchain.py:1308-1347`; spec `:536-573,717-720` | **I4 under-asserts its own spec text**: "--dry-run prints the EXACT vectors" is reduced to `[dry-run]` + stage-name substring; unpinned: resolved `CDB` line in `--list` (edit 4), `TotalCount` bump (edit 5), `run_all.sh --list` forwarder identity (AC10 sentence 6), EXTRACTION-LOG edits E1–E6 — despite the house precedent `test_map_tiles.test_extraction_log_carries_freeze_and_repin_record`. | inspection vs §6/AC10 | Assert dry-run lines contain the §3.1/§4.1/§5.1 argv vectors; grep `run_all.ps1` defaults block for `CDB:`; one subprocess call `run_all.sh --list` diffed against `run_all.ps1 --list`; one EXTRACTION-LOG content assertion for the three new tool rows. |
+| F13 | MINOR | `test_stages_toolchain.py:843-846`; spec `:381-394` | T8 pins `deferredTargetPairs` — an envelope key §4.2 never specifies (currently matches the implementation; spec-skew risk if CodeWriter renames). Similarly AC7's "VALIDATION-REPORT.md states the same per-check results" is asserted as existence-only (`mdrep.exists()`, `:1066`). | inspection | Name the key in the spec (one-line amendment) or assert defensively (`doc.get("deferredTargetPairs")`). For AC7: parse the MD table and require every JSON check id present with the matching pass word. |
+| F14 | MINOR (defect is the TOOL's) | `test_stages_toolchain.py:1115-1129`; `validate_all.py:146-152,175` | **The RED case is CORRECT and minimal — keep it red.** validate_all loads EVERY datadir `.jsonl` into `per_kind_rows` then indexes `wave_kinds.KIND_SHEETS[kind]`, crashing `KeyError: 'place'` before writing any report; spec §5.2 demands exit 1 with every check as a report record, and the planted `place.jsonl` is precisely AC4/AC11's subject. The test over-specifies nothing. Two nits: it lives as leg 5 of the coupled mega-test (F11), and until fixed, AC4/AC11 have NO passing executable guard — the suite is rightly refusing to bless the stage. | baseline failure stderr; crash path cited | Implementation fix (CodeWriter side): filter `per_kind_rows` to managed kinds for census-per-kind, let `hbson-independent` own the intrusion verdict, and write the report before returning 1. This test then flips green with zero changes. |
+| F15 | NOTE | `validate_all.py:130-132`; `test_stages_toolchain.py:1023-1028,1254-1305` | Shared-tree hygiene: every validate_all invocation (including T10's seven) spawns the REAL `locale_bridge_dig.py`, rewriting `extracted/locales/**` + `locale_availability.jsonl` mtimes; I3 snapshots/restores only the availability file, not overlays/. Content is deterministic (verified byte-stable rerun) so risk is churn, not corruption — worth knowing on a tree concurrent orchestrators share. | code paths; determinism confirmed twice this session | Optionally point the child at a sandboxed copy of the dig (its paths derive from `__file__`) in tool-layer tests; integration keeps the real paths. |
+
+Skip inventory (mission item 6): all skips carry reasons and arm automatically
+(`_need_tool`/`_need_new_tool`, `_cdb_or_skip`, T2b/T4 probes, T10 conditional
+probes, house integration marks) — discipline is CLEAN. Two structural caveats
+are filed above (F6's untracked gap, F11's coupled retirement); T10's exit-2
+probe (`:1051-1056`) could in principle mask a permanently-broken validator
+CLI, but today it runs green, so it is armed rather than dangerous.
+
+## 5. AC / T coverage walk (gaps only; everything else maps)
+
+| Item | Status |
+|---|---|
+| AC1 | Fixture/regen halves solid; executable entrypoint half = I1 → **dead (F1)**; default suite never reads the canonical tree, so shipped-tree state is guarded by nothing that runs by default |
+| AC2 | (i)+(iii) covered and verified red; (ii)'s entrypoint form honestly delegated to the datasets-file analog (named deviation) — acceptable |
+| AC3 | Regen + T5 cover the promoter half; "second `run_all.ps1 datasets` reports unchanged" executes nowhere (I4 dry-runs only) — rides on F1/F12 |
+| AC4 | Enforced solely by the currently-crashing check (F14) |
+| AC5 | Regen layer strong (counts/decomposition/mechanisms re-measured); promotion half = I2 → dead (F2) |
+| AC6 | Well covered (T8/T9/T12/T13) except MD-content falsification (F3) |
+| AC7 | Green leg exists and passes; MD↔JSON parity under-asserted (F13) |
+| AC8 | Live measurement only under I3 (declared layering); row-level locale equality missing everywhere (F4) |
+| AC9 | Ghost + restore classes executed; **consumer-precondition class (exit 2 naming the owning producer via Invoke-Emit/Invoke-Relink) has NO executable case** — only the promoter's own precondition runs; class table pins prose only (`test_stages_datasets.py:165-172`) |
+| AC10 | I4 covers list/unknown-flag/dry-run/stub; `run_all.sh` forwarder leg absent (F12) |
+| AC11 | Draft-plane absence asserted in regen; canonical absence = F14 path |
+| T1–T7, T11–T13 | Present and behaving (red battery confirms); T13 is extra beyond spec (fine); T8 documented scale divergence from the spec sketch is reasonable — arbiter may amend the sketch as the writer suggests |
+| T9, T10 | Present; see F3/F11/F13 |
+| I1–I4 | See F1, F2, F12 |
+
+## 6. Ordered fixes
+
+1. **F1** rewrite I1 against the real CDB chain (BLOCKER — AC1/AC3 currently unverifiable end-to-end).
+2. **F14** CodeWriter fixes the validator crash; RED test stays untouched and flips green.
+3. **F2** fix I2 envelope access + add always-run envelope parity.
+4. **F3** MD-content parity (validator sub-assertion + T10 MD-falsification leg).
+5. **F4** availability locale-set equality (validator + fault leg).
+6. **F5** T5 `_meta.buildId`-only tamper leg.
+7. **F6** escalate T2b under `--run-integration` so NE8K runs show the dangling-gate gap red; track the cdb_verify gap itself.
+8. **F7** mini-world: add localizable column, undeclared key, id-less keyRule sheet; disclose divergences.
+9. **F9, F8** parity for `wave_kinds.DEFERRED`; assert `driftAbsent == []`.
+10. **F11–F13, F10** structural/under-assertion polish; **AC9 consumer-precondition** executable case (via sandboxed run_all invocation or a named manual procedure like I3's constants-drift note).
+11. **F15** optional hygiene.
+
+Everything else reviewed — fixture arithmetic, parity discipline, regeneration
+freeze execution, preservation counters, null decomposition, stamp policy,
+atomicity injection, enumeration contracts — held up under independent
+re-measurement and mutation.

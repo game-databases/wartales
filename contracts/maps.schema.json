@@ -1,0 +1,220 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "wartales maps.json registry",
+  "type": "object",
+  "required": [
+    "buildid",
+    "crs",
+    "layers"
+  ],
+  "properties": {
+    "buildid": {
+      "type": "integer"
+    },
+    "crs": {
+      "type": "object",
+      "required": [
+        "type",
+        "yAxis",
+        "transform"
+      ],
+      "properties": {
+        "type": {
+          "const": "wartales-world"
+        },
+        "yAxis": {
+          "enum": [
+            "north-up",
+            "south-up",
+            null
+          ]
+        },
+        "transform": {
+          "type": "object",
+          "required": [
+            "a",
+            "b",
+            "c",
+            "d",
+            "tileUnitPx"
+          ],
+          "properties": {
+            "a": {
+              "type": "number"
+            },
+            "b": {
+              "type": "number"
+            },
+            "c": {
+              "type": "number"
+            },
+            "d": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "tileUnitPx": {
+              "type": "object"
+            }
+          }
+        }
+      }
+    },
+    "layers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "bounds",
+          "provenance"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "tiles",
+              "grid",
+              "vector",
+              "markers"
+            ]
+          },
+          "imagery": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "bounds": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "xMin",
+                  "yMin",
+                  "xMax",
+                  "yMax"
+                ],
+                "properties": {
+                  "xMin": {
+                    "type": "integer"
+                  },
+                  "yMin": {
+                    "type": "integer"
+                  },
+                  "xMax": {
+                    "type": "integer"
+                  },
+                  "yMax": {
+                    "type": "integer"
+                  }
+                }
+              }
+            ]
+          },
+          "cells": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "sourceRef": {
+            "type": "string"
+          },
+          "provenance": {
+            "type": "string"
+          },
+          "publicationPlane": {
+            "enum": [
+              "served",
+              "data-plane-only",
+              "derived-at-build"
+            ]
+          },
+          "types": {
+            "type": "array"
+          }
+        }
+      }
+    },
+    "regions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "nameKey",
+          "polygonRef",
+          "bounds"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "nameKey": {
+            "type": "string"
+          },
+          "polygonRef": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "bounds": {
+            "type": [
+              "object",
+              "null"
+            ]
+          }
+        }
+      }
+    },
+    "coordinateTransform": {
+      "type": "object",
+      "required": [
+        "model",
+        "cellUnits",
+        "pxPerWorldUnit",
+        "worldToStoredPx",
+        "provenance",
+        "validation"
+      ],
+      "properties": {
+        "model": {
+          "type": "string"
+        },
+        "cellUnits": {
+          "type": "number"
+        },
+        "pxPerWorldUnit": {
+          "type": "number"
+        },
+        "worldToStoredPx": {
+          "type": "object"
+        },
+        "storedPxToWorld": {
+          "type": "object"
+        },
+        "servedTileIndex": {
+          "type": "object"
+        },
+        "carriers": {
+          "type": "object"
+        },
+        "provenance": {
+          "type": "object"
+        },
+        "validation": {
+          "type": "object"
+        }
+      }
+    }
+  }
+}

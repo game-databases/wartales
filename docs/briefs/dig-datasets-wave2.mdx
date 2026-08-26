@@ -1,0 +1,34 @@
+# Brief — Data dig: datasets wave 2 — remaining kinds (fresh subagent)
+
+Fresh data-layer dig agent. Never spawn subagents, never commit.
+Wartales pack only. Read root AGENTS.md; extraction-doctrine
+(principle zero, preserve identifiers); `docs/cdb-census.mdx` +
+`docs/cdb-kind-map.mdx` (your emit plan); the wave-1 exemplars
+`extracted/data/_draft/{item,skill,class}.jsonl` (match their _meta
+shape exactly); `docs/data-dig-log.mdx` (append).
+
+## Task
+
+Emit canonical JSONL for ALL remaining kinds the kind map marks
+clearly sourced from data.cdb sheets — expected (verify against the
+kind map, don't trust this list): units/enemies, companions/recruits,
+recipes/blueprints, regions/towns, quests, lore/documents,
+achievements, camp/buildings, animals/mounts, potions/food,
+status-effects, paths/titles, ghosts/curses, trade goods/prices.
+Rules per kind:
+1. ALL columns preserved under original names; stable `id`; locale
+   text as textKey refs (the locale dig owns prose).
+2. `_meta` first line (sourceSheet, buildId 20318128, rowCount,
+   emitted, tool, enums discovered).
+3. Relink seeds per `ref` column: `extracted/relinks/_draft/<a>__<b>.jsonl`
+   (fromId, toId, column, mechanism "hard") — extend the wave-1 set.
+4. Reconciliation: per-kind rowCount == census rowCount; grand totals
+   in your summary.
+5. Skip kinds the kind map flags ambiguous/P0-DIG — list them as
+   deferred with reasons instead.
+6. Append `docs/data-dig-log.mdx`.
+
+This is a mechanical emit at scale — if any sheet's semantics surprise
+you (polymorphic columns, nested sub-data), emit conservatively
+(preserve raw structure) and note it. Return: ≤15-line summary —
+kinds emitted w/ row counts, relink edge totals, deferred list.

@@ -1,0 +1,52 @@
+# Brief — Data dig 12: battle terrain grid decode, R7 (fresh subagent)
+
+Fresh data-dig agent. **Never spawn subagents**; never commit; Wartales
+pack only. Headless: stdout → log; end with verification results.
+
+Read first, in full: `wartales/extracted/PROOF.md` R7 row;
+`wartales/docs/toolchain-validation.mdx` §1 (content .bin census = raw
+float arrays); `wartales/spec.md` battle-scene entity + maps block
+(battle-tactical layer); `wartales/docs/hbson-format.mdx` (the grammar —
+battle prefabs are now decodable); `pipeline/tools/hbson_decode.py` CLI;
+`extracted/data/_draft/{levelProps,group,battle}.jsonl` samples;
+`docs/data-dig-log.mdx` Dig 7 tail.
+
+## State (verify, don't trust)
+
+- content.pak holds ~5,880 battle terrains as `.bin` float arrays
+  (byte-exact on disk under extracted/harvest/content/). Grid semantics
+  (dims, vertex/color/splat roles) unread.
+- NEW capability: HBSON decoder exists (Dig 7) — battle/levelProps
+  prefabs now decode and likely carry per-scene terrain references,
+  grid dimensions, spawn markers. This is your semantic oracle: the
+  prefab tells you what the floats must mean (width×height, layer count).
+- CDB sheets `battle` (34,737 B draft) + hidden sub-sheets define scene
+  schema.
+
+## Hard rules
+
+- Python `C:\Python314\python.exe`, stdlib only; never Read binaries into
+  context. Zero-slack standard: every byte of a decoded .bin accounted
+  for by the derived layout (dims × layers × element size == file size)
+  across the whole corpus, not a sample of one.
+
+## Task
+
+1. Hypothesize the .bin layout from prefab-declared dims + array sizes;
+   verify byte-exactness across ALL battle terrain files (a layout that
+   explains 5,880 files' sizes exactly is found; one that explains 90%
+   is not).
+2. Decode semantics: which floats are heights/colors/splat weights/
+   passability; how spawns reference grid cells (from decoded prefabs);
+   tile size in world units (cross-check vs poi coordinates scale if
+   battle scenes anchor to the world map — else record independent CRS).
+3. Emit `extracted/data/_draft/battle_scene.jsonl` — one row per scene:
+   id, region, dims, spawn cells, terrain summary stats; keep raw arrays
+   OUT (catalogue-first: emit per-file shape index
+   `output/_dig-terrain/battle-bin-index.jsonl` instead).
+4. Proofs: round-trip re-encode sample ≥200 bins; second-implementation
+   cross-check ≥50; spawn-cell sanity (in-bounds, on passable cells).
+5. Append **Dig 12** to docs/data-dig-log.mdx; update PROOF.md R7 row;
+   note implications for spec `maps.layers` battle-tactical entry.
+
+Do NOT touch site/, run_all.*, map_tiles.py frozen gates.

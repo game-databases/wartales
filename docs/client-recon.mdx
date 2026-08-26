@@ -1,0 +1,252 @@
+# Wartales client recon
+
+Scout report, 2026-08-24. Client: `A:\SteamLibrary\steamapps\common\Wartales\`
+on NE8K. Every total states how it was measured. All measurements read-only;
+nothing was written to `A:`. Raw measurement artifacts (per-pak entry TSVs,
+script sources, probe logs) are on disk at
+`wartales/output/_recon-scratch/` — local only, never committed (game data).
+
+## 0. Identity
+
+| Fact | Value | Method |
+|---|---|---|
+| Steam appid | 1527950 | `appmanifest_1527950.acf` |
+| Installed buildid | **20318128** | appmanifest `buildid` |
+| Pending update | **TargetBuildID 21238928**, `BytesToDownload 3,661,934,096`, downloaded 0 | appmanifest — a ~3.4 GiB patch update is queued, not yet applied |
+| Depot | 1527951 single content depot (+shared 228988 DX redist) | appmanifest |
+| Steam SizeOnDisk | 47,968,075,497 B | appmanifest |
+| Engine | Heaps.io / HashLink (`HLB` v4 bytecode, `libhl.dll` + 11 `.hdll`) | hexdump + file inventory |
+| Localization build stamp | `version="126" revision="43420" date="2025-09-30"` | root element of `texts_en.xml` / `export_en.xml` |
+
+**Planning-critical:** the queued update means the install can change under
+extraction work. Pin buildid 20318128 in EXTRACTION-LOG.md and prefer a
+byte-frozen snapshot of the four paks before deep extraction starts.
+
+## 1. Top-level inventory
+
+Method: one streaming enumeration of every file under the client root
+(PowerShell `[IO.Directory]::EnumerateFiles` over `A:\…\Wartales`, sizes from
+`FileInfo.Length`), aggregated per top-level entry. Run once, 0 errors.
+Cross-checked against Steam's SizeOnDisk: difference is exactly
+`save/` (88,377,914) + `prefs.sav` (1,756) − the 1-byte marker `save/EMPTY`,
+i.e. Steam counts depot content only — reconciles to within 1 byte.
+
+Measured total: **7,089 files, 48,056,455,166 bytes (44.76 GiB)**.
+
+| Top-level | Files | Bytes | Contents |
+|---|---|---|---|
+| root loose files | 30 | 45,295,933,953 | 4 `.pak` (45,240,437,923), 2 boot `.dat`, 11 `.hdll`, 8 `.dll`, `Wartales.exe`, `shadercache.dx`, 2 locale XML, `prefs.sav` |
+| `res/` | 7,044 | 2,672,143,299 | 100% Wwise audio (see §4/§7) |
+| `save/` | 15 | 88,377,914 | player saves + shader cache (§6) |
+
+Root loose files >1 MB: `map.pak` 27,889,015,798 · `assets.pak` 9,217,464,877 ·
+`content.pak` 7,366,857,765 · `res.pak` 767,099,483 · `hlboot.dat` 16,102,040 ·
+`sdlboot.dat` 16,100,863 · `shadercache.dx` 5,326,039 · `d3dcompiler_47.dll`
+4,296,704 · `export_en.xml` 3,865,404 · `hlwwise.hdll` 2,441,216 ·
+`OpenAL32.dll` 2,212,352 · `SDL2.dll` 1,331,712 · `texts_en.xml` 174,432 ·
+`Wartales.exe` 135,680 · `prefs.sav` 1,756.
+
+Native plugins present: `heaps`, `hlwwise`, `steam`, `sdl`, `directx`,
+`openal`, `fmt`, `ssl`, `uv`, `ui`, `mysql` (standard HL distro lib).
+`steam_api64.dll` present; **no anti-cheat DLL of any kind** (no EAC/BattlEye).
+
+## 2. Pak format (fully decoded)
+
+All four paks share one format. Header magic `50 41 4B 00` (`PAK\0`) — this is
+the Shiro/Motion-Tune-lineage packer, **not** the standard Heaps `PASH`
+container.
+
+```
+Header (16 bytes):
+  u32 0x00  magic "PAK\0"
+  u32 0x04  boundary = byte offset where directory tree ends / data begins
+  u32 0x08  unknown, high-entropy, differs per pak (seed or checksum; unresolved)
+Directory tree (depth-first pre-order, from 0x0C):
+  node := u8 nameLen, name[nameLen], u8 flag
+  flag 1 (dir):   u32 childCount, then childCount child nodes
+  flag 0 (file):  u32 offset, u32 size, u32 crc-like hash   → data region 1
+  flag 2 (file):  u32 A, u32 B, u32 size, u32 crc-like hash → data region 2
+Tree trailer: u32 0x41544144 = ASCII "DATA", then payload regions begin.
+```
+
+Evidence, all read-only:
+
+- **Boundary field verified exactly**: each tree walk ends at `boundary − 4`
+  with the `"DATA"` marker there (all four paks). E.g. res.pak: boundary
+  31,005; tree bytes [16..31,001); `"DATA"` at [31,001..31,005).
+- **Two data regions, byte-perfect accounting**: for every pak,
+  Σ(flag-0 sizes) + Σ(flag-2 sizes) == (fileSize − boundary), delta **0**:
+
+  | Pak | Boundary | Files (flag0+flag2) | Region 1 Σ | Region 2 Σ | Data span | Δ |
+  |---|---|---|---|---|---|---|
+  | assets.pak | 730,870 | 17,131 (4,167+12,964) | 2,147,741,708 | 7,068,992,299 | 9,216,734,007 | 0 |
+  | content.pak | 484,823 | 15,248 (4,530+10,718) | 2,147,793,663 | 5,218,579,279 | 7,366,372,942 | 0 |
+  | map.pak | 229,523 | 6,886 (4,250+2,636) | 2,148,002,816 | 25,740,783,459 | 27,888,786,275 | 0 |
+  | res.pak | 31,005 | 936 (936+0) | 767,068,478 | — | 767,068,478 | 0 |
+
+  Totals: **40,201 packed files** in 2,084 directories. Region 1 sums sit just
+  above 2 GiB in three paks — consistent with a packer that fills a first
+  store to ~2³¹ and spills the rest into region 2.
+- **Region 1 addressing verified by content**: flag-0 offsets tile [0,
+  region1Σ) with zero overlap and zero gaps; probing computed positions returns
+  correct magics (`DDS` at tile offsets, `PNG`, `HBSON` at prefab offsets).
+- **Region 2 addressing verified as sequential**: entries stored back-to-back
+  in tree order; reading at `region2Base + cumulative(sizes)` yields correct
+  magics (8/8 `DDS` probes in map.pak; `HMD`/`DDS` probes in assets.pak).
+  The flag-2 `A`,`B` u32 pair remains semantically unresolved (B ≈ IEEE float
+  28.0 + small varying mantissa bits) — irrelevant when reading sequentially,
+  relevant only if random access is ever required.
+- **No encryption**: names plaintext, payload probed readable.
+- **No compression observed**: contiguity holds and probed payloads are raw
+  final formats (DDS/PNG/HMD/HBSON), not framed compressed streams.
+
+Payload format notes (from magic probes):
+
+- `.fbx` entries are **not FBX** — they carry the Heaps `HMD` model format.
+- `.png` entries may carry **DDS** payloads (e.g. normal maps) — extension lies.
+- `.prefab` and most `/content` blobs are **HBSON** (Heaps BSON serialization).
+- `res.pak` carries the game's brain: `/data.cdb` (6,088,918 B), `/formulas.hx`
+  (687 B), `/texts.xml` (159,673 B, **French dev-pivot source**), `/lang/*`
+  (17 files), `/content/script/*.hx` (12 Haxe scripts incl. `World.hx`),
+  `/content/systemic/names.yml`.
+
+Per-pak role split (depth-1): assets.pak = `/assets` 10,190 + `/chars` 6,128 +
+`/ui` 813 (incl. `style.css` 779,142 B + CJK/KO variants + `.asl` icon
+styles); content.pak = `/prefabs` 15,248 only; map.pak = `/assets/worldmap`
+6,886 (albedo/normal DDS tiles + region shape JSONs); res.pak = everything else.
+
+## 3. `res/` tree (the audio folder)
+
+Depth-3 aggregation of the same enumeration. Note: folder `res/` has **no**
+relation to `res.pak`.
+
+```
+res/audio                          7,044 files   2,672,143,299 B   (100% of res/)
+├─ *.bnk (Wwise banks, 23)                       704,469,198 B
+│    MUSIC_SB 93.6 MB · ANIMS_SB 54.1 MB · AMB_General 70.8 MB ·
+│    AMB_Buildings_2D 60.8 MB · AMB_Buidings_3D 45.7 MB · UI_SB 40.3 MB ·
+│    AMB_Belerion 36.8 MB · Scenarisation_SB 32.7 MB · English(US)/VOICE_SB 31.4 MB ·
+│    SKILLS_SB 27.7 MB · AMB_Weather 27.6 MB · AMB_Ship 17.9 MB ·
+│    AMB_Region_{Alazar,Gosenberg,Gosenberg_City,Harag} · ACTIVITIES_SB ·
+│    Voicekits_SB · WT_SFX_SoundManager · AMB_Ruins · Init.bnk · AMB_SB (48 B)
+├─ Media/*.wem (62 loose)                         482,648,948 B
+└─ Media/English(US)/ 6,959 .wem                 1,485,025,153 B  (English voice lines)
+```
+
+Exact loose-media subtotal: `Media/*.wem` 62 files outside `English(US)/`
+(7,021 − 6,959); total `.wem` anywhere under `res/`: 7,021 files,
+1,967,674,101 B.
+
+## 4. Localization surface
+
+Locale files found — **every one listed**, with pak-relative paths and sizes
+(from the res.pak entry listing; the two root XMLs duplicate the `_en` pair):
+
+| Locale | `lang/export_<l>.xml` (B) | `lang/texts_<l>.xml` (B) |
+|---|---|---|
+| de | 4,145,061 | 187,088 |
+| en | 3,865,404 (= root `export_en.xml`) | 174,432 (= root `texts_en.xml`) |
+| es | 4,034,101 | 183,235 |
+| fr | 3,224,628 | — (master is `/texts.xml`, see below) |
+| ko | 4,291,614 | 189,280 |
+| pl | 3,989,289 | 182,396 |
+| pt-BR | 3,968,803 | 181,209 |
+| ru | 4,906,241 | 227,935 |
+| zh | 3,824,886 | 168,311 |
+
+Plus master `/texts.xml` 159,673 B (French source text — "Niveau",
+"Aucun"; the dev pivot). No other locale-bearing files exist anywhere in the
+install (searched: loose tree + all 40,201 pak entries for
+`texts_*`, `*.lang`, `locale`, language codes).
+
+Structure:
+
+- `texts_*.xml`: `<texts project="Wartales" version="126" lang="en"
+  date="2025-09-30 13:56:33" revision="43420" softwareVersion="2">`; leaves
+  `<t id="key">text</t>` (with `::var::` interpolation, `<b>` markup, `<img>`
+  refs), groups `<g id="...">`. EN counts: **2,148 `<t>` strings, 237 groups,
+  123 `<img>`**. Ids are accent-stripped French ("dbutant", "aucun") — the id
+  namespace is the French source.
+- `export_*.xml`: `<cdb project="Wartales" version="126" …>` — a CDB export.
+  EN: **35 sheets** × `<entry><text>…</text></entry>`, **9,912 `<text>`
+  leaves**. Sheet names mirror `data.cdb`'s schema: `item, itemType, skill,
+  status, trait, effect, condition, bonus, attribute, battle, element,
+  region, place, mission, kingdom, group, groupType, fiefPopulation,
+  fiefPlace, fiefMission, fiefLaw, fiefEvent, fiefCondition, fiefAlignment,
+  fiefAdministration, startChoice, tutorial, notify, input, icon, credits,
+  counter, constant, confessions`. This file IS the entity↔text relink bridge.
+
+## 5. HashLink bytecode
+
+| File | Size | First 64 B |
+|---|---|---|
+| `hlboot.dat` | 16,102,040 | `484c 4204 0186 4082 44c0 0126 39c0 00b7 …` |
+| `sdlboot.dat` | 16,100,863 | `484c 4204 0187 9b82 43c0 0126 f7c0 00b6 …` |
+
+Magic `HLB` + version byte **0x04** (HashLink bytecode format v4). The two
+images differ by 1,177 bytes — same compiled program with alternate boot
+glue (DirectX vs SDL entry; `directx.hdll` vs `sdl.hdll`). This bytecode is
+the entire game logic layer (16 MB) — primary decompile target.
+
+## 6. `save/` + prefs (existence/sizes only — contents not parsed beyond magic)
+
+Root `prefs.sav` 1,756 B — begins `oy5:adminf…` : plaintext Haxe serialized
+settings, human-readable keys. `save/`: 15 files, 88,377,914 B —
+
+`autosave.dat` 16,355,592 · `save007.dat` 10,899,207 · `save006.dat`
+10,506,991 · `save005.dat` 9,856,354 · `shadercache_mine.dx` 9,379,168 ·
+`save004.dat` 9,576,935 · `save003.dat` 9,064,494 · `save002.dat` 5,300,166 ·
+`save001.dat` 4,270,072 · `save000.dat` 2,926,717 · `news.dat` 241,118 ·
+`udat_Sd<id>.sav` 937 (personal-id filename, pattern recorded) · `meta.sav`
+111 · `steam_autocloud.vdf` 51 · `EMPTY` 1 (marker).
+
+Note: `save/` is also where the game writes its shader cache — it doubles as
+the writable dir. Saves are user data; datasets will come from client files,
+never from these.
+
+## 7. Media census (DR-2026-08-18-media-scope inputs)
+
+- **Audio: all of it is loose under `res/`** — `.wem` 7,021 files /
+  1,967,674,101 B + `.bnk` 23 files / 704,469,198 B = **2,672,143,299 B
+  (2.49 GiB), 100% of the folder**. Offload candidate set for the media
+  carve-out. English(US) voice alone is 6,959 wem / 1.49 GB.
+- **Video: none exists anywhere in the install** — zero hits across the loose
+  tree and all 40,201 pak entries for bik/bk2/usm/webm/mp4/avi/ogv/ivf/mov.
+  Nothing to offload; intros must be engine-rendered or absent.
+- **Heavy non-media classes (catalogue-first, owner picks later)**: inside
+  paks — `.dds` 4,398 / 31.70 GB (mostly map.pak world tiles),
+  `.png` 9,338 / 6.42 GB, `.raw` 2,754 / 1.54 GB, `.bin` 10,268 / 1.66 GB,
+  `.envs` 30 / 780 MB, `.tx` 69 / 440 MB, `.fbx`(HMD) 7,204 / 2.13 GB,
+  `.hmd` 5 / 85 MB, `.l3d` 395 / 32 MB, `.jpg/.jpeg` 640 / 72 MB.
+
+## 8. Unexpected findings & open items
+
+1. **Pending patch** (TargetBuildID 21238928, ~3.4 GiB queued) — snapshot/pin
+   before extraction (§0).
+2. **`res.pak` ≠ `res/`** naming trap: the pak holds data/lang/scripts, the
+   folder holds Wwise audio.
+3. Extensions lie systematically: `.fbx`=HMD models, `.png` sometimes DDS,
+   prefabs are HBSON. Unpacker must route by magic, not extension.
+4. Game logic ships as readable artifacts: `.hx` scripts (hscript) including
+   `World.hx` and `formulas.hx`, plus `names.yml` — direct logic-layer input.
+5. `export_*.xml` sheet names give the `data.cdb` schema without parsing CDB —
+   schema bootstrap for the whole entity model.
+6. No anti-cheat, no video, no workshop integration (only
+   `steam_autocloud.vdf`); co-op runs over Steam (`steam_api64.dll`,
+   `steam.hdll`) — protocol surface exists via Steam networking for co-op sync;
+   single-player fully offline.
+7. Two near-identical boot images (`hlboot`/`sdlboot`) — extract once, diff once.
+8. Open question for unpacker authoring: semantics of flag-2 fields `A`,`B`
+   (random-access addressing?) — sequential read already proven sufficient.
+9. `mysql.hdll` presence is stock HashLink distribution, not evidence of a DB.
+10. Locale headers carry `version`/`revision`/`date` — free per-locale
+    provenance stamps for patch-diffing.
+
+## 9. Measurement artifact index (local, untracked)
+
+`output/_recon-scratch/`: `inv.ps1` + `inv-summary.txt` (full enumeration),
+`parse-pak.ps1`, `parse-pak2.ps1` + `pak-parse2.txt` (validated tree walks),
+`diag-pak.ps1` + `pak-diag.txt` (flag-2 discovery), `probe-pak.ps1` +
+`pak-probe.txt` (magic-byte verification), `{assets,content,map,res}-pak-entries.tsv`
+(complete 40,201-entry listings: path, flag, offset, size, crc32-family hash —
+reusable directly by the future unpacker).

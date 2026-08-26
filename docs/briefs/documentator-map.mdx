@@ -1,0 +1,31 @@
+# Brief — Documentator: map imagery pipeline spec (fresh subagent)
+
+Fresh Documentator. Never spawn subagents, never commit. Wartales
+pack only. Read: root AGENTS.md; FRAMEWORK §2.6 (maps essential);
+foundation-guide §11 (maps standard); `docs/client-recon.mdx` §2/§7
+(map.pak contents: 6,886 entries — 4,131 .dds + 2,754 .raw incl. the
+`_s` pyramid; worldmap data paths); the map.pak TSV
+`output/_recon-scratch/map-pak-entries.tsv` (header + samples: path
+patterns, sizes, flag mix); `design/sources/INDEX.mdx` (the two
+official map screenshots: strategic + hunt maps with legends);
+`docs/cdb-census.mdx` region/town sheets rows.
+
+Deliverable: `docs/spec-map-pipeline.mdx` — the piece spec for
+PT05+PT06 data foundations:
+1. Tile inventory plan: classify map.pak entries by path pattern
+   (world tiles vs region maps vs the `_s` pyramid vs placeholders)
+   with counts per class from the TSV (measured, not guessed).
+2. Format handling: DDS variants present (BC compression?), .raw
+   layout hypothesis + verification dig step, mosaic assembly order
+   (tile coords from names), placeholder entries listed honestly.
+3. Derived geometry obligations (rule 8): map bounds per layer,
+   world→pixel transform derivation plan, region polygons source
+   (CDB region sheet ↔ map overlay alignment), coordinate-sources
+   table per marker kind (client | derived | unknown-P0).
+4. maps.json registry schema (name/bounds/zoom/transform per layer:
+   world, regions, dungeons/instances if present in data).
+5. Marker plan: which CDB kinds carry coordinates today (POI 453,
+   Towns 156 from census) vs need derivation.
+6. Acceptance criteria + test spec for CodeWriter/TestWriter.
+Mark every not-yet-provable step as an explicit dig with its
+verification. Return: ≤12-line summary + the 3 riskiest unknowns.

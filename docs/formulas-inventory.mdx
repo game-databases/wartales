@@ -1,0 +1,344 @@
+# Wartales formulas inventory — hscript + CDB logic layer
+
+Every formula the game computes that is **visible in this dig's sources**:
+`res.pak:/formulas.hx` (687 B), the 11 `res.pak:/content/script/*.hx`
+hscript sources, and the formula/script columns of `res.pak:/data.cdb`
+(386-sheet census: [cdb-census.mdx](cdb-census.mdx)). Client buildid
+**20318128**. Machine-readable twin:
+[`extracted/logic/formulas.jsonl`](../extracted/logic/formulas.jsonl)
+(23 rows, emitted by `pipeline/tools/formula_emit.py`, every number read
+live from `data.cdb`). Parameter registry companion:
+[`extracted/logic/constants.jsonl`](../extracted/logic/constants.jsonl)
+(all 1,266 `constant` rows with difficulty variants resolved).
+
+Status vocabulary (per row):
+
+- **[CLIENT]** confirmed-in-client — value(s) read directly from client
+  files in this dig.
+- **[MIXED]** parameters client-read, the composition that combines them
+  still lives in `hlboot.dat` bytecode.
+- **[COMM]** community-inferred — hand-measured or argued by players, no
+  client read yet ([tools-plan §2](../tools-plan.md#2-mechanics-enumeration)
+  status legend).
+- **[P0-DIG-HLB]** remaining dig target: the 16 MB HashLink bytecode.
+
+**Bytecode cross-reference:** the hlboot types-walk outputs landed while
+this dig ran ([`extracted/logic/hl-structure/`](../extracted/logic/hl-structure/):
+types/functions/globals/strings/natives registries). Every formula row was
+probed against the 75,321-string pool of `hlboot.dat` — results in §5:
+all parameter sets are **double-confirmed** (their identifiers appear in
+bytecode), while the three `formulas.hx` pricing functions appear nowhere
+in bytecode — they are **hscript-only**, evaluated by an embedded
+interpreter at runtime. Per-row annotations live on each
+[`formulas.jsonl`](../extracted/logic/formulas.jsonl) row's `bytecode`
+field.
+
+---
+
+## 1. Verbatim hscript formulas (`formulas.hx`)
+
+The file holds exactly four functions. Three are pricing formulas; one is
+a CDB data validator. All verbatim, byte-identical sources at
+[`extracted/logic/hscript/formulas.hx`](../extracted/logic/hscript/formulas.hx).
+
+### 1.1 `weaponPrice(v: Item)` — [CLIENT]
+
+```
+price = 10 + v.tier * 10
+if rarity == 1: price += 20     # Uncommon
+if rarity == 2: price += 30     # Rare
+# rarity == 3 (Legendary): NO surcharge in this function
+```
+
+| param | source | notes |
+|---|---|---|
+| `v.tier` | item tier int | linear +10/tier |
+| `v.rarity` | item sheet enum `C,U,R,Legendary` | flat +20/+30; Legendary falls through |
+
+Tool use: base weapon price before town/region/perk modifiers.
+Cross-ref: [tools-plan §2 row 1](../tools-plan.md).
+
+### 1.2 `itemPrice(i: Item)` — [CLIENT]
+
+```
+if i.price != null: return i.price        # explicit per-item override (1,743 of 2,125 items)
+walk i.type → parentType chain:
+    first itemType whose props.basePrice != null wins
+else return null                         # comment: "will create NaN"
+```
+
+Findings from the sheets it reads: `item.price` populated on 1,743/2,125
+rows; `itemType.props.basePrice` is **datafile-backed** in this build
+(0 inline of 96 types) — its values ride the HBSON prefab payload, so the
+fallback path resolves only after HBSON decode (dig-log queue item 3).
+
+### 1.3 `craftPrice(c: Craft)` — [CLIENT]
+
+```
+p = Σ itemPrice(ingredient.item) * ingredient.qty   over c.recipe
+return p / itemPrice(c.item) - 1                    # cost-margin ratio
+```
+
+0 = break-even, negative = craft sells under material cost. The hidden
+float column `craft.calcPrice` exists on the sheet but is populated on
+**0/667 rows** — an editor-side helper; the value recomputes at runtime.
+
+### 1.4 `validatefiefEvent(e: FiefEvent)` — [CLIENT], not a game formula
+
+CastleDB authoring validator (`Warning("Null") / Ok / Error("Not Done")`
+on `e.done`). Recorded for completeness; zero tool value.
+
+### 1.5 Region scripts and `World.hx` — state, not math
+
+The 9 region-named `.hx` files plus `World.hx` are **global-state flag
+registries** (167 World flags + 644 region flags = 811 flags/counters:
+quest stages, arena completions, all
+five path progressions Crime/Might/Trade/Knowledge/Mystery-step flags,
+fief tutorial). `Paths.hx` is an empty stub (`function onInit_Paths(){}`).
+No numeric formulas live there — but the flag vocabulary IS the
+quest-state schema guides and completion trackers will join against
+(tools-plan rows 12/14/16). Preserved verbatim under
+[`extracted/logic/hscript/content/script/`](../extracted/logic/hscript/content/script/).
+
+---
+
+## 2. Runtime skill-script layer (`skill.script`, 1,130 bodies)
+
+`data.cdb` sheet `skill` column `script` (`text kind=script` — the census
+[type table](cdb-census.mdx#column-type-system-every-type-encountered-payload-verified))
+carries hscript evaluated by the engine at runtime. This is a real
+logic-layer corpus, not flavor text.
+
+### 2.1 Damage surface — [CLIENT] fields, [MIXED] composition
+
+| input | where | coverage |
+|---|---|---|
+| `minDmg` / `maxDmg` | skill top-level floats | 394 skills |
+| `dmgAttribute` | `skill.props` enum index into `attribute` | 389 skills → Strength 244 · Dexterity 105 · Constitution 40 |
+| `apCost` | `skill.props` | 159 skills |
+| `vars.valueN` | `skill.props.vars` / per-level `levels[].props.vars` | 852 skills |
+| script hooks | `onEval/onSkillEval` (pre-resolution), `onHit`, `onDamage/onDamageDealt`, `onBeginAction/onEndTurn`, `onSkillPlayed`, `onPostSkill` | see below |
+
+Hook census across the 1,130 bodies: onSkill 368 · onDamage 285 ·
+onEval 182 · onHit 159 · onSkillEval 121 · onDamageDealt 114 ·
+onBeginAction 113 · onStatus 37 · onDeath 35 · onMove 8.
+
+Runtime API exercised by the scripts (engine-implemented, so its final
+math is bytecode-side): `damages()`, `getPercentHealth()`,
+`gainsHealth()`, `pushback()`, `opportunityAttack()`, `attackTarget()`,
+`addStatus()/hasStatus()/cancelStatus()`, `corrupt()/canCorrupt()`,
+`getFoes()/getAllies()/getMeleeUnits()`, `getDistance()`,
+`criticalHitDamageBonus`, `damageHealth`, `movePoints`.
+
+Representative verbatim bodies (full corpus:
+`output/_dig-formulas/skill-script-bodies.txt`, local-only scratch):
+
+- Crit modifier (DaggerSpe5Skill1): `s.criticalHitDamageBonus += vars.value1; if (s.isPatience()) s.damageHealth = true;`
+- Percent-health nuke (TitanicRoar): `a.target.damages(skill, a.target.getPercentHealth(vars.value2), true); a.target.pushback(...)` — desc interpolates the same `::value1::/::value2::`.
+- Animal regen aura (BeastMaster): `u.gainsHealth(ceil(u.stats.health*vars.value1/100))` gated on `skill.level == 2`.
+- Knockout-kind guard (KnifeThrow): `if (s.kind == Skill.KnockOut) return;` — confirms KnockOut as a first-class skill kind on the capture path.
+- Ghost curse hook (Corrupt): `canCorrupt(u)` gate in `onEval`, `corrupt()` application in `onSkill`.
+
+Tool use: damage-estimate engine inputs for the flagship build planner;
+armor/guard/crit final resolution stays
+[P0-DIG-HLB] ([tools-plan §2 row 15](../tools-plan.md)).
+
+---
+
+## 3. System-by-system parameter sets (`constant` sheet + payload columns)
+
+### 3.1 Trade prices & gradients — [MIXED]; caps [COMM]
+[tools-plan §2 row 1](../tools-plan.md)
+
+Client-read parameters (gold, factors ×, distance world-units):
+
+| constant | value | meaning |
+|---|---|---|
+| `ItemPriceDefaultSellFactor` | 0.5 | default sell = half price |
+| `ItemPriceMaximumSellFactor` | 0.9 | sell-factor cap |
+| `ItemHighSellValueFactor` | 1.25 | high-value sell bump |
+| `ItemPriceFactorDiscount` | 0.8 | buy discount factor |
+| `TradeGoodPriceOverDistance` | 1000 | gradient reference distance |
+| `TradeGoodPricePowerDistance` | 0.6 | distance power exponent |
+| `TradeGoodPathSellThreshold` | 1.5 | trade-path sell threshold |
+| `TradeGoodRepatriatePriceFactor` | 1.2 | repatriate premium |
+| `ItemQualityPrice1/2/3` | 1.1 / 1.2 / 1.3 | quality price multipliers |
+| `ItemLevelPriceBaseLevel/LowCoef/HighCoef/HighMul` | 3 / 0.15 / 0.8 / 0.8 | level-scaling of prices |
+| `itemType.props.sellPriceFactor` | Gear 0.4 · TradeGoods 0.7 · Component 0.3 · Tool 0.3 · ToolProd 0.3 | per-category overrides |
+
+Community hand-measured caps ≈35% max buy cut / ≈25% max sell bonus stay
+[COMM]; which factor composes where resolves in bytecode. The M5 chain
+(price matrix × distance gradient × perk caps) now has its parameter
+spine confirmed.
+
+### 3.2 Wages & company upkeep — [CLIENT]
+Row 2. `DailySalaryMin` 14 · `DailySalaryMax` 19 ·
+`SalaryCoefPerLevel` {Easy 4, Normal 4, Hard 3, Extreme 2} ·
+`SalaryAddingCaptain` 3 · `SalaryAddingLieutenant` 2 · `SalarySleeps`
+{4,3,3,3} · `GlobalSalaryDifficulty` {0.8, 1, 1.2, **2.6**} ·
+`UnhappySalary` 6 · `Tavern_SalaryNoJob` 3. Upkeep term of every
+profitability calculator is now computable per mode.
+
+### 3.3 Food consumption & tiredness — [CLIENT]
+Rows 3/8. Per-class appetite: `unitClass@props.dailyFood` populated on 24
+classes. Constants: `RestFoodPrice` 3 · `HappyBadDietFactor` 0.3 ·
+`UnhappyStarve` 6 · `StarvationMemoryRests` 6 · `Fief_NeedsPerPop` 0.38 ·
+`RestHours` 8 · `TravelRestByDay` 0.8. Tiredness model:
+`TirednessAmountHours` 24 · `TirednessMax` 1.2 · `TirednessMinFactor` 0.1 ·
+`FightTirenessBase` 0.1 · `FightTirenessPerRound` 0.06 ·
+`GlobalTiredDifficulty` {0.7, 0.9, 1.1, 1.3}.
+
+### 3.4 XP curves & leveling — [CLIENT]
+Row 4. **Unit XP table** `LevelXpValues` (cumulative, 15 entries):
+`0, 200, 260, 580, 980, 1430, 1810, 2070, 2170, 2270, 2370, 2470, 2570,
+2670, 2770`. Combat gains: `XpWinBasePerEnemy` 18 ·
+`XpWinBasePerEnemyKilled` 36 · `XpWinPowerRatio` 2 ·
+`XpWinDifficultyFactor` 0.2 · `XpWinUnitNotInBattle` 0.8. Jobs:
+`JobXpLevels` [20, 80, 320, 1280] (×4 growth) to `MaxJobLevel` 5 ·
+`FactorJobLevel` [0.6, 0.9, 1.1, 1.3, 1.5] · rarity XP components Gold
+0.01 / Common 0.55 / Uncommon 0.8 / Rare 1.3 / Legendary 3. Traits:
+base 20, +4/level, activity 10. Paths: `PathXpBase` 5 · `PathXpNext` 5 ·
+`PathMaxLevel` 12 (row 12 pacing, [CLIENT]).
+Open flag recorded in the jsonl: `MaxLevelLock` = 15 coexists with
+`UnlockLieutenantLevels` 20 / `UnlockLieutenant2Levels` 40 — exact
+semantics resolve against hlboot globals.
+
+### 3.5 Capture / tame odds — [MIXED]
+Row 5. Knockout chance endpoints: **50% at ≥50% health → 100% at ≤10%
+health** (`KnockOutChanceMin/Max`, `...MinHealthPercent/MaxHealthPercent`);
+interpolation + resist rolls bytecode-side. Capture economics:
+`PrisonerRatio` 0.2 · trust range −50..50 with `MinPrisonerTrustToRecruit`
+40 · trust modifiers (well-fed +1, adjacent ally +1, adjacent animal −1,
+heal +5, whip −100, pillory −50, not-rested −20, beard/day +1 capped 5) ·
+ransom valuation `PrisonerBasePrice` 100 + `PrisonerLevelScalePrice` 10/level
++ `PrisonerJobScalePrice` 100/job; outlaws 50 + 5/level · recruit costs
+base 20, +10, ×1.2 (×0.5 prisoner-in-troop). Rope costs per beast from
+`unitClass@props.captureCost` ({Rope qty 1..6}, e.g. Wolf 1, Alpha 3,
+WolfFierce 6) and `prisonerProbability` on 9 classes. Feeds the capture/
+recruit explorer end-to-end except the final probability curve.
+
+### 3.6 Arena betting (The Pits) — [MIXED]
+Row 6. `Pit_RecruitCost` 35 · reputation tables `Pit_ReputationOnFirstWin/
+OnWin/OnAllWin` (difficulty-resolved arrays) · boss modifiers
+`Pit_BossPercentHealthReduction` 0.25, `Pit_BossDotFactor` 0.25 · gambling
+`Fief_Gambling_Bet` [100, 200?] with WinFactor 20 and effect proba 50.
+Fighter-vs-fighter win odds are NOT in data.cdb — battle AI/power
+resolution is [P0-DIG-HLB]. Advisor stays watchlist (plan §3 exclusion),
+but its payout side is now parameterized.
+
+### 3.7 Injury, death & morale — [CLIENT]
+Rows 7/8/15. Injury gates: `InjurySmallHpPercent` 50 ·
+`InjuryFleePercentGet` 50 · treatment `HealInjuryPrice` 20. Death save:
+`WillpowerForNotDying` 15. Morale thresholds: enemy flee 85 · galvanized
+70 · motivated 60 · loss on die 10 (+1 per subsequent death) ·
+randomization ±5 · `WillpowerToMoralPerLevel` 1.3. Combat constants:
+`GuardMaxValue` 80 · backstabs ignore 50% of guard (`BackstabIgnoreGuard`;
+attribute-sheet Guard description states the same rule) · crit base 5% ·
+crit multiplier bonus 0.2 · backstab crit +10% ·
+`AttributeCriticalScalePower` 0.6.
+
+### 3.8 Adaptive difficulty & level scaling — [CLIENT]
+Row 9 / E5. The full per-mode parameter set the community treats as
+uninspectable config:
+
+- **Enemy stat bonus per level** (index = level−1, +%), Normal:
+  `0,0,0,15,15,30,30,40,40,…,40` (18 entries); Easy caps 30; Hard 50;
+  Extreme 60. Plus `EnemyEarlyStatMalus` {25, 10, 0, 0} and animal scale 0.5.
+- **Region power targets**: `FixedDifficultyPowers{,Easy,Hard,Extreme}`
+  — 21 region-tier power targets each (Normal: 118, 230, 504, 712, 1048,
+  1770, 777, …, 13847) paired with `FixedDifficultyReferenceLevels`
+  (21 recommended levels each, e.g. Normal ends 12/13/14, Extreme 15/16/17).
+- **Level windows**: `MinLevelDiff` {−2,−1,0,1} · `MaxLevelDiff` {0,1,2,2}
+  · `MaxLevelGroups` {16,16,16,17} · `RegionMinPower` {0, 1.1, 1.3, 1.4}.
+- **Global fight scaling**: `GlobalFightDifficulty` 0.8 base, {0.5, 0.8,
+  1.1, 1.2} · `PowerDifficultyFactor` [1, 1.2, 1.3, 1.5] ·
+  `PowerFactor_Level` [−0.25, −0.25, −0.1, 0] ·
+  `ExtremeEnemyCountReduction` [−1, 0.3, 0.3, 0.2×5, 0.1×8].
+- **Elite/helmet ratios per level**: `SkilledUnit_Ratio` and
+  `HelmetUnit_Ratio` (18 entries each, e.g. Normal skilled ratio falls 5→2
+  by level 12+), `SkilledUnit_Chance` 0.25 (×3 extreme).
+- **Power score weights** (the game's own unit-strength metric):
+  `PowerFactor_HealthArmor` 1 · `Willpower` 0 · `MovementRef` 10 (18-level
+  ref table) · `SkillUpgrade` 0.2 · `SkillDamageFactor` 1 ·
+  `PassifSkill` 0.5 · remaining factors 0 (range/area/unique/immediate/
+  repeat-cost/not-reduced).
+
+This closes tools-plan row 9's "parameters [P0-DIG]" cell at the parameter
+level and hands the spawn-scaling inspector (tool #9) its core dataset.
+
+### 3.9 Crafting quality tiers & golden strikes — [MIXED]
+Row 10. Stat multipliers `ItemQualityBonus1/2/3` = **1.1 / 1.2 / 1.3**
+(+helmet flat 0.2) — the community documents only +10%/+20%; the client
+ships a third tier. Forge minigame: heat window speeds 1.2–3.0, perfect-
+heat duration 0.25, overlap timers, `ForgeWeightTierA/B/C` 0.35/0.2/0 ·
+`ForgeReducePercentPerFail` 45 · `ForgetPercentageQuality3` 5 ·
+alteration factors (min 0.1 → max 1 at level 10, −0.25/quality step).
+Golden-strike roll composition itself: [P0-DIG-HLB].
+
+### 3.10 Ghost curses / corruption — [CLIENT]
+Row 11. `CorruptMissingHealthFactor` 0.5 · unit-rarity corruption factors
+(Unco 0.5, Rare 0.25, Skilled 0.25) · positive-morale resist 0.1 ·
+bonus-per-try 0.1 — plus the runtime hook confirmed verbatim in skill
+script `Corrupt` (§2.1). Spawn-side: GhostPack spawn/move parameter
+family (min-days 7, distance windows 50–150, nightmare unit factor 0.25).
+
+### 3.11 Path perks & titles — partial [CLIENT]
+Row 12. Pacing confirmed (§3.4 paths); progression flags for all five
+paths confirmed in World.hx (§1.5). Perk modifier sets themselves ride
+the `bonus`/`trait` sheets (495/214 rows) — next emit wave, not lost.
+
+### 3.12 Valor points — NOT FOUND (honest negative)
+Row 13. No constant id, script body, or attribute references valor in
+this pass. Remains [P0-DIG] via hlboot globals; recorded rather than
+silently dropped (doctrine Principle one).
+
+### 3.13 Loot, steal/wanted, wealth, tavern, fief economies — [CLIENT]
+Parameter families read and shipped in constants.jsonl (row counts):
+loot drop probas (0.08 base, 0.03 progression, rarity bonus 1.1/1.3/1.5);
+steal/wanted crime economy (fines 20–80, taxes ×1.25, wanted cap 600);
+wealth aggro (`PlayerMinWealth_Init` 750, +10/lvl, +50/unit; brigand
+aggro wealth band 500–1000); Tavern DLC economy (~95 rows: prestige,
+satisfaction, alcohol aging); Fief governance (~61 rows: taxes-happiness
+table, population needs 0.38/pop, alignment cap 150). These serve tools
+#2/#4/#10 and the E4 economy-closure chain.
+
+---
+
+## 4. Reconciliation
+
+| measure | value | how measured |
+|---|---|---|
+| hscript sources extracted | 12 files (formulas.hx + 11 content/script) | wtpak extract, adler32 MATCH 12/12 vs pak-stored checksums |
+| formulas.hx functions | 4 (3 pricing formulas + 1 CDB validator) | manual read, verbatim above |
+| region/global state scripts | 10 files, ~690 flags/counters | manual read |
+| skill.script bodies | 1,130 of 1,373 skills | programmatic count, `formula_emit.py` |
+| constant rows shipped | 1,266 (= sheet total, census ✓) | `constants.jsonl` `_meta.rowCount` |
+| DIFF-variant constants | 30 | programmatic count |
+| formulas.jsonl rows | 23 (18 [CLIENT] · 4 [MIXED] · 1 negative) | emitter output |
+
+## 5. Bytecode cross-reference (hlboot.dat string pool)
+
+Method: exact-match each row's identifiers against
+[`hl-structure/strings.txt`](../extracted/logic/hl-structure/strings.txt)
+(75,321 strings, unique); emitted per-row as `bytecode` by
+`formula_emit.py`.
+
+| rows | verdict |
+|---|---|
+| trade.parameter-set · company.wages · company.food-consumption · company.tiredness · xp.* (4) · capture.knockout-recruit · arena.pits-economy · combat.injury-death-morale · scaling.* (3) · combat.power-score-weights · crafting.quality-tiers · ghost.corruption · combat.skill-damage-surface | **double-confirmed** — every probed constant/API identifier appears in the HLB pool; the CDB parameters are live code references, not dead data |
+| trade.weapon-price · trade.item-price · trade.craft-price | **hscript-only** — `weaponPrice`/`itemPrice`/`craftPrice` appear nowhere in bytecode: `formulas.hx` runs under an embedded hscript interpreter, never compiled into hlboot.dat |
+| state.world-flag-registry | **double-confirmed (partial evidence)** — spot-checked flag names (`g1ArenaDone`, `fiefTutorialAccepted`) hit the pool; the registry is still hscript state |
+| valor.not-found | n/a (negative result) |
+
+Name-level confirmation is not semantics-level: what the bytecode *does*
+with each constant (the composition formulas) still requires opcode-level
+reading of the relevant functions.
+
+## 6. Next-dig queue additions
+
+1. ~~hlboot cross-ref pass~~ **done this dig** (§6). Still open at
+   opcode level: resolve `MaxLevelLock`=15 semantics and the knockout
+   interpolation curve inside their consuming functions.
+2. HBSON decode unlocks `itemType.props.basePrice` payloads → makes
+   `itemPrice` fallback fully computable (§1.2).
+3. Emit `bonus`/`effect`/`trait` wave → completes path-perk modifiers (§3.11).

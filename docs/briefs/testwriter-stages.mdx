@@ -1,0 +1,59 @@
+# Brief — TestWriter: stages 4–6 test suite (fresh subagent)
+
+Fresh TestWriter agent. **Never spawn subagents**; never commit; Wartales
+pack only. Headless: stdout → log; end with deliverables + suite run
+results. You are the TEST side of a blind parallel build — a CodeWriter is
+implementing from the same spec simultaneously. Write tests against the
+SPEC's contract, NOT against any implementation: do not read, wait for,
+or accommodate any new `pipeline/tools/{promote_drafts,relink_catalog,
+validate_all,wave_kinds}.py` contents. Invoke them only through the CLI
+surfaces the spec pins (names + arguments + exit codes), via subprocess.
+
+Read first, in full: `wartales/docs/spec-stages-datasets.mdx` (THE
+contract — especially §5 verdict set, §7 tests T1–T12 + acceptance
+criteria AC1–AC11+, F4/F6 fixtures); repo-root `AGENTS.md`;
+`_foundation/extraction-doctrine.md`; `wartales/pipeline/tests/
+test_map_tiles.py` (conventions: frozen expectations from MEASURED
+distributions, module-constant parity assertions) + `conftest.py`;
+`wartales/EXTRACTION-LOG.md`; `pipeline/tools/cdb_verify.py` +
+`cdb_emit.py` CLIs (existing surfaces you may drive directly).
+
+## Task
+
+Write `pipeline/tests/test_stages_datasets.py` (split into a second file
+if cleaner) covering EVERY acceptance criterion and T-number in the spec:
+
+- Regeneration protocol in fixtures: emit waves 1+2 into tmp dirs
+  (`tmp_path`), never mutating real `extracted/` state.
+- Frozen numbers from spec §2 measured table (10,207 / 1,266 / 11,473 /
+  19,130 / 72-null composition / preserved 133 / item 21 / skill 40 /
+  levels-extras 14occ-9keys / trio 874·58·42 / filler grid 27 keys
+  all-zero / deferred counts 536·791·5180·5982·235).
+- Executable AC2 seeded-fault procedure exactly as rewritten (isolated
+  step-3 over corrupt draft copy → exit 1; corrupted data.cdb copy →
+  nonzero with canonical untouched; T2 mini-fixture analog).
+- Deletion semantics classes (restore-and-pass vs ghost tripwire vs
+  consumer precondition exit 2 vs regenerated exemption) — AC9.
+- Byte-stability: rerun-twice hash checks on stable artifacts; stamp
+  exemption for validation-report (AC6/I2/T12).
+- Equality-precondition exits on mismatched universes; scan-scope ledger
+  naming the six non-managed entries; availability ownership at stage 6
+  only (AC8's moved assertion).
+- Isolation-mode story: stage 4–6 runnable while decompile stub stands.
+
+## Constraints
+
+- Python `C:\Python314\python.exe`, pytest, stdlib only; follow
+  conftest registration patterns already present.
+- Suite must be runnable standalone:
+  `C:\Python314\python.exe -m pytest pipeline/tests/test_stages_datasets.py -q`.
+  Where the implementation under test does not exist yet, mark those
+  cases `skipif` on tool-file existence so the suite is green NOW and
+  arms itself automatically when CodeWriter lands (state this mechanism
+  in your report). Tests that CAN run today (verifier-driven fixture
+  assertions over regenerated scratch, frozen-number parity of existing
+  tools) run for real.
+- DO NOT touch any pipeline tool source, run_all.*, site/, or anything
+  outside `pipeline/tests/` (+ scratch under output/_tw-stages/).
+
+Report: case inventory mapped to AC/T numbers, run results verbatim.

@@ -1,0 +1,27 @@
+# Brief — CodeWriter: map imagery pipeline (fresh subagent)
+
+Fresh CodeWriter. Never spawn subagents, never commit. Wartales pack
+only. Your spec: `docs/spec-map-pipeline.mdx` (arbiter-approved,
+APPROVE-FOR-BUILD) — read IN FULL; §6 acceptance criteria and §7 dig
+queue bind you. Evidence: `extracted/harvest/map/` (real payloads:
+albedo tiles, height .raw, `_s` pyramid), the TSV
+(`output/_recon-scratch/map-pak-entries.tsv`), `docs/client-recon.mdx` §7.
+
+Deliverables (pipeline/ + output/):
+1. `pipeline/map_tiles.py` — tile classification (measured path
+   patterns), DDS→webp tile conversion (albedo layers only per the
+   storage/publication planes ruling; splat/normal/raw →
+   MEDIA-CATALOGUE rows, NOT served), mosaic assembly per the
+   spec's tile-coord scheme, `output/map-tiles/v20318128/` pyramid
+   + `maps.json` registry (name/bounds/zoom/transform per layer,
+   seven-field geometry schema).
+2. The §7 dig queue items marked CODE-side (e.g. .raw layout probe)
+   — execute them, record results in the spec's dig-log section;
+   anything blocking gets the fail-loud treatment, never a guess.
+3. Coordinate transform derivation per spec D-block (bounds from
+   tile extent; world→pixel documented with the falsification test).
+4. `pipeline/README-map.mdx` (≤50 lines usage + contract).
+Do NOT write tests (TestWriter parallel from §7). Run the pipeline on
+the real map.pak payloads; include the run numbers in your summary.
+Return: ≤12-line summary — layers emitted, maps.json contents, dig
+results, AC status.

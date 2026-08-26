@@ -1,0 +1,62 @@
+# Map imagery pipeline — usage + contract
+
+Implements [spec-map-pipeline](../docs/spec-map-pipeline.mdx) (PT05/PT06
+data foundations). Tool: `pipeline/map_tiles.py`, Python 3.14 + numpy +
+Pillow; reader lineage = `pipeline/tools/wtpak.py` via `harvest.py`.
+
+## Run
+
+```sh
+python pipeline/map_tiles.py run                  # all stages, real payloads
+python pipeline/map_tiles.py <stage>              # any stage in isolation
+```
+
+Defaults: `--pak A:\SteamLibrary\steamapps\common\Wartales\map.pak`,
+harvest tree `extracted/harvest/` (adler-verified, re-pulled only if
+missing/stale), dig artifacts `output/_dig-map/`, tiles
+`output/map-tiles/v<buildid>/`, registry `extracted/data/maps.json`.
+`run --tsv output/_recon-scratch/map-pak-entries.tsv` adds the per-entry
+bijection check where the local-only recon TSV exists (never committed).
+
+## Stages
+
+`classify` (AC1: §1 table to the last digit, Δ=0, duplicate families,
+cell-set identity) → `extract` (AC2: 6,886/6,886 adler-MATCH, manifest in
+the harvest shape) → `formats` (D1) → `rawproof` (D2) → `cells` (D3,
+emits `extracted/data/cells/*.json`) → `texindex` (D4) → `pyramid-ratio`
+(D7) → `tiles` (albedo→webp) → `mosaic` (seam metric always; the overview
+PNG only under an explicit `--y-axis north-up|south-up` — with the axis
+unresolved it records the honest null and assembles nothing) →
+`registry` (maps.json + `contracts/maps.schema.json`, citing only this
+run's measurements).
+
+## Contract
+
+- Served plane: **albedo-derived webp only**,
+  `/map-tiles/v20318128/albedo/{z}/{x}/{y}.webp`, z3 = native 512 px/cell,
+  each lower zoom halves (8/4/2/1 cells per tile at z0..z3);
+  `tx = x − (−8)`, `ty = y − 0` (negative-origin rebase is code, not
+  browser discovery). Splat/normal/.raw stay data-plane
+  ([MEDIA-CATALOGUE](../extracted/MEDIA-CATALOGUE.md)).
+- `extracted/data/maps.json` is the registry frontend consumes (validated
+  against `contracts/maps.schema.json`). Pinned as of Dig 11: `yAxis
+  "north-up"`, `transform.d −1`, `roundtripBudget 128`, plus the measured
+  `coordinateTransform` block — world→stored-mosaic px is `px = wx·4,
+  py = wy·4` (128-unit cells; origin = tile x0/y0 top-left), served z3 tile
+  index rebased by the bbox floor. The full validation battery lives in
+  `pipeline/tools/fit_world_transform.py` →
+  `output/_dig-map/coordinate-transform.json`; coordinate rows join as
+  `extracted/relinks/_draft/poi_tile_coords.jsonl`
+  (`pipeline/tools/emit_tile_coords.py`).
+- Absent cells are alpha-0 holes; placeholder textures ship where the pack
+  puts them. Nothing is deleted; duplicates are catalogued.
+- Every stage fails loudly on invariant breach (exit 3) — Δ=0, class
+  uniformity, 273⊂276 subset, hole alpha, bbox containment, unconfirmed
+  transform verdict.
+
+## Status vs spec digs
+D1 D2 D3 D4 D5 D6 D7 executed (results in
+[data-dig-log](../docs/data-dig-log.mdx)); D6's strong form closed by Dig 11
+(transform fit + orientation pin). Remaining map work is P1 slices
+(encounter-spawn / vendor-npc / fief-district carriers), region-polygon
+emission from layers2D, and the splat slot→material micro-dig.

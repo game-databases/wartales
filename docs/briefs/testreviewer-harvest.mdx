@@ -1,0 +1,30 @@
+# Brief — TestReviewer: harvest test suite (fresh subagent)
+
+Fresh TestReviewer. Never spawn subagents, never commit, findings only.
+Wartales pack only. Read `docs/spec-harvest.mdx` §7 + §2 + §6 in full,
+then `pipeline/tests/test_harvest.py` in full. Do NOT read
+`pipeline/harvest.py` (review the TESTS against the SPEC).
+
+Mission: prove the tests are not complete enough — break them:
+1. §7 coverage: every mandated case present (f64 position above 2^32,
+   implausible childCount loud-failure, unicode names, duplicate
+   names, empty dirs, flag-0/flag-2 mix, wtpak.Reader round-trip per
+   A1, CRLF-TSV reconciliation with (path,size,adler) — offsets NEVER
+   compared for flag-2, media-row exemption on re-run, >260-char path
+   case, sys.path stub note)?
+2. Do the assertions actually assert (no tautologies, no
+   assert-true-on-exception-swallow)? Would each test FAIL on the
+   specific bug it exists to catch? Name the bug per test.
+3. Integration markers correct (res.pak smoke skipped by default,
+   runnable)? Suite green-on-skips with no implementation?
+4. Fixtures sound: is the synthetic mini-pak writer itself correct
+   per §2 (12-byte header, 0x0C tree, DATA marker, adler32)? A wrong
+   fixture silently invalidates every test it feeds — verify its
+   bytes against the spec by hand.
+5. Missing families: exit codes, --list order, RNG seed in report,
+   resume/idempotency, 30-min tripwire behavior (unit-testable?),
+   manifest schema field types.
+
+Write `docs/review-harvest-tests.mdx`: numbered findings w/ severity
++ the bug each gap lets slip. Verdict: SUITE-SOUND or NEEDS-FIXES.
+Return: ≤10-line summary.

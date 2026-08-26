@@ -1,0 +1,14 @@
+# Brief — Arbiter: design/spec-tokens.mdx review rulings (fresh subagent)
+
+Fresh Arbiter. Never spawn subagents, never commit. Wartales pack only.
+Read `docs/review-spec-tokens.mdx` in full, then verify each finding
+yourself against `wartales/design/extracted-ui/` (the game's real
+style.css), `design/sources/` shots, `_foundation/foundation-guide.md`
+§6–§7, `design/shadcn-adoption.mdx`. Rule ACCEPT/REJECT/MODIFY per
+finding with grounds — reviewer suggestions are never automatically
+right; the spec text can win (e.g. if style.css itself contains the
+accent value the reviewer says is unsourced, REJECT with the receipt).
+Hunt for what the reviewer missed (only on the same surfaces).
+Deliverable: `docs/arbiter-tokens.mdx` — rulings table + verdict
+APPROVE-FOR-BUILD or REVISE with an exact ordered fix list. Return:
+≤8-line summary with verdict.

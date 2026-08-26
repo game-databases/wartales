@@ -1,0 +1,227 @@
+# Review — [spec-map-pipeline](spec-map-pipeline.mdx) (fresh Reviewer)
+
+Fresh Reviewer pass (PrepareTask brief [briefs/reviewer-map](briefs/reviewer-map.mdx)),
+2026-08-25. Never spawns subagents, never commits; findings only. Read in full
+before judging: root AGENTS.md · `_foundation/decision-register.md` (sentinel seen)
+· FRAMEWORK §2.6 · foundation-guide §11 · [client-recon](client-recon.mdx) §2/§7 ·
+map-pak TSV header+samples · [cdb-census](cdb-census.mdx) region rows ·
+[spec-map-pipeline](spec-map-pipeline.mdx) end to end.
+
+**Method — nothing taken on faith.** Every §1 count, byte sum, flag mix,
+duplicate group, bbox extreme and cell-set identity below was re-derived in
+this session straight from `output/_recon-scratch/map-pak-entries.tsv` /
+`res-pak-entries.tsv` / `content-pak-entries.tsv`, cross-checked against
+`extracted/harvest/map.{manifest.jsonl,summary.json}`, TOOL §1, census rows and
+INDEX shots. The spec's numbers are **measured, not guessed** — see the
+traced-clean list.
+
+## Findings
+
+**F1 — MAJOR · coordinate-sources table covers 5 kinds; the shipped marker
+taxonomy has ≥12 layers with no source, gate, or P0 mark.**
+[spec-map-pipeline:158-164](spec-map-pipeline.mdx) pins carrier + gate for
+poi-marker, location-place, encounter-spawn, vendor-npc, fief-district — good.
+But §5 (`:209-214`) commits to the COMP §7.4 / M4 legend — border crossings
+(toll/piton/pass), Knowledge Books, Bandit Reinforcements, Unique Recruits,
+Secrets, Treasures, Bosses, Black-Market agents, resources, camp equipment,
+fishing spots, veins — and "coordinates backfill per-kind as D5 lands"
+(`:215`) names no carrier for any of them. Under AGENTS.md rule 8 that is the
+exact shape of a deferred data question: PT05 ships the layers typed-empty, and
+nothing falsifiable says where their pins will ever come from (are Treasures
+rows inside the 453 POI prefabs' name vocabulary? separate prefabs? CDB?
+nothing?). **Fix:** extend the §3 table with one row per legend layer — either
+a candidate carrier + gate, or an explicit `unknown-P0` row stating the
+hypothesis to test in D5 (most plausibly: REG POI prefab-name vocabulary typing
+— `A1BorderPost`, `A1CryptAdmiral`… — which D5's decode must confirm or
+refute). One table pass; no re-scouting.
+
+**F2 — MINOR · §2 DDS "consistent readings" contains two arithmetically
+impossible branches.** Payload sizes are right; two candidate readings are not:
+
+- normal 2,097,152 B (`:84`): "1024² BC5/BC3" = 1024² × 1 B/px = **1,048,576**
+  — off by 2× (and 2048² BC5/BC3 would overshoot to 4 MiB). The honest pair is
+  **2048² BC1** (= 2,097,152 ✓, as listed) vs **1024² @ 2 B/px uncompressed**
+  (RG8-class) — not any 1024² block-compressed reading.
+- splat 16,777,216 B (`:85`): "4096² BC1" = 16,777,216 × 0.5 B/px =
+  **8,388,608** — off by 2×. Correct alternatives: 2048² RGBA8 (as listed) or
+  4096² BC3/BC5/BC7 (1 B/px), **not** BC1.
+
+(albedo `:82` checks out: 256² RGBA8 = 512² BC7 = 262,144.) D1 reads real
+headers so truth wins anyway, but AC3's "ambiguity table §2 collapses to one
+reading each" invites a TestWriter to encode size-consistency from this table —
+one branch of each pair can never fire. **Fix:** recompute the two rows.
+
+**F3 — MINOR · "json 7 + xml 10 = 17, none real" is off by one — the 17
+includes the sole real JSON.** Manifest shows `textures.json` carries
+`detect:"json"` inside that very count (`map.manifest.jsonl`); the false-positive
+set is **16 raw tiles** (8 full + 8 `_s`) + 1 real index file. The spec's own
+next sentence says textures.json is real, so `:101` contradicts itself.
+**Fix:** "16 raw tiles mislabelled (6 as json, 10 as xml) plus the real
+textures.json inside the same json count". Matters because a test asserting
+"all 17 false" fails against the pipeline's own manifest.
+
+**F4 — MINOR · D6 acceptance budget is unfrozen, so its verification is not
+yet falsifiable.** Dig queue `:260`: "156-town projection error ≤ **agreed** px
+budget" — no one has agreed anything, and unlike AC4 (`:234`, threshold "frozen
+from measured distribution, not invented") no freezing mechanism is named.
+**Fix:** same discipline as AC4 — e.g. budget derived from the assembled
+overview's measured feature spacing (fraction of one albedo tile), frozen in
+EXTRACTION-LOG before the projection run, never negotiated after seeing results.
+
+**F5 — MINOR · the maps.json sample pre-pins the answers D6 exists to
+produce.** `"yAxis": "north-up"` + `"transform.d": -1` appear as literals
+(`:179-181`) directly under the comment "pinned by D6, never assumed";
+`tileSizePx: 256` assumes the albedo 256² reading before D1;
+`"format": "webp<DDS-source>"` is prose inside a machine contract. CodeWriter
+copying the sample inherits four assumptions the doc itself forbids. **Fix:**
+`null` + `<D6>` placeholders in the sample; keep the pinned form only in a
+comment.
+
+**F6 — MINOR · instance/dungeon maps neither registered nor measured-negative.**
+FRAMEWORK §2.6's registry mandate is "world, continents/floors, cities,
+dungeons/instances". §4 registers world/regions/markers/hunt/fief +
+battle-tactical (P1, separate CRS) but never states whether Wartales *has* an
+interior/instance map family. The client evidence points to no (interiors are
+scene backgrounds; battles are the tactical family) — but that negative is
+unrecorded, so an arbiter or builder must re-ask it. **Fix:** one sentence with
+its evidence ("no dungeon/instance map family exists in-client; PRE
+/backgrounds/* are scenes, not mappable spaces — battle-tactical is the only
+non-world CRS"), or the layer if there is one.
+
+**F7 — MINOR · no storage/publication plane for the derived artifacts, and the
+media-scope duty goes unmentioned.** `tileTemplate: "/map-tiles/albedo/*.webp"`
+(`:185`) implies a served tile set, but nothing says where 1,377 webp tiles (×
+zoom levels × possibly normal/height overlays) live — site public dir, git
+(game-data-in-git ban), or CDN — nor that the **source classes stay
+catalogue-first**: splat 23.1 GB + normal 2.89 GB + height 1.45 GB + raw 1.54
+GB are textbook [DR-2026-08-18-media-scope] catalogue/offload candidates, and
+the spec nowhere hands them to `MEDIA-CATALOGUE`. Risk: a 27 GB deploy or an
+owner-less offload decision made by default. **Fix:** name the plane per
+artifact class (serve albedo-derived tiles only; splat/height stay data-plane
+inputs; DDS/raw classes enter the catalogue at harvest close).
+
+**F8 — LOW · the TSV is CRLF; AC1's last-digit byte comparisons must pin
+line-ending handling.** Verified this pass: every row ends `\r\n`. Any
+classifier/test comparing paths or hashes against the committed artifact
+without stripping `\r` diverges by platform. Cosmetic sibling: `:57`'s
+lexicographic example uses `-12` vs `-2`, but the measured x-range floor is
+−8 — pick an in-range pair. **Fix:** one clause in AC1 ("strip CR; parse ints").
+
+**F9 — LOW · test spec handles two of the three named traps well; promote the
+third and add two cheap guards.** Covered: xy-parser negatives +
+lexicographic-vs-numeric (off-by-one at parse time), duplicate-group
+reconciliation (placeholder handling at inventory time). Missing, all cheap:
+
+1. **Transform sign/orientation as an AC** — D6's "roundtrip idempotent"
+   (`:260`) lives only in the dig queue; make it AC9 (project N towns →
+   invert → identity, tolerance frozen per F4).
+2. **Hole-cell alpha assertion** — assembled mosaic alpha == 0 exactly on the
+   D3 hole set, placeholder-texture pixels present where the pack ships them
+   (§2 `:112-114` promises this distinction; nothing tests it).
+3. **Neighbor seam continuity on albedo**, reusing D2's edge metric — catches
+   assembly off-by-one (x·W vs (x±1)·W) far more sharply than the AC5 eyeball
+   diff.
+4. **Negative-origin rebase test** — bbox starts at x=−8, so pixel space starts
+   negative; assert the CRS origin/bounds rebase (Leaflet simple-CRS trap)
+   rather than discovering it in the browser.
+
+## Over-engineering hunt
+
+None found. D1–D7 each gate a real decision; typed-empty layers shipping with
+PT05 (`:214-216`) is the right de-risking move; battle-tactical correctly
+deferred P1; rect-per-map kept as the bounded worst case (`:145`). Sole
+watch-item: D7's full-population `_s` ratio test (1,377 cells) is more than the
+question needs — but it is nearly free once extraction runs and retires a
+90 MB class permanently, so it stays.
+
+## Traced clean (re-measured this pass, sample)
+
+Counts 1,377 × 5 classes + textures.json = 6,886 exact; class byte sums exact
+to the digit (albedo 361,148,544 · normal 2,887,954,560 · splat 23,102,402,688
+· height 1,447,034,880 incl. the single 4 MiB outlier `height_x0_y0.raw`
+crc `71c5c834` · `_s` 90,243,072 · index 2,531) summing to 27,888,786,275 =
+TOOL §1 data span, Δ=0; DDS subtotal 26,351,505,792 = harvest
+`detect_census.dds.bytes`, 4,131 files; flag mixes exact (albedo 1,377×flag0 ·
+normal 119×0 + 1,258×2 · splat 1,377×2 · height/_s all flag0 · textures.json
+flag2); duplicate groups exact (`0ff430e9`×276, `78c858d4`×273, two 2-pairs);
+bbox x[−8..43] × y[0..39] with `x=-1` = y8–23 only and the far-east block
+x40–43 × y28–31 = 16 cells confirmed; **cell-set identity across all five
+classes verified by set difference = ∅** (D7's no-caveat claim holds); REG
+corpus in res.pak = 724 prefabs / 11 trees incl. Worldwide / POI 453 / Towns
+156 / Secret 12 + Secrets 103 — the §3/§5 census figures are real; carriers
+`worldmap.l3d` 40,118 B + `wmap_current.prefab` 259 B present at stated sizes;
+census `region` 13 rows, `place@props@worldmapNameOffset` and
+`region@props@minimap` both schema-only 2-col (zero inline coordinates
+anywhere — §3's unknown-P0 stance is honest); INDEX shots 04–07 and pieces
+PT05/PT06 hooks exist as cited; dup-group description ("tail ys 33–39 plus
+mid-column spread") matches the measured distribution.
+
+---
+
+**Verdict: NEEDS-REVISION** — one editing pass, no re-scouting: F1 is the load-
+bearing fix (complete the coordinate-sources table before CodeWriter bakes a
+five-kind assumption into PT05); F2–F7 are one-line-to-one-paragraph edits; F8/
+F9 are test-spec clauses. The measurement base is exceptionally sound — every
+checked number reproduced exactly; nothing needs re-deriving.
+
+---
+
+## Addendum — second independent pass, same brief (2026-08-25)
+
+A second Reviewer ran [briefs/reviewer-map](briefs/reviewer-map.mdx)
+concurrently in this worktree (this section is its result; the text above is
+left untouched). Its independent re-derivation **reproduced every number in
+"Traced clean"**: counts 1,377×5+1, flag mixes, class byte sums to the digit,
+Δ=0 grand total, duplicate groups, bbox extremes incl. `x=-1`=y8–23 and the
+x40–43/y28–31 far-east block, cell-set identity re-proven by sorted
+cell-list diff (∅ in all four class-vs-albedo comparisons), REG 724/11 trees
+with POI 453 / Towns 156 / Secret 12+Secrets 103, carrier sizes 40,118 B /
+259 B, census `region` 13 rows. It also re-verified this pass's F3 (manifest:
+raw tiles mislabelled 6 json + 10 xml = 16 false, textures.json carries
+`detect:"json"` inside the same count) and F8 (TSV is CRLF) — both confirmed.
+Four additional findings:
+
+**F10 — MAJOR · §2's ambiguity table has no correct albedo candidate, and
+D1's answer already exists on disk.** Headers read from the extracted tiles
+(2 per class, uniform): albedo = **512×512 FourCC `DXT5` (BC3), mip-less**;
+normal = **2048² `DXT1` (BC1)** ✓ its listed second reading; splat =
+**2048² unpacked RGBA8, RGBBitCount 32** ✓ its listed second reading. So
+F2's two arithmetic misses are confirmed, and albedo's real format appears
+in *neither* listed candidate — "512² BC7" was excludable from the spec's
+own numbers alone, since BC7 requires the +20-byte DX10 extended header and
+every payload leaves exactly a 128-byte classic header. Fix grows beyond
+F2's: replace the whole "consistent readings" column with the measured
+(format,dims,mips) triples; D1 stays as the 4,131-file uniformity sweep.
+
+**F11 — MAJOR · AC1 runs the classifier over "the committed TSV"; that
+artifact must never be committed.** `output/_recon-scratch/` is gitignored
+by policy (recon §9; the spec's own preamble repeats it), so AC1 as written
+is unrunnable on a fresh clone and contradicts pack policy. Fix: classify
+wtpak.py's own tree-walk manifest at rerun time and commit only numeric
+expected-value fixtures (counts/sizes/flag splits/crc-group sizes — numbers
+are not game data). Same wording applies to the "TSV↔manifest bijection"
+property test. Pairs naturally with F8's CR-stripping clause.
+
+**F12 — MINOR · D3's ocean-mask hypothesis is stronger than stated and
+testable today: the 273 `78c858d4` splat-mask cells are a strict subset of
+the 276 `0ff430e9` albedo-placeholder cells** (overlap = 273; exactly 3
+placeholder cells carry non-uniform splat). That asymmetric containment is
+precisely what "uniform no-splat over ocean" predicts. Record the relation
+in D3's write-back and add the subset assertion plus an explanation duty
+for the 3-cell residue.
+
+**F13 — MINOR · "the only geometry-adjacent schema anywhere" understates
+the census.** A column-name audit of the extracted `data.cdb` confirms the
+two cited hints (`worldmapNameOffset {x,y}`, `minimap {titleOffsetX,
+titleOffsetY}`) and that no populated sheet ships inline coordinates — but
+also finds five more position-flavored schema fields in the same
+datafile-backed prop schemas: `place@props.samePosAs` (place↔place position
+aliasing — direct D6 anchor de-duplication), `place@props.worldmapZoom`,
+`place@props.hudOffset`, `place@props.fowRadius`, and
+`region@props.waterHeight` (prime suspect to pin D2's height.raw sea-level
+reading). Cheap fix: extend the two-item list and feed these into
+D2/D5/D6's expected-payload vocabulary.
+
+**Addendum verdict: concurs — NEEDS-REVISION**, one editing pass, no
+re-scouting. With F1–F13 folded in (F10's table rewrite costs nothing: the
+answers are already extracted), this is READY-FOR-ARBITER material.

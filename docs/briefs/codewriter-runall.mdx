@@ -1,0 +1,28 @@
+# Brief — CodeWriter: run_all entrypoint + EXTRACTION-LOG (fresh subagent)
+
+Fresh CodeWriter. Never spawn subagents, never commit. Wartales pack
+only. Read: root AGENTS.md rule 5 context;
+`_foundation/extraction-doctrine.md` "Reproducible single-entrypoint
+pipeline" section; `docs/spec-harvest.mdx` (stage 1 = built);
+`docs/data-dig-log.mdx` (what digs produced); `EXTRACTION-LOG.md`
+does not exist yet — you create it.
+
+Deliverables:
+1. `run_all.ps1` (Windows host; powershell) + `run_all.sh` thin
+   wrapper — the ONE discoverable entrypoint: `--list` enumerates
+   stages; each stage idempotent, runnable in isolation; unknown flag
+   → usage. Stages: harvest (calls pipeline/harvest.py with the
+   client path arg), decompile (FAIL-LOUD stub: "stage not built —
+   see docs/decompile-dig-1.mdx"), datasets (FAIL-LOUD stub pointing
+   at pipeline/tools/cdb_emit.py), relink, emit. Stage order fixed;
+   passing a stage name runs just that stage.
+2. `EXTRACTION-LOG.md`: tool+version+buildid pins (buildid 20318128,
+   wtpak.py provenance, hlboot_probe.py provenance, harvest.py
+   current commit), stage table (status per stage), re-run
+   instructions after a game patch (one command), and the dig log
+   pointer. This file is the source the entrypoint reads defaults
+   from (DR-2026-08-18-pipeline).
+3. Prove: `--list` works; harvest stage dry-invocation prints the
+   command it would run (add --dry-run to the entrypoint); stub
+   stages exit non-zero with their message.
+Return: ≤10-line summary.

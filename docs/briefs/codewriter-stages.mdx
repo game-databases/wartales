@@ -1,0 +1,59 @@
+# Brief — CodeWriter: run_all stages 4–6 build (fresh subagent)
+
+Fresh CodeWriter agent. **Never spawn subagents**; never commit; Wartales
+pack only. Headless: stdout → log; end with deliverables + self-test
+results. You are the CODE side of a blind parallel build — a separate
+TestWriter writes tests from the same spec; do not look for or read any
+`test_stages*` file; do not modify the tests directory beyond what your
+own code requires (nothing should).
+
+Read first, in full: `wartales/docs/spec-stages-datasets.mdx` (THE
+contract — every section incl. §7 verdict set, §9 out-of-scope,
+§3.x tool specs); repo-root `AGENTS.md`; `_foundation/extraction-doctrine.md`;
+`wartales/EXTRACTION-LOG.md` (defaults block format + stage table);
+`wartales/run_all.ps1` AND `run_all.sh` (the `map` stage is your wiring
+template — BUILT gating, `| Out-Host`, --dry-run, exit codes);
+`wartales/pipeline/tools/cdb_emit.py` + `cdb_verify.py` (CLIs you compose;
+do NOT modify them except where the spec explicitly orders it).
+
+## Task
+
+Implement the spec exactly:
+
+1. `pipeline/tools/wave_kinds.py` — neutral managed-universe module per
+   §3.4 rule 1 (40 kind↔sheet pairs of cdb_emit waves 1+2).
+2. `pipeline/tools/promote_drafts.py` — stage 4: regenerate drafts from
+   `extracted/harvest/res/data.cdb` (freeze source, NEVER `_draft`-as-
+   found) → verifier gate → atomic promote → re-verify canonical, per §3.4
+   ordering; ignore-and-enumerate ledger for the six non-managed entries;
+   deletion semantics rule 6 classes; `--buildid` flag (no hardcoded ids).
+3. `pipeline/tools/relink_catalog.py` — stage 5: canonical relinks +
+   `extracted/RELATIONS.md` scaffold per §4 (all pairs × directions
+   modeled/partial/missing + unblock pointers + D7 adjudication column;
+   lexicographic pair ordering; NO `generated` stamps).
+4. `pipeline/tools/validate_all.py` — stage 6 validation-only pass →
+   `extracted/validation-report.json` per §5 (census closure sourced from
+   `cdb_verify.CENSUS['constant']`; conditional constants tripwire;
+   availability asserted here, owned HERE only; stamp exemption declared).
+5. Wire stages 4–6 into BOTH entrypoints following the map pattern
+   exactly; update the EXTRACTION-LOG §3 table rows to BUILT with their
+   produce columns; keep the RUN_ALL-DEFAULTS block verbatim-compatible.
+6. Spec §9 obligations that fall on code: `hbson_emit.py` input repoint
+   to the harvest data.cdb path (one-line fix, noted F14/A2).
+
+## Constraints
+
+- Python `C:\Python314\python.exe`, stdlib only. Idempotent, re-runnable,
+  byte-stable outputs (rerun-twice hash check will be applied to you).
+- DO NOT touch: `site/`, `pipeline/map_tiles.py`,
+  `pipeline/tests/**` (a concurrent dig owns map_tiles.py right now),
+  anything under `extracted/data/_draft` or `extracted/relinks/_draft`
+  as-found bytes outside what stage runs legitimately write.
+- Equality preconditions (==40 kinds / ==51 pairs) exit 2 with named
+  mismatch, never silently adapt (spec §4.1/§5.1).
+
+## Self-verification before reporting
+
+Run each stage in isolation mode (`run_all.ps1 datasets`, `relink`,
+`emit`), then a full `--list` + `--dry-run`; run stages twice and hash
+the stable artifacts. Report exact commands + results.

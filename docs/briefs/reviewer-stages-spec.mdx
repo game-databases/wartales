@@ -1,0 +1,48 @@
+# Brief — Reviewer: stages 4–6 spec (fresh subagent)
+
+Fresh Reviewer agent (PrepareTask pass). **Never spawn subagents**; never
+commit; Wartales pack only. Headless: stdout → log; end with your verdict.
+
+Read first, in full: repo-root `AGENTS.md`;
+`_foundation/extraction-doctrine.md`; `_foundation/decision-register.md`
+[DR-2026-08-17-relink]; `wartales/EXTRACTION-LOG.md`;
+`wartales/docs/spec-stages-datasets.mdx` (THE artifact under review);
+`wartales/run_all.ps1`; `wartales/pipeline/tools/cdb_emit.py` +
+`cdb_verify.py` CLIs; draft row samples from `extracted/data/_draft/`
+(item.jsonl + one small kind) and `extracted/relinks/_draft/` (2 files);
+`extracted/relinks/locale_availability.jsonl` head;
+`wartales/pipeline/tests/test_map_tiles.py` (suite conventions);
+FRAMEWORK.md §4 (template compliance).
+
+## Mission
+
+Prove the spec is incomplete, untestable, or wrong where it matters. Hunt
+specifically for:
+
+1. **Acceptance criteria that cannot be verified by command exit code or
+   file assertion** — adjectives posing as criteria.
+2. **Idempotency/resumability gaps**: rerun behavior per stage, partial
+   failure recovery, byte-stability claims vs wall-clock stamps.
+3. **run_all.ps1 wiring correctness**: BUILT gating, exit codes,
+   `| Out-Host` pattern, --dry-run parity, stage ordering constraints
+   (datasets before relink before emit), isolation-mode story while
+   decompile stays stub.
+4. **Contract fidelity to doctrine**: relink catalog fields
+   (join key/cardinality/mechanism/status) match [DR-2026-08-17-relink];
+   deferred/unmodeled pairs ledgered not dropped; census reconciliation
+   numbers (11,473) actually checkable at emit time.
+5. **Kind/sheet naming traps** (spec §7 list): do tests pin them; does
+   anything downstream still assume sheet names?
+6. **Files-touched list completeness** — anything the spec edits that it
+   forgot to list, or lists without need.
+7. **Value**: does anything in the spec over-engineer past the doctrine's
+   requirements?
+
+For each finding: severity (BLOCKER / MAJOR / MINOR), exact spec section,
+and the concrete fix. Do NOT rewrite the spec yourself.
+
+## Deliverable
+
+`docs/review-stages-spec.mdx` — findings table + explicit verdict line:
+CLEAN or NEEDS-REVISION (with ordered fix list). Facts only; no praise
+padding.

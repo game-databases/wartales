@@ -1,0 +1,363 @@
+# Spec — map imagery pipeline (PT05 `/map` + PT06 inline-module data foundations)
+
+2026-08-25 · Documentator draft (measured 2026-08-24, re-verified 2026-08-25;
+review fold-in same day).
+Feeds [pieces.mdx](pieces.mdx) PT05/PT06; implements the `maps:` block of
+[spec.md](../spec.md) (FRAMEWORK §2.6 ESSENTIAL workstream; foundation-guide §11
+maps standard). Every count below is **measured** from
+`output/_recon-scratch/map-pak-entries.tsv` (6,886 rows, buildid 20318128;
+local-only artifact per [client-recon](client-recon.mdx) §9 — never committed)
+and cross-checked against [toolchain-validation](toolchain-validation.mdx)
+§1/§3 and `extracted/harvest/map.{manifest.jsonl,summary.json}`. Steps not yet
+provable are numbered **D1–D7** with their verification method. Shorthands:
+TSV = map-pak-entries.tsv · recon = [client-recon](client-recon.mdx) ·
+COMP = [competitor-research](competitor-research.mdx) · census =
+[cdb-census](cdb-census.mdx) · INDEX =
+[design/sources/INDEX](../design/sources/INDEX.mdx).
+
+**Re-verification log (2026-08-25).** All §1 counts, byte sums, bbox,
+flag mixes, duplicate groups and the two res.pak carrier sizes were
+re-derived from the TSVs this pass; FRAMEWORK §2/§2.6 and foundation-guide
+§11 read directly. Two corrections vs the 2026-08-24 first draft: the `_s`
+pyramid covers an **identical** cell set to full-res height (an earlier
+divergence claim at `x-1_y8`/`x43_y31` was disproven by direct probes), and a
+second large duplicate-payload group exists in the **splat** class
+(273 tiles), previously unrecorded.
+
+**Review fold-in (2026-08-25).** Both passes of
+[review-spec-map](review-spec-map.mdx) (verdict NEEDS-REVISION) are folded:
+F1 taxonomy-complete coordinate-sources table · F2/F10 measured DDS triples
+replace the retired ambiguity column · F3 false-positive count corrected to
+16 + the real index file · F4 frozen D6 budget discipline · F5 de-pinned
+maps.json sample · F6 recorded instance-map negative · F7 storage/publication
+planes per artifact class · F8 CR/lex parsing pinned · F9 guards added +
+roundtrip promoted to AC9 · F11 AC1 re-homed off the never-committed TSV ·
+F12 splat-mask ⊂ placeholder containment asserted · F13 five more
+geometry-flavored CDB fields fed into the D2/D5/D6 expected-payload
+vocabulary.
+
+## 1. Tile inventory (measured)
+
+map.pak = `/assets/worldmap/**` only: **6,886 entries in 8 dirs**, five image
+classes + one index. Classification rule is path-pattern-first (see §2 caveat
+on magic):
+
+| class | path pattern | n | bytes each | pak flag | class bytes |
+|---|---|---:|---:|---|---:|
+| albedo | `data/albedo/albedo_x{X}_y{Y}.dds` | 1,377 | 262,272 | 0 | 361,148,544 |
+| normal | `data/normal/normal_x{X}_y{Y}.dds` | 1,377 | 2,097,280 | mixed 0(119)/2(1,258) | 2,887,954,560 |
+| splat | `data/splat/splat_x{X}_y{Y}.dds` | 1,377 | 16,777,344 | 2 | 23,102,402,688 |
+| height | `data/height/height_x{X}_y{Y}.raw` | 1,377 | 1,048,576 — **except `height_x0_y0.raw` = 4,194,304** | 0 | 1,447,034,880 |
+| height_s (`_s` pyramid) | `data/height/height_x{X}_y{Y}_s.raw` | 1,377 | 65,536 | 0 | 90,243,072 |
+| texture index | `data/textures.json` | 1 | 2,531 | 2 | 2,531 |
+| **total** | | **6,886** | | | **27,888,786,275** |
+
+Byte reconciliation: class sums + the single 4 MiB outlier tile close to
+recon §2's map.pak data span **Δ = 0**, and the DDS subtotal 26,351,505,792
+matches harvest `summary.detect_census.dds.bytes` exactly (4,131 files).
+Sizes are uniform within every class except that one tile (re-verified
+1,377-of-1,377 single-size for albedo/normal/splat/`_s`; height is
+1,376 × 1,048,576 + the outlier).
+
+Grid geometry (measured by existence probes on the sorted TSV):
+
+- Coordinates are signed decimal in filenames: `{X}` ∈ [−8 .. 43], `{Y}` ∈
+  [0 .. 39]. No `x-9`, no `x≤−10`, no negative `y`, no `y≥40` anywhere.
+- Coverage is **ragged, not rectangular**: albedo bbox enumerates 52×40 = 2,080
+  possible cells but only 1,377 exist (≥703 absent = off-world/ocean). Columns
+  are partial (e.g. `x=-1` holds only y 8–23; `x40–x43` only y 28–31 — a far-east
+  island block). Lexicographic filename order ≠ numeric order; the classifier
+  MUST parse ints (`-8` sorts before `-2` numerically, after it lexically).
+- The four full-res classes and the `_s` pyramid share **one identical cell
+  set**: all five classes cover exactly the same 1,377 cells (set diff zero in
+  both directions, probed 2026-08-25). Full ↔ `_s` co-presence is 100%, so the
+  D7 ratio test runs on every cell with no sampling caveat. Per-class cell-set
+  identity stays a cheap test assertion (**D3** emits the shared hole map once).
+- Placeholders/duplicates, honestly — three repeated payloads exist and are
+  kept and catalogued, never dropped (realtime-goal: captures are target data):
+
+  | class | crc32-family | n tiles | repeated bytes |
+  |---|---|---:|---:|
+  | albedo | `0ff430e9` | 276 | 72,387,072 (~69 MiB) — flat/ocean texture; tail ys 33–39 of complete columns plus mid-column spread incl. `x30` |
+  | splat | `78c858d4` | 273 | 4,580,214,912 (~4.27 GiB) — likely a uniform "no-splat" ground mask over ocean/off-world cells |
+  | splat / height | `782458d4` / `db05e56a` | 2 + 2 | incidental pairs |
+
+  Measured relation between the two large groups: the 273 `78c858d4`
+  splat-mask cells are a **strict subset** of the 276 `0ff430e9`
+  albedo-placeholder cells (overlap = 273; exactly 3 placeholder cells —
+  x7 y27, x7 y28, x28 y24 — carry non-uniform splat), which is precisely what
+  "uniform no-splat over ocean" predicts. Full interpretation (are these ocean
+  masks?) → **D3** writes back into EXTRACTION-LOG — subset assertion plus an
+  explanation duty for the 3-cell residue; nothing is deleted either way.
+
+## 2. Format handling
+
+**DDS variants — measured; the ambiguity table is retired.** Headers were read
+this pass straight off extracted tiles (two per class, identical), and every
+payload arithmetic closes:
+
+| class | payload B | measured header | arithmetic |
+|---|---:|---|---|
+| albedo | 262,144 | 512×512 FourCC `DXT5` (BC3), mip-less | 512² × 1 B/px = 262,144 ✓ |
+| normal | 2,097,152 | 2048×2048 FourCC `DXT1` (BC1), mip-less | 2048² × 0.5 B/px = 2,097,152 ✓ |
+| splat | 16,777,216 | 2048×2048 uncompressed RGBA8 (flags 0x41 = DDPF_ALPHAPIXELS+DDPF_RGB, RGBBitCount 32), mip-less | 2048² × 4 B/px = 16,777,216 ✓ |
+
+All three carry the classic 128-byte header only — no DX10 extended header,
+which is also why albedo was never BC7 (that format requires the +20-byte DX10
+header). The earlier draft's "consistent readings" column is retired outright:
+two of its branches were arithmetically impossible (1024² block-compressed is
+half the normal payload; 4096² BC1 is half the splat payload).
+
+Note the ordering anomaly stands: normal/splat out-resolve albedo per cell.
+**D1** narrows to a uniformity sweep: every one of the 4,131 files gets a
+recorded (format, dims, mips) matching its class triple above — outliers
+listed, never silently dropped, **zero unexplained payloads**. Extraction
+itself is already proven (TOOL §1: 6,886/6,886 adler-MATCH, 1,612 entries >4
+GiB sampled OK).
+
+**`.raw` layout hypothesis + verification.** Working hypothesis: headerless
+float32 scalar height grids — full = 512²×f32 = 1,048,576 B, `_s` = 128²×f32 =
+65,536 B (TOOL §3's peek called them "float coordinate pairs"; either way they
+carry **no container magic**). Two consequences:
+
+1. Magic-routing does not apply to `.raw`: classify by path pattern + size.
+   The harvest run's detect step mislabelled **16 raw tiles** (8 full + 8
+   `_s`) — 6 as json, 10 as xml — because their first float byte coincides
+   with `{`/`<`; the real `textures.json` sits inside the same json count, so
+   `map.summary.json` reads `json` 7 (= those 6 + textures.json) + `xml` 10.
+   Recorded here as a known false-positive mode so nobody re-derives "hidden
+   JSONs in map.pak". The sole real JSON is `textures.json`.
+2. Proof steps (**D2**): reinterpret as f32 grids → value-range stats must be
+   plausible elevations (finite, bounded); adjacent-tile edge-continuity metric
+   (mean abs Δ across shared edges) must sit well inside the global gradient;
+   the 4 MiB `height_x0_y0.raw` outlier gets its own explanation (1024²?
+   double layer? higher LOD at world origin) written into EXTRACTION-LOG.
+
+**Mosaic assembly order.** Tiles address a global raster: `origin_px(x,y) =
+(x·W_layer, y·H_layer)` with W/H from D1 per layer. Assembly = numeric sort by
+(x,y), alpha-composite absent cells as transparent (never fabricate ocean from
+the placeholder texture — ship both: real placeholder pixels stay where the
+pack puts them; absent cells stay empty). Y-axis direction (north-up vs
+south-up) is not yet provable → resolved in **D6** by comparing an assembled
+low-zoom overview against INDEX `shot-05` (strategic map) coastline/region
+positions; the chosen orientation is recorded in maps.json, never hardcoded in
+components.
+
+## 3. Derived geometry obligations (AGENTS.md rule 8 — frontend consumes contracts, never derives data)
+
+Per-layer bounds (all in tile units until D1 fixes pixel scales):
+
+| layer (spec.md `maps.layers`) | bounds source | status |
+|---|---|---|
+| world-strategic | measured albedo bbox x[−8..43], y[0..39] (+ shared cell/hole map from D3) | measurable now, emit in D3 |
+| height (elevation shading) | same shared cell set (measured identical across classes) | D3 |
+| region-overlays | rides `res.pak:/content/worldmap.l3d` (40,118 B) + `wmap_current.prefab` (259 B) — both HBSON (sizes re-verified in `res-pak-entries.tsv`); NOT map.pak (no vector shapes there — spec.md correction stands) | **D5** |
+| marker-layers | REG POI/Towns/Secrets prefab transforms | **D5/D6**, unknown-P0 today |
+| hunt-regions | CDB `groupType@props@hunt(+tracks)` (census) + INDEX shot-04 checklist regions | polygon source = D5/D6 |
+| battle-tactical | content.pak terrain bins (5,880) — own CRS family, separate registry section | P1, out of first slice |
+| fief-districts | INDEX shots 06–07 chrome; CDB fiefPlace (datafile-backed) | D5/D6 |
+
+**World→pixel transform derivation plan (D6).** Anchors, in order of trust:
+(a) `textures.json` index (2,531 B — trivial to read, do first);
+(b) `worldmap.l3d` scene graph once HBSON decode lands (node transforms
+expected to reference albedo tiles or world units);
+(c) REG/PRE prefab transforms for named towns (T5 Gosenberg-class names give
+unambiguous anchors); (d) `place@props@worldmapNameOffset` (census: 2 cols —
+label offset implies a label anchor point). Derivation: fit affine
+`world_unit → tile_px` from anchors; verify by projecting all 156 Town
+prefabs onto the assembled overview and eyeballing against shot-05/shot-04
+(region shapes must land inside their CDB `region` sheet namesakes — 13 rows,
+join via EXP `export_en.xml` region sheet). Worst case remains spec.md's
+rect-per-map; the dig exists to beat it.
+
+**Region polygons source.** Candidate carrier: REG trees (Alazar_1,
+Alazar_Aneding, Belerion_1, Edoran_1/2, Gosenberg_1/2, Harag_1,
+InterRegion_1/2, Worldwide — 724 prefabs) decoded HBSON; CDB `region` sheet
+(13 rows) is the id/name registry, EXP is the text join, `region@props@minimap`
+(2 cols) the only geometry-flavored schema hint. If polylines aren't in HBSON,
+polygons degrade to authored rects keyed by CDB ids with a provenance tag —
+decided after D5, not before.
+
+**coordinate-sources table** (carries spec.md `maps.coordinate-sources`
+forward; nothing moved without evidence):
+
+| marker kind | source today | carrier to derive from | gate |
+|---|---|---|---|
+| poi-marker (REG POI 453 + Secrets 115) | unknown-P0 | REG prefab transform (HBSON) | D5 |
+| location-place (Towns 156) | unknown-P0 | REG Towns prefab + CDB `place` (datafile-backed) + worldmapNameOffset | D5 |
+| encounter-spawn | unknown-P0 | PRE battle/group prefabs | D5 (P1 slice) |
+| vendor-npc | unknown-P0 | PRE places/fiefdom + CDB TBD-P1 | D5 (P1 slice) |
+| fief-district | unknown-P0 | CDB fiefPlace + worldmap.l3d scene | D5 (P1 slice) |
+| border-crossing (toll/piton/pass) | unknown-P0 | hypothesis H-POI below | D5 |
+| knowledge-book | unknown-P0 | hypothesis H-POI | D5 |
+| bandit-reinforcement | unknown-P0 | hypothesis H-POI | D5 |
+| unique-recruit | unknown-P0 | hypothesis H-POI (`A1CryptAdmiral`-class names) | D5 |
+| treasure | unknown-P0 | hypothesis H-POI | D5 |
+| boss | unknown-P0 | hypothesis H-POI | D5 |
+| black-market-agent | unknown-P0 | hypothesis H-POI | D5 |
+| resource-node | unknown-P0 | hypothesis H-POI | D5 |
+| camp-equipment | unknown-P0 | hypothesis H-POI | D5 |
+| fishing-spot | unknown-P0 | hypothesis H-POI | D5 |
+| vein | unknown-P0 | hypothesis H-POI | D5 |
+
+(legend "Secrets" already lives in the poi-marker row above — REG POI 453 +
+Secrets 115.)
+
+**H-POI** — shared working hypothesis for the eleven legend rows above: they
+type into the existing REG POI prefab corpus by *name vocabulary*
+(`A1BorderPost`, `A1CryptAdmiral`, …) rather than arriving as separate prefabs
+or CDB sheets. D5's decode must confirm or refute this per layer; until then
+each ships typed-empty per §5 with zero pins. With these rows, no COMP §7.4/M4
+legend layer lacks a stated candidate carrier + gate or an explicit
+unknown-P0 + hypothesis — nothing is a deferred data question any more.
+
+No CDB sheet ships inline coordinates today — census shows zero x/y columns.
+The complete geometry-flavored schema set (column-name audit of the extracted
+`data.cdb`; all seven strings confirmed present in the binary this pass) is:
+the two original hints `place@props@worldmapNameOffset {x,y}` and
+`region@props@minimap {titleOffsetX,titleOffsetY}`, plus five more joining the
+D2/D5/D6 expected-payload vocabulary — `place@props.samePosAs` (place↔place
+position aliasing → direct D6 anchor de-duplication), `place@props.worldmapZoom`,
+`place@props.hudOffset`, `place@props.fowRadius`, and
+`region@props.waterHeight` (prime suspect to pin D2's height.raw sea-level
+reading). None is populated with coordinates today; anything else claims
+coordinates only after D5/D6.
+
+## 4. `maps.json` registry schema
+
+Emitted to `extracted/` (consumed through F2 contracts; frontend never reads
+pak state). One registry, layered:
+
+```jsonc
+{
+  "buildid": 20318128,
+  // The sample deliberately carries null/<D6>/<D1> placeholders: answers D6
+  // exists to produce are never pre-pinned here (a CodeWriter copying the
+  // sample must not inherit assumptions). Pinned form once the digs land,
+  // kept in comment only: yAxis "north-up", transform d -1, tileSizePx 512,
+  // format "webp".
+  "crs": { "type": "wartales-world",
+           "yAxis": null,                 // pinned by D6 ("north-up"|"south-up"), never assumed
+           "transform": { "a": 1, "b": 0, "c": 0, "d": "<D6>",
+                          "tileUnitPx": "<D1 per layer>" } },
+  "layers": [
+    { "id": "world-strategic", "kind": "tiles",
+      "imagery": { "tileTemplate": "/map-tiles/albedo/{x}/{y}.webp",
+                   "tileSizePx": null,   // pinned by the D1/export decision, not assumed (source measures 512²)
+                   "format": null,       // pinned with the tile-export step
+                   "minZoom": 0, "maxZoom": 3 },
+      "bounds": { "xMin": -8, "yMin": 0, "xMax": 43, "yMax": 39 },
+      "cells": "cells/albedo.cells.json",
+      "provenance": "client-extracted", "source": "map.pak:data/albedo" },
+    { "id": "region-overlays", "kind": "vector",
+      "sourceRef": "res.pak:/content/worldmap.l3d",
+      "bounds": "<from decoded scene, D5>" }
+    // + height, marker-layers, hunt-regions, fief-districts;
+    // battle-tactical registered separately (own crs.type) when P1 opens.
+  ],
+  "regions": [ { "id": "<CDB region row id>", "nameKey": "<EXP key>",
+                 "polygonRef": "<D5 output|null>", "bounds": "<measured>" } ]
+}
+```
+
+Rules: every numeric field traceable to a dig artifact; `null` beats guesses
+(absence is data); regenerate per rerun; schema published in `contracts/`.
+
+Registry scope (FRAMEWORK §2.6 names dungeons/instances explicitly): Wartales
+has **no dungeon/instance map family** — interiors are scene backgrounds (PRE
+`/backgrounds/*` are scenes, not mappable spaces) and battles belong to the
+separate battle-tactical CRS above, which is the only non-world CRS. Recorded
+here as a measured negative so no builder or arbiter has to re-ask it.
+
+**Storage & publication planes** ([DR-2026-08-18-media-scope]). The served
+plane carries **only albedo-derived webp tiles** (`/map-tiles/**` → site
+public dir or CDN at site-build time; never git — game-data-in-git ban). Splat
+(23.1 GB), normal (2.89 GB) and the `.raw` classes (height 1.45 GB + `_s`
+pyramid 90 MB = 1.54 GB) stay data-plane inputs under `extracted/` — textbook
+catalogue/offload candidates handed to `MEDIA-CATALOGUE` at harvest close, so
+no ~27 GB deploy happens by default and no offload decision is made by
+silence.
+
+## 5. Marker plan
+
+Which kinds carry coordinates **today**: none (table §3). Which need
+derivation: all five marker kinds — every coordinate is born inside HBSON
+payloads (standing gate: data-dig-log "HBSON decode → REG POI coords (map P0
+transform hunt)"). Layer *taxonomy*, however, is already fixed by client
+vocabulary + community legend (COMP §7.4 / M4, ≥12 typed layers: border
+crossings toll/piton/pass, Knowledge Books, Bandit Reinforcements, Unique
+Recruits, Secrets, Treasures, Bosses, Black-Market agents, resources, camp
+equipment, fishing spots, veins — Usikava guide 2859881897, 62.6k visits).
+Build order: typed-empty marker layers ship with PT05 immediately (honest
+absence, filters visible, zero pins), coordinates backfill per-kind via the §3
+coordinate-sources table — every legend layer now carries a named candidate
+carrier + gate or an explicit unknown-P0 + H-POI hypothesis — as D5 lands; the
+map page is useful before the P0 closes, and never blocks on it.
+
+## 6. Acceptance criteria + test spec (CodeWriter/TestWriter)
+
+Acceptance:
+
+- **AC1** Classifier over wtpak.py's own tree-walk manifest at rerun time
+  reproduces the §1 table exactly (per-class counts 1,377×5 + 1 and byte sums
+  to the last digit incl. the 4 MiB outlier); Σ(class bytes) + textures.json ==
+  27,888,786,275 (Δ=0 invariant asserted in-test); duplicate groups reconcile
+  inside those sums (albedo `0ff430e9` ×276, splat `78c858d4` ×273, two 2-tile
+  pairs). Input handling: the recon TSV is local-only and **never committed**
+  (recon §9) — committed fixtures carry numeric expected values only
+  (counts/sizes/flag splits/crc-group sizes; numbers are not game data);
+  artifacts parse **CR-insensitively** (the TSV is CRLF) with coordinates as
+  signed ints.
+- **AC2** Extract stage re-runs wtpak.py: 6,886/6,886 adler-MATCH, manifest
+  row per entry (existing `map.manifest.jsonl` shape preserved).
+- **AC3** D1 emits a 4,131-row format table; zero rows with unexplained
+  magic/format; per-class (format,dims,mips) uniformity asserted (outliers
+  listed, none silently dropped).
+- **AC4** D2 raw decode: finite-value assertion on 100% of samples; adjacent-
+  tile edge-continuity distribution reported; threshold frozen from measured
+  distribution (not invented) before it becomes a gate.
+- **AC5** Assembled overview renders; orientation verdict (D6) recorded in
+  maps.json; visual diff artifact vs shot-05 stored for review.
+- **AC6** maps.json validates against its published JSON Schema; every layer
+  bound within measured bbox; no field hand-edited.
+- **AC7** Marker layers emit typed-empty until D5; any coordinate-bearing row
+  carries provenance `{carrier, digId, buildid}` or fails CI.
+- **AC8** Cell-set assertions: all five image classes cover the identical
+  1,377-cell set (re-check per buildid rerun; any future divergence fails the
+  build loudly instead of silently reshaping bounds).
+- **AC9** Transform roundtrip idempotence (runs when D5/D6 land): project the
+  town anchors through the fitted transform, invert, assert identity within
+  the budget frozen per D6's discipline; the negative-origin rebase is part of
+  this assertion (bbox floor −8 ⇒ pixel space starts negative — CRS
+  origin/bounds rebased explicitly in code and test, never discovered in the
+  browser).
+
+Tests: unit — xy-parser (negatives!, lexicographic-vs-numeric traps), class
+regexes, byte-accounting, duplicate-group reconciliation, negative-origin
+rebase; golden — one extracted tile per class decodes to a pinned checksum;
+property — rerun-manifest↔recon-TSV per-entry bijection (same CR/int parsing
+as AC1; runs only where recon §9 keeps the local TSV — fresh clones and CI
+assert against the committed numeric fixtures instead), Δ=0 invariant on any
+future buildid rerun; seam — neighbor-edge continuity on
+assembled albedo reusing D2's edge metric (catches an assembly off-by-one,
+x·W vs (x±1)·W, far more sharply than AC5's visual diff); snapshot — low-zoom
+mosaic PNG with hole-cell alpha asserted == 0 exactly on the D3 hole set while
+placeholder-texture pixels remain where the pack ships them; contract —
+maps.json schema validation wired into run_all.
+
+## 7. Dig queue (each with its verification)
+
+| # | dig | verification |
+|---|---|---|
+| D1 | DDS header census (one-per-class + full sweep) | 4,131/4,131 rows match the measured §2 class triples; outliers listed, none silently dropped; divergence vs the two-tile-per-class sample explained in EXTRACTION-LOG |
+| D2 | .raw layout proof + `height_x0_y0` 4 MiB explanation | range stats + edge-continuity + outlier write-back to EXTRACTION-LOG; `region@props.waterHeight` tested as the CDB-side sea-level pin |
+| D3 | shared cell/hole map + duplicate-payload interpretation | per-class Σ==1,377; `0ff430e9` and `78c858d4` groups reconcile into totals; ocean-mask hypothesis written back incl. the measured `78c858d4` ⊂ `0ff430e9` subset assertion + 3-cell residue explanation; `cells/*.json` emitted |
+| D4 | parse `textures.json` (2,531 B) | keys ↔ tile-name bijection or documented divergence |
+| D5 | HBSON decode of `worldmap.l3d`, `wmap_current.prefab`, REG POI/Towns/Secrets | scene node names join CDB region ids; town anchors extractable; H-POI name-vocabulary typing confirmed/refuted per legend layer; `samePosAs` aliasing resolved for anchor de-dup |
+| D6 | world→px transform fit + orientation | 156-town projection error ≤ px budget derived from the assembled overview's measured feature spacing (fraction of one albedo tile), frozen in EXTRACTION-LOG before the run — never negotiated after seeing results; roundtrip idempotence = AC9; `worldmapZoom`/`hudOffset` folded into the expected-payload vocabulary |
+| D7 | `_s` pyramid role (downsample of full? minimap input per `region@props@minimap`?) | ratio test `_s ≈ ↓full` on all 1,377 co-present cells (identity cell set measured); divergence explained |
+
+Ordering note: D4 is trivial and unblocks early; D1–D3 proceed on extracted
+bytes alone; D5 gates D6's strong form. Root sources read directly this pass:
+FRAMEWORK §2/§2.6, foundation-guide §11, recon §2/§7, census region/place
+sheets, INDEX shots 04–07.

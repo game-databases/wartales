@@ -1,0 +1,189 @@
+# Wartales — stages 4–6 build: code review r2 (delta on the FIX diff)
+
+Delta review, 2026-08-25. Fresh agent; no subagents spawned; nothing
+committed; real tree READ-ONLY except the sanctioned live stage reruns
+(all products proven byte-stable — below). Contract:
+[spec-stages-datasets.mdx](./spec-stages-datasets.mdx) REVISED r1 + the
+W5 amendments (§3.1 step 4 / §3.4 CLI block + rule 7 / §4.1 step 1 /
+§4.2 envelope). Ruled on: [arbiter-stages-build-r1.mdx](./arbiter-stages-build-r1.mdx)
+(W1–W7) as the standard, [review-stages-code.mdx](./review-stages-code.mdx)
+(R1–R11) as the death list, and both fixer logs
+(`output/codefixer-stages.log`, `output/testfixer-stages.log`) as CLAIMS.
+
+## Method — every claim re-executed this session
+
+All changed files read in full (`validate_all.py`, `cdb_verify.py`,
+`promote_drafts.py`, `relink_catalog.py`, `wave_kinds.py`, `run_all.ps1`,
+`EXTRACTION-LOG.md`, both test files, spec §3–§5). Then, on NE8K:
+
+- **Suite re-run** (basetemp on D:, C: at 100 %): stage files default →
+  `63 passed, 5 skipped in 47.90s`; full pack with `--run-integration` →
+  **`212 passed in 92.01s`** — digit-for-digit the TestFixer's claimed
+  numbers, including I1/I2/I3/I4 and the AC9 consumer-precondition class
+  executing green over the real corpus.
+- **Fakeroot A** (`D:\_rev-tmp\cr2\fakeA` — tools + canonical planes +
+  drafts + CDB + full lang bridge copied in; everything `__file__`-
+  anchored so it repoints): control validator run from a non-pack cwd →
+  **PASS 8/8 exit 0** (A1); planted `place.jsonl` → **rc=1, report
+  written, no traceback, `hbson-independent=False` naming the file,
+  every other check True** (A2 = W1-i).
+- **A3**: pair-file `_meta.buildId` tampered to `99999999` → isolated
+  `cdb_verify` exit 1, sole failure `relinks/class__skill.jsonl: buildId
+  99999999 != required 20318128` (= W2-ii).
+- **A4**: validator invoked from a cwd on C: over the D: fakeroot →
+  **`ValueError: path is mount 'D:', start on mount 'C:'` at
+  validate_all.py:429, traceback, NO report** — new finding R12 below.
+- **B1 (W4 byte-identity)**: catalog regenerated into a scratch outdir
+  from the fakeroot → `matrix.json 5efaba53…` + `RELATIONS.md 7e8bfb1e…`
+  byte-identical to the shared products and to CodeFixer's recorded
+  pre-edit hashes.
+- **B2 (zero-edge guard)**: synthetic zero-edge `icon__sound.jsonl` added
+  → forward `missing` + reverse `partial`, both carrying `ordered-pair
+  upgrade dig`, **never `modeled`**; modeledDirections stays 39;
+  RELATIONS.md still renders exactly 39 modeled cells.
+- **Promoter probes**: truncated `--plane` → argparse usage exit 2;
+  unknown plane → exit 2; 30-of-40 draft sandbox over an empty out-dir →
+  exit 2 naming all ten missing kinds, out-dir NOT created; byte-equality
+  semantics of the split-after-meta payload — CRLF twin ⇒ unequal,
+  missing-final-LF ⇒ unequal, identical ⇒ equal, `emitted`-only diff ⇒
+  equal (skip); live promotion enumerates `battle_scene.jsonl (D12 …)`
+  and `poi_tile_coords.jsonl (D11 …)` plus a probe subdirectory
+  ("subdirectory (never scanned)") at exit 0 into scratch.
+- **Live regression sweep**: `run_all.ps1 datasets|relink|emit` all PASS
+  exit 0; relink+emit re-run a second time → `matrix.json` /
+  `RELATIONS.md` / `locale_availability.jsonl` hashes unchanged
+  (byte-stable), only the report's declared `generated` stamp moved.
+- **Pin audit**: all six EXTRACTION-LOG §2 sha256+bytes rows (cdb_emit,
+  cdb_verify, wave_kinds, promote_drafts, relink_catalog, validate_all)
+  recomputed — match disk byte-for-byte.
+
+## W-item landed state (ruling ↔ disk)
+
+| Item | Landed as ruled | Re-proven this session |
+|---|---|---|
+| W1 R1/F14 | census loops iterate `managed_kinds_in()` (:217); guard dies only on MISSING kinds carrying the raw-name listing (:118–131); extras never fatal | A2: intruder never entered census math (closure/per-kind stay True), lands as its own record |
+| W1 R6 | `hbson-independent` recursive over both planes pruning `_draft`, banned names fail, others count-and-report (:420–442) | A1/A2 + live: `locale_availability.jsonl` reported lawful (`nonManaged=1`) |
+| W1 R7 | inline `FROZEN_DEFERRED` §3.5 transcription compared against the module (:79–90, :400–412) | live `deferred-present frozenMatch=True`; suite parity case green |
+| W1 F3 | parse-and-compare of every rendered cell vs matrix records (:44–72, :365–388) | A1 live: `cellMismatches=0` over 780 rows — 35 of 46 real join keys contain `]`, so the fixed `] · mech=` grammar IS exercised by the corpus |
+| W1 F4 | measured bimodal law {∅, exact-9} on both locale sets (:304–316) | live `localeLawViolations=0` with the 458/560 zero-locale rows lawful; truncation fault leg red in suite; ∅/∅ row pinned lawful in the green tree |
+| W1 finding A | wave-1-draft preconditions PACK_ROOT-anchored (:144–151) | A1: non-pack-cwd invocation exits 0 |
+| W2 F6-tool | `if dangling: fail("pack-wide dangling invariant: {n} != 0")` verbatim (:332–336) | T2b hard-asserts rc==1 + that exact line — suite green |
+| W2 R5 | pair `_meta.buildId == --buildid` mirroring the dataset check (:313–316) | A3 first-hand |
+| W3 R2 | payload equality byte-exact via one split after `_meta` (:70–85, :194–197) | P-probes: CRLF twin + missing-final-LF both unequal; T5 legs green |
+| W3 R3 | argparse; usage errors exit 2 | truncated/unknown plane both exit 2 cleanly |
+| W3 R4 | universe completeness before any write, after ghost tripwire (:180–185) | 30-of-40 sandbox exits 2 naming ten kinds, no out-dir created |
+| W3 R9 | ledger names poi_tile_coords (D11) / battle_scene (D12); subdirectories enumerated (:49–67, :135–139) | live ledger output captured; subdirectory path probed first-hand |
+| W4 R11 | zero-edge never `modeled` (:201–210); both-modeled `"None"` cell untouched | B2 first-hand; B1 byte-identity proves no live drift |
+| W5 | spec carries `[--buildid <id>]` in §3.1 step 4, §4.1 step 1, §3.4 CLI + behavior rule 7; §4.2 declares the FULL eight-key envelope incl. `selfPairs[]`/`deferredTargetPairs[]`/`textKeyCoverage{}` | read in full; I4 static greps + envelope-parity case green |
+| W6 | both test files rewritten per the 12 items; RED case flipped green with zero tool edits; dead fault-6 dropped WITH documented cause; mutation battery claims match the landed asserts | suite re-run green both layers; fault legs execute live (incl. md-cell-falsified + locale-set-truncated) |
+| W7 | six §2 pins refreshed, dated §6 history entry naming W1–W4 + proofs | pins recomputed, all match; history entry present |
+
+Round-1 death certificate: **R1–R11 all died** — each verified above
+against its ruling's acceptance shape; none survives in its original
+form. The fixers' logs made no claim I could falsify.
+
+## New findings (introduced or widened BY the fixes)
+
+### R12 (NEW, MINOR-latent) — unanchored `relpath` reintroduces finding-A's cwd dependence, crash without report
+
+`validate_all.py:429`: `os.path.relpath(os.path.join(root, fn))` inside
+the new recursive walk has no anchor — it resolves relative to **cwd**.
+Proof (A4): invoking the validator from any cwd on a different Windows
+drive than `--datadir`/`--reldir` crashes
+`ValueError: path is on mount 'D:', start on mount 'C:'` — traceback,
+exit 1, **no report written**, violating §5.2's record discipline in
+exactly R1's shape. This call did not exist before W1 (round 1's scan was
+top-level listing) — the R6 rewrite introduced it, and it is the same
+cwd-dependence class finding A ruled on. TestFixer hit it this session
+(disclosed) and worked around it TEST-side (`cwd=tree["root"]`), leaving
+the tool defect in place. In-pipeline unreachable (`Set-Location
+$PackRoot`), same-drive isolated invocation fine (A1). Corollary: even
+when it doesn't crash, the rendered record paths are cwd-dependent
+(A2's `fakeA\extracted\data\place.jsonl` reads differently from another
+cwd).
+
+Fix (one line): `os.path.relpath(os.path.join(root, fn), directory)` —
+plane-rooted records, no cross-drive failure mode ever. Add a
+cross-drive-cwd probe to the validator truth-table while there.
+
+### R13 (NEW, MINOR) — `catalog-parity` mixes planes: matrix from `--reldir`, RELATIONS.md from the tool's own PACK_ROOT
+
+`validate_all.py:354` reads `<tool pack>/extracted/RELATIONS.md`
+regardless of `--reldir`, while the matrix side comes from
+`args.reldir`. Consistent when the tool lives inside the tree (every
+in-pipeline and fakeroot run above), divergent for out-of-tree isolated
+validation: a relocated/copied canonical tree is parity-checked against
+an UNRELATED rendered file — spurious `catalog-parity=False` (marker can
+never match) or, if hashes coincided, false confidence. The F3 extension
+deepened reliance on that anchor (it now parses cells out of that file),
+and the operational bill already arrived: the suite's md-cell-falsified
+leg must snapshot/tamper/restore the SHARED `extracted/RELATIONS.md`
+mid-suite — the exact mechanism whose interrupted restore once zeroed
+the shared artifact (TestFixer incident, disclosed; now atomic +
+read-back-verified, but any concurrent reader during the window still
+sees falsified bytes).
+
+Fix (small, either suffices): anchor the MD beside the tree under test
+(`<reldir>/../RELATIONS.md`, identical in-pipeline) or take an explicit
+`--relations` argument; then rebuild the fault leg on the F15 fakeroot
+lever — copy the tools + tampered MD into tmp and PACK_ROOT resolves
+inside the fakeroot, deleting the shared-file window entirely.
+
+### R14 (RESIDUE, partly pre-existing; MINOR-latent) — validator's own parsing is unguarded: corrupt input loses the whole report
+
+The child verifier guards its parses (fail records); the parent does
+not: `load_jsonl` meta (:157), per-edge `json.loads` (:266), availability
+rows `json.loads` + direct field indexing (:305–311), matrix load
+(:347) all raise on malformed bytes → traceback, no report, discarding
+checks ALREADY recorded (e.g. a corrupted pair file flips
+`verifier-gates=False` in `gates` and then crashes before the envelope
+write). Pre-existing for the pair/meta/matrix loads; the F4 rewrite kept
+the direct `row["availableLocales"]` indexing. All T10 faults are valid
+JSON, so the class is untested. Directive: wrap each per-row/per-file
+parse and route the fault into the owning check's record (the check then
+fails loudly with the offending locator — never a lost report).
+
+## Notes (no action owed)
+
+- `--plane both` promotes plane-by-plane: a truncated relink draft set
+  aborts AFTER the data plane wrote (completeness is per-plane,
+  sequential). Unreachable through run_all (each stage vector names one
+  plane); rule 4's letter holds per-plane. Fine to leave.
+- Zero-edge SELF-pair or deferred-target files would render the degenerate
+  `cardinality "1:1"` (E=F=T=0 satisfies the mechanical clause) in their
+  index rows — unreachable twice over (no zero-edge files today; W4's
+  guard keeps them out of the modeled path). Corner-of-a-corner.
+- The "subdirectory (never scanned)" enumeration line has no suite leg
+  (T6 plants files, not dirs); read-verified here and probed first-hand.
+- W5/W6 left no dedicated §6 history entries (the round's entry covers
+  W1–W4 + pins; E6's static assert passes on those tokens). Hygiene nit
+  for the next log touch only.
+- run_all.ps1's post-r1 deltas (header chain comments, TotalCount 36,
+  shared step runner) verify clean: I4 static+integration green, dry-run
+  vectors match the amended spec tokens, unknown-flag exit 2.
+
+## Regression sweep (mission item 3)
+
+`datasets` PASS · `relink` PASS · `emit` PASS (all exit 0, real tree);
+second relink+emit pass leaves `matrix.json` / `RELATIONS.md` /
+`locale_availability.jsonl` byte-identical (hash-tripled), report's
+`generated` the only mover — stamp policy intact. Suite: stage files
+63 passed / 5 skipped; full pack `--run-integration` 212 passed / 0
+failed. All six §2 pins match disk. No regression found.
+
+## Verdict
+
+- **datasets (stage 4): CLEAN**
+- **relink (stage 5): CLEAN**
+- **emit (stage 6): NEEDS-FIXES** — three small items, in order:
+  1. **R12**: anchor the walk's relpath to the plane root
+     (`validate_all.py:429`); add a cross-drive-cwd probe. One line.
+  2. **R13**: anchor `catalog-parity`'s RELATIONS.md to the tree under
+     test (or `--relations`), and move the md-cell-falsified leg onto
+     the fakeroot so the shared artifact is never touched again.
+  3. **R14**: route malformed-input faults into the owning check's
+     record instead of crashing past the envelope write.
+
+All three are contained in `validate_all.py` (+ one test leg); W1/W2/W3/
+W4 themselves need no further work. Refresh the validate_all §2 pin in
+the same commit per W7 discipline.

@@ -1,0 +1,145 @@
+# Arbiter — map build round 1 ([map_tiles.py](../pipeline/map_tiles.py) + [test_map_tiles.py](../pipeline/tests/test_map_tiles.py))
+
+Fresh Arbiter (brief [briefs/arbiter-map-build.mdx](briefs/arbiter-map-build.mdx)),
+2026-08-25, NE8K session. Never spawned subagents, never committed. Read in
+full before judging: root AGENTS.md · [_foundation/decision-register.md](../../_foundation/decision-register.md)
+(sentinel seen) · extraction-doctrine · extraction-host · FRAMEWORK §2 ·
+[spec.md](../spec.md) end to end · [spec-map-pipeline.mdx](spec-map-pipeline.mdx)
+end to end · [review-map-code.mdx](review-map-code.mdx) ·
+[review-map-tests.mdx](review-map-tests.mdx) · both artifacts in full.
+
+**Method — nothing taken on faith.** Suite re-run: `python -m pytest
+pipeline/tests -q` → **80 passed / 33 skipped**, map file alone **32 passed /
+30 skipped**, decomposed with `-rs`: symbol-skips sum 5+1×8+5+1×3 = **21** +
+**9** integration-gated = 30 — both reviews' arithmetic exact. C1 receipt:
+`hasattr` sweep over all 19 contracted symbols → **19/19 absent** (actual API:
+`classify_entry` / `edge_continuity` / `decode_albedo_rgba` / `cmd_*`). Recon
+TSV re-read byte-level: columns are `path·flag·offset·size·crc` (row 1:
+`…albedo_x-1_y10.dds⇥0⇥0⇥262272⇥ead422a0`) — the test parser reads col 2 as
+size, i.e. reads flags as sizes. Dig artifacts re-opened: rawproof
+`maxPlateauFractionNearPin = 0.071899…`, bestLayout `1024x1024`, own-_s corr
+`0.4496`, pyramid 1,377 tested / 1 divergent, texindex 43 materials,
+mosaic orientation probe `INCONCLUSIVE`. Fixture-level claims re-executed
+against the real modules: missing-bounds tiles layer **passes clean**,
+`buildid=True` passes, `{"pos":[12.5,-3.25]}` marker without provenance
+passes, splat-advertising `imagery.tileTemplate` passes `_check_registry`,
+and `contracts/maps.schema.json` is byte-equal to the code's `SCHEMA`
+(published layer required `[id,kind,bounds,provenance]`, kinds incl. `"grid"`,
+`d: number|null`, `tileUnitPx: object`) while the embedded copy requires
+`[id,kind]`, forbids `"grid"`, enums `d:{null,-1}` / `tileUnitPx:{null,512}`.
+MEDIA-CATALOGUE rows re-read at exact byte totals.
+
+## Rulings — review-map-code.mdx
+
+| # | Ruling | Basis |
+|---|---|---|
+| C1 (MAJOR) | **ACCEPT — load-bearing** | 19/19 symbols absent (receipt above); 30 = 21+9 skips reproduced; `MAPS_JSON` [:77] vs emit path [map_tiles.py:1155] and cells dir [:953] vs `extracted/data/cells` both confirmed wrong; TSV column order confirmed against the local artifact. Zero behavioral coverage of the shipped module — FRAMEWORK §2.14 (unverified ≠ done) makes this disqualifying for APPROVE. |
+| C2 (MINOR) | **ACCEPT** | [spec.md:288-289](../spec.md) freezes exactly five unknown-P0 kinds incl. `encounter-spawn` + `vendor-npc`; emitted registry carries 13 types, neither present. Registry is the rule-8 contract PT05 consumes — two-line fix + regenerate. |
+| C3 (MINOR) | **ACCEPT** | Verdict string [map_tiles.py:548-552] is static prose; artifact records plateau fraction 0.0719 — both cannot read literally. Substance of the refutation stands (ocean mean −4.82 vs pin −0.4); fix is compute-the-verdict + freeze "plateau" in EXTRACTION-LOG + explain the 7 % tail. Same pattern at the invented `corr < 0.99` gate [:737]. |
+| C4 (LOW) | **ACCEPT** | [map_tiles.py:975-977] literals match this buildid's dig artifacts today (re-verified), but nothing reads them back; thread measured values through. |
+| C5 (LOW) | **ACCEPT** | Unguarded opens/mkdirs confirmed at :304/:318/:395/:441/:1151; `harvest.longpath` is the stated policy; README-map.mdx:44 pins exit-3 and `main()` catches only `MapPipelineError`. Latent today, cheap to close. |
+| C6 (LOW) | **ACCEPT** | [:1228-1229] silently nulls an explicit `--d-sign`; `south-up` without `--d-sign` emits a half-pinned CRS that passes the published schema. Warn/fail loudly. |
+
+Over-engineering hunt: **confirmed empty.** Smoothness sweep and quadrant
+probes each retire a named hypothesis for one 4 MiB read; manual schema
+fallback is dead weight only when jsonschema is absent; perf posture on the
+26 GB layer (index-walk classify, hash-skip extract, splat never decoded
+except 3 residue cells, shared decoded pyramid array) is right.
+
+## Rulings — review-map-tests.mdx
+
+| # | Ruling | Basis |
+|---|---|---|
+| M1 (MAJOR) | **ACCEPT, upgraded** | Every drift direction reproduced (receipts above). Upgrade: the drift is not latent — the **real emitted `extracted/data/maps.json` fails the suite's embedded schema today** (`tileUnitPx` object ∉ enum `{null,512}`; `kind:"grid"` outside the enum). Fixing only the `MAPS_JSON` path turns `test_int_maps_json_registry_contract_when_emitted` red. Load the published `contracts/maps.schema.json` as authority, name one owner for the `d`/`tileUnitPx` enums (note: `PINNED_LATER` couples north-up↔d=-1 while published allows any number and the CLI allows ±1 for either axis), add the missing-bounds negative. |
+| M2 (MAJOR) | **ACCEPT** | Full-file grep confirms: no `adler` anywhere, no AC3 format-census hook, no AC4 finite/threshold guard; docstring contract surface (:39–57) demands none of them, so CodeWriter is under no obligation. |
+| M3 (MAJOR) | **MODIFY** | Circularity diagnosis correct (fixture self-referential; golden hashes never group; size-grouping impossible — uniform classes). But the proposed 26 GB re-hash is the expensive form: `cmd_extract` verifies adler32 **over disk bytes on both branches** (`hash_existing_file` streams adler of the existing file; fresh pulls recompute), so grouping `output/_dig-map/map.manifest.jsonl` hashes IS payload-grounded grouping, near-free, and independent of D3's interpretation logic. Add that integration test ({albedo:0ff430e9×276, splat:78c858d4×273, ×2, ×2}); while there, align the fixture's `DUP_PAIRS` label `height`→`height_s` ([:147]) with the code's measured placement (comment at [map_tiles.py:87-88]). |
+| Mo1 | **MODIFY** | Collinearity of `(i·7, −i·3)` confirmed. Precision the reviewer missed: apply∘invert ≡ identity for ANY invertible fit, collinear or not — spanning anchors alone make the fit well-determined but leave the roundtrip unable to fail on fit bugs. Strengthen properly: derive anchors from a KNOWN affine, fit, assert recovered parameters (or absolute projected targets) within budget — or hold the strong form for D5's 156 town anchors with absolute pixel targets. |
+| Mo2 | **ACCEPT** | Golden case hashes payload bytes; spec §6 says "decodes to a pinned checksum". Add decode-then-checksum alongside (Pillow decodes these DDS forms — `decode_albedo_rgba` already proves it). |
+| Mo3 | **ACCEPT, sharpened** | `y_axis="north-up"` hardcoded at :1046-1047 while §2/§4 forbid assuming it. Sharper: the tail assertion `yAxis ∈ DIRECTIONS` (:1055) **demands resolution** — once the `MAPS_JSON` path is fixed it fails against the honest-null registry the code actually emits (verified `yAxis: null`). Drive the axis from maps.json; skip-with-reason while null. |
+| Mo4 | **ACCEPT** | Self-referential at tool level as described. Mitigation receipt: `cmd_mosaic` DOES assert alpha==0 on the exact hole set of the real assembly ([map_tiles.py:859-866], 703 holes in mosaic.json) — the gap is suite-side wiring to `cells/albedo.cells.json`; land with D3. |
+| Mo5 | **ACCEPT** | `pos`-shaped row passes provenance-free (reproduced); seam sweep plants x-mutation only. Both small fixture edits. |
+| Validator nits | **ACCEPT** | All three reproduced live (bool-int, unconstrained imagery incl. served-plane contradiction vs `SERVED_TILE_RE`, `\b(REG|PRE)\b` allowlist). |
+| Δ=0 rerun nit | **ACCEPT (narrow)** | True as written; but spec AC1 pins numbers to buildid 20318128, so hand re-freezing constants per buildid is spec-shaped — the fix is a documented re-pin step, not a redesign. |
+| §7-hook + run_all nits | **ACCEPT** | D4/D7/`samePosAs`/run_all wiring have no suite coverage (implementation stages exist: texindex 43 materials, pyramid 1,377 cells — both ran clean). |
+| Real-corpus seam nit | **ACCEPT** | Mitigation receipt: `cmd_mosaic` computes the seam distribution over 1,332 real albedo neighbor pairs; suite-side assertion across those seams is still owed. |
+
+## Arbiter additions (neither review caught)
+
+- **A1 — served-tile URL shapes diverge between fixture and shipped
+  registry.** Fixture `SERVED_TEMPLATE` (:184) is `/map-tiles/albedo/{x}/{y}.webp`;
+  the emitted registry advertises `/map-tiles/v{buildid}/albedo/{z}/{x}/{y}.webp`
+  ([map_tiles.py:956], confirmed in extracted/data/maps.json). Whichever shape
+  `SERVED_TILE_RE` pins when C1 lands, the other breaks: the integration
+  leak-scan builds rel-paths off the site tree and would false-positive (or
+  miss) version-prefixed/zoom-segmented layouts. Pin ONE canonical shape in
+  this round, before PT05 bakes one in.
+- **A2 — marker-row key drift.** `_assert_marker_provenance` walks
+  `layer["marks"]` (:567-579); the registry ships marker taxonomy under
+  `types` with `pins: 0` and no row vocabulary at all. AC7's hook validates a
+  shape nobody ships; decide the coordinate-row carrier now or the D5
+  backfill lands unvalidated.
+- **A3 — Mo1/M3 mechanism corrections** folded into the rulings above
+  (roundtrip weakness is inherent, not collinearity-specific; manifest-hash
+  grouping beats re-hashing).
+
+## Verdicts
+
+### [map_tiles.py](../pipeline/map_tiles.py) — **FIX**
+
+Measurement base is excellent — every number I re-derived reproduced exactly,
+and the D5/D6 null discipline held everywhere probed (`yAxis` null, budget
+null, orientation INCONCLUSIVE with reasons). But C1 stands: none of the
+contracted test surface executes, so the module ships with zero regression
+protection. Ordered fixes:
+
+1. **C1** — contract adapters (thin wrappers over existing regexes/helpers;
+   factor `assemble_mosaic(tiles, w, h, *, y_axis)` out of `cmd_mosaic` with
+   the raise-on-null-orientation guard; expose `SERVED_TILE_RE`,
+   `EXPECTED_GEOMETRY_FIELDS`, `fit/apply/invert_transform` +
+   `D6_BUDGET_PX=None`), then prove the 21 skipped behavioral tests green.
+2. **A1** — pin the canonical served-tile URL shape (with the test side, same
+   commit).
+3. **C2** — add `encounter-spawn` + `vendor-npc` rows to `MARKER_LAYERS`
+   (spec §3 carriers), regenerate the registry.
+4. **C3** — compute the D2 verdict from the metric; freeze "plateau" in
+   EXTRACTION-LOG before it gates; explain the 0.0719 tail; freeze or justify
+   the D7 `corr < 0.99` constant the same way.
+5. **C4** — thread measured values (bestLayout, seaLevel verdict) through
+   `build_registry` instead of literals.
+6. **C5/C6** — route opens through `longpath`, `parents=True` on
+   `contracts.mkdir`, catch-all → exit-3 per README-map; loud warn/fail on
+   `--y-axis`/`--d-sign` mismatches.
+
+### [test_map_tiles.py](../pipeline/tests/test_map_tiles.py) — **FIX**
+
+Fixture layer is genuinely strong (negative battery, sign traps,
+CR-insensitivity, honest dual-mode census check) and its numbers are honest —
+but it validates a private fork of the published contract and its plumbing
+cannot meet the implementation that exists. Ordered fixes:
+
+1. **M1** — validate against `contracts/maps.schema.json` as authority (keep
+   semantic assertions separate for readable failures), reconcile the
+   `d`/`tileUnitPx` enums under one named owner, require the emitted registry
+   to pass (kind `grid`, object `tileUnitPx`), add the missing-bounds
+   negative.
+2. **Plumbing (C1 follow-ons)** — `MAPS_JSON` → `extracted/data/maps.json`,
+   cells dir → `extracted/data/cells`, `_tsv_entries` columns →
+   `path,flag,offset,size,crc`.
+3. **M2** — extend the docstring contract surface + hooks for AC2 (adler
+   census), AC3 (4,131-row uniformity + listed outliers), AC4 (finite assert
+   + frozen-threshold discipline analogue).
+4. **M3 (as modified)** — manifest-hash group-size integration test; align
+   the `DUP_PAIRS` class label.
+5. **Mo1 (as modified) + Mo2 + Mo5** — known-affine absolute-projection AC9
+   (or defer to D5 town anchors), decode-then-checksum goldens, coordinate-
+   shape detection + y-direction seam mutation.
+6. **Mo3/Mo4** — axis from maps.json with skip-while-null (drop the
+   punishes-honesty `∈ DIRECTIONS` demand); hole-alpha wired to
+   `cells/albedo.cells.json` when D3 lands.
+7. **Nits batch** — bool-int guard, imagery↔`SERVED_TILE_RE` consistency,
+   REG-token allowlist, documented Δ=0 re-pin step, D4/D7/run_all hooks,
+   real-corpus seam assertion, A1/A2 shape decisions.
+
+Neither artifact APPROVEs this round; the fix lists above are the whole
+distance — after 1–4 on both sides land together, a re-arbiter pass should be
+cheap because the underlying measurements are already sound.

@@ -1,0 +1,91 @@
+# Arbiter glance r2 — spec-stages-datasets.mdx REVISED r1
+
+Glance pass per [arbiter-stages-spec.mdx](./arbiter-stages-spec.mdx) §7's
+verdict clause, 2026-08-25, NE8K, buildid **20318128**. Verifies
+application of fixes F1–F14 to [spec-stages-datasets.mdx](./spec-stages-datasets.mdx);
+does not re-open architecture. Inputs read in full: root `AGENTS.md`,
+[spec-stages-datasets.mdx](./spec-stages-datasets.mdx),
+[arbiter-stages-spec.mdx](./arbiter-stages-spec.mdx), the fixer's report
+([output/fixer-stages-spec.log](../output/fixer-stages-spec.log), treated
+as claims). Method: the revision diffed byte-exact against its pre-fix
+commit (`92a4bc4c..f3a63685`, every hunk mapped below), plus independent
+re-measurement — the full regeneration protocol rerun by this session into
+scratch ([output/_glance-r2-scratch/](../output/_glance-r2-scratch/): emit
+waves 1+2 → verify → `ALL CHECKS PASSED`, exit 0).
+
+## Re-measurements taken this session (not trusted from either prior report)
+
+| Measure | Result | Matches spec |
+|---|---|---|
+| Regenerated corpus + verifier gate | 40 files · 10,207 rows (= census sum) · 51 pairs · 19,130 edges · dangling 0 · unverifiable 72 · preserved keys 133 · bridge 27⊆35 drift 0 · `ALL CHECKS PASSED` | §2 ✓ |
+| Null decomposition | env__place 61 / frescos__place 9 / fiefGoal__element 2 = 72 | §2/§4.4 ✓ |
+| Wave split | 8 pairs / 6,636 edges (w1) + 43 pairs / 12,494 (w2); null-72 entirely w2 | §2/F3 ✓ |
+| Preservation pins (emitter counter tables, both waves) | item@`__ignoreLoc__` 21 · skill top-level 40 · `skill@levels` extras 14 occ / 9 distinct keys (`vars` 4, `isAttack` 2, `tooltipStatus` 2, six singles) = w1 76; w2 57 (confessions 27, fiefEvent 20+2, notify 2, six singles); Σ 133 == verifier stdout | §2/F6 fixture ✓ |
+| Deferred/as-found corpus | place 536 / group 791 / element 5,180 / levelProps 5,982 / achievement 235; data/_draft 45 jsonl + `worldmap_overlays.json`; relinks/_draft 52 = 51 pairs + `poi_coordinates.jsonl` (607 rows); availability 3,779 lines | §3.5/F11 ✓ |
+| Targets-of trio | class__skill 874 / battle__skill 58 / unitPattern__skill 42 | F12 ✓ |
+| `localeTextRoute` | present in all 40 regenerated `_meta` | F10 ✓ |
+| `filler_class_cells` grid | read from the generator's own saved report (`output/_dig2_report.json`): 3 kinds × 9 locales = 27 keys, **all zero**; loop structure confirmed at `locale_bridge_dig.py:426–439` (pivot skipped in-loop) | F7 ✓ |
+| D7 stamps as-found | `"verifiedBy": "Dig D7 (hbson_emit.py) against the decoded HBON id set"`, `unverifiableBefore` 61, on `env__place.jsonl` head — quoted verbatim-true | §4.4 ✓ |
+
+## Per-item application (F1–F14)
+
+| Fix | Applied where (revised text) | Holds | Glance verification |
+|---|---|---|---|
+| F1 | §3.4 rule 1 (`wave_kinds.py` universe; ignore-and-enumerate ledger names all six non-managed entries), §3.1 ¶, §3.3 scan scope + independence guard, §3.5 rewritten, §5.2 `deferred-present`, §7 T6, AC1 | ✓ | Ledger names match measured disk state; §3.5 counts reproduced; diff hunk contains nothing beyond the fix |
+| F2 | §2 freeze-policy block (regenerate-at-run, source pinned), §2 null-row annotation, §4.4 *unknown* vs *dig-adjudicated pending wiring* with quoted markers, §4.3 adjudication column, §9 out-of-scope trio; `relink-integrity` left unchanged | ✓ | Regeneration reproduces 72=61+9+2 and gate PASS; markers verbatim on as-found bytes |
+| F3 | §5.2 `census-closure` (verifier-census source, conditional tripwire, `counts.constants` envelope), I3 proofs | ✓ | Verifier census is the same transcription that produced this session's gate run |
+| F4 | AC2 rewritten to three executable surfaces incl. why the old form could never fire | ✓ | Stronger than the original, not weaker |
+| F5 | §3.4 rule 6 (restore-and-pass / ghost-tripwire exit 1 / consumer exit 2 / regenerated products exempt), AC9 per-class | ✓ | Exactly the M2 ruling; fail-loud retained where ruled |
+| F6 | §5.1 preconditions drop `locale_availability.jsonl` with circularity rationale; AC5 drops it → AC8 asserts | ✓ | Ownership single-valued: stage 6 |
+| F7 | §2 availability row, §5.2 `availability-regenerated`, §7 F4, AC8 all carry the 27-key grid | ✓ | First-party from the generator's own report |
+| F8 | §2 preservation paragraph (counter source named), §7 F6 fixtures | ✓ | Recounted from emitter counters; "six extras" invention absent (grepped) |
+| F9 | §4.2 stamp policy + ordering note, §4.3 header, §10 hole 3 declared exemption, T12, AC6/I2 byte-stability | ✓ | Remaining `generated` mentions are prose or the declared exemption only (grepped) |
+| F10 | §3.2 `localeTextRoute` row | ✓ | 40/40 metas carry it |
+| F11 | §4.1/§5.1 equality preconditions (==40 / ==51), `poi_coordinates.jsonl` disposition (A2 contract) | ✓ | 52nd-file reality matches the ledger description |
+| F12 | §4.3 trio with counts | ✓ | Measured 874/58/42 |
+| F13 | §4.2 `{a,b}` lexicographic rule, enforced via T8/T9 | ✓ | Deterministic, testable as written |
+| F14 | Spec-side record only (see Residues) | ✓ accepted | Dig-log Dig 7 entry **exists** (`data-dig-log.mdx:1046`); PROOF.md R1 CLOSED / R2 RESOLVED already reflect post-Dig-7 state — the predecessor's A3 "no Dig 7 entry" was stale against current bytes, as the fixer reported |
+
+## Scope creep / weakening audit (byte-exact diff `92a4bc4c..f3a63685`)
+
+Every hunk traces to an F-item above or one of the three disclosed
+drive-bys; no unmapped change entered. No frozen number changed value —
+the whole §2 set survived the revision identically; only its *referent*
+was pinned (F2). The two semantic reversals (AC2 rewrite, AC9
+restore-and-pass) are the arbiter's own ruled remedies (F4/F5), each
+retaining or adding assertions. New obligations stay inside the ruled
+surface (`wave_kinds.py` was F1's named mechanism); the §9 additions
+record constraints, they do not schedule work.
+
+## Drive-by corrections — sound
+
+1. `(hole 6)`→`(hole 5)` anchors: correct target (availability regenerator
+   reads `_draft`); `hole 6` absent from the file (grep).
+2. Hole 1 closing clause rewritten truthfully: `poi_coordinates.jsonl`
+   measurably sits in `relinks/_draft/` today, and the r1 arbiter itself
+   hit the live `KeyError: 'fromKind'` there — the name-rule necessity is
+   now stated from evidence.
+3. Status line + inputs list: provenance only, accurate.
+
+## Residues — ACCEPTED-AS-RECORDED (per glance brief)
+
+- F14's two specifics (*remaining unblock = id-registry wiring + wave-3
+  shapes*; *`hbson_emit.py` scratch-cdb input must repoint to the harvest
+  output*) live in spec §9 attributed F14/A2; the PROOF.md / dig-log
+  touch-ups remain owed to an agent allowed to edit those files.
+- Wave-3 promotion stays queued by design (§3.5 unblocks, §9).
+
+Housekeeping: this session wrote only `docs/arbiter-stages-spec-r2.mdx`
+plus measurement evidence under gitignored `output/_glance-r2-scratch/`.
+Concurrent-work artifacts observed untouched: `pipeline/map_tiles.py`
+(modified), `verify_h0.{err,out}` (untracked).
+
+## Verdict
+
+**APPROVE-FOR-BUILD** — every F-item holds; no scope creep; no weakened
+requirement; the fixer's disclosures are truthful. Proceed to
+CodeWriter + TestWriter per §3/§5/§7; verification owed at build time is
+exactly §7's: fresh regeneration + verifier PASS (reproduced here),
+validator truth-table green, F1–F14 proofs.
+
+<!-- END OF wartales/docs/arbiter-stages-spec-r2.mdx -->

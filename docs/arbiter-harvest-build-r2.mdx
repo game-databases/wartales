@@ -1,0 +1,100 @@
+# ArbiterR2 — harvest build delta round 2 (harvest.py + test_harvest.py)
+
+Arbiter: fresh (ox-alpha) · 2026-08-25 · brief
+[`docs/briefs/arbiter-harvest-r2.mdx`](./briefs/arbiter-harvest-r2.mdx).
+Delta-only; no subagents; nothing committed. Inputs read **in full**:
+[`review-harvest-code-r2.mdx`](./review-harvest-code-r2.mdx),
+[`review-harvest-tests-r2.mdx`](./review-harvest-tests-r2.mdx),
+[`arbiter-harvest-build-r1.mdx`](./arbiter-harvest-build-r1.mdx);
+spec [`spec-harvest.mdx`](./spec-harvest.mdx) §3.3 + §7 read where the
+N-rulings hinge on their wording.
+
+## Probes run — all three green under the arbiter's own hand
+
+Unlike a blocked earlier attempt, every executable probe the brief ordered
+ran live this session:
+
+1. `python -m py_compile pipeline/harvest.py` → **OK**.
+2. Full suite `python -m pytest pipeline/tests -q -p no:cacheprovider` →
+   **48 passed / 0 failed / 3 skipped** in 4.13 s — exactly the brief's
+   expectation and both reviewers' number (their runs: 3.61 s / 3.64 s;
+   three independent executions agree).
+3. Fresh-out `--manifest-only` on real res.pak
+   (`A:\SteamLibrary\steamapps\common\Wartales\res.pak`, scratch dir since
+   deleted): **rc 0**, exactly three meta artifacts
+   (`harvest-report.json`, `res.manifest.jsonl`, `res.summary.json`),
+   **936** manifest rows, `wrap_delta_vs_sum_sizes == 0`,
+   `sum_entry_bytes == 767,068,478` (reconciles spec §2.3's census),
+   **zero** payload directories created — B1 confirmed by execution, not
+   just by reading.
+
+**Judged-bytes identity:** porcelain clean for both artifacts — last
+commits touching them are exactly `8030454` (harvest.py, 817 lines) and
+`9985bc4` (test_harvest.py); both reviews judged precisely these
+revisions, no drift since. N4's claim reproduced live in passing:
+`?? wartales/pipeline/tests/conftest.py`.
+
+## Per-fix spot-checks (brief maximum: 3 clusters)
+
+All hold at the reviewers' cited lines, byte-for-byte:
+
+| Cluster | Claim | Verified |
+|---|---|---|
+| B1 | unconditioned `os.makedirs(longpath(out_root))` top of `harvest_pak`; pkg_dir gated on extracting | ✓ `harvest.py:566`, gate `:570-571`; plus live smoke above |
+| m1 | mask dropped on wrap delta; masked provenance field retained | ✓ `harvest.py:647` (`field_i32 − sum_sizes`) beside `:646` (`& 0xFFFFFFFF`) — r1's ordered fix #2, same-pass-as-B1 rationale intact |
+| M2+m3 | casefolded duplicate-stem preflight → UsageError naming both paths; `scope_work` computed once, gates see `{}` under `--manifest-only` | ✓ `harvest.py:734-741` and `:754-755` |
+
+Heavier verification is the reviewers' completed work; not repeated here
+per the delta-only law. Their per-fix tables are internally consistent
+with r1's ordered fix lists (code items 1–10, test items 1–6) and with
+each other.
+
+---
+
+## Rulings — escalated N-notes
+
+| ID | Ruling | Grounds |
+|---|---|---|
+| N1 | **ACCEPT** as recorded item (spec owner) | Re-derived from the spec's own words, not the reviewers' quotes: §3.3 re-verifies *targets* ("recompute adler32 over the existing target file … Match ⇒ skip") against stored hashes, so after source-only corruption an intact extraction completes rc 0 — correct behavior by design, and consistent with r1's m7 ruling that the resume shape is right. The catastrophe guard is not lost: the suite pins `tampered_payload → 3` in both modes via fresh-root extraction. The defect is §7 case 8's parenthetical letter ("adler mismatch detected on re-run of a previously-good extraction"), which contradicts §3.3. Route to spec owner: amend case 8 (or add an optional source-hash audit mode), and promote the rc-0 resume-over-intact-targets decision from docstring prose to a pinned assertion. Not a blocker; neither artifact is wrong. |
+| N4 | **ACCEPT** as recorded item (orchestrator commit) | Verified live twice now (test reviewer's run + this session's porcelain): `conftest.py` has never been committed. Without it the `integration` marker and `--run-integration` opt-in don't exist, so a fresh clone runs the 3 A:-dependent smokes unconditionally and goes red on any client-less host — 48/0/3 is not reproducible from git alone. Pre-existing since r1, outside both artifacts' bytes. One commit alongside the next suite touch. Not a blocker for the acceptance run, which executes from the working tree where conftest exists. |
+
+N3 stays cosmetic (assert correct, stale "Σ = 197" comment); fold into the
+same next-suite-touch commit.
+
+---
+
+## Verdicts
+
+### `pipeline/harvest.py` @ `8030454` — **APPROVE-FOR-ACCEPTANCE-RUN**
+
+All nine sanctioned fix clusters landed correctly (r1 items 1–9; item
+10/m7 correctly rejected — no sweep code anywhere). py_compile, fresh-out
+res.pak smoke, and the full suite all green under the arbiter's own
+execution. No FIX list.
+
+### `pipeline/tests/test_harvest.py` @ `9985bc4` — **APPROVE-FOR-ACCEPTANCE-RUN**
+
+Baseline arithmetic closes (32 + 3 un-red + 13 new = 48); strictness
+matrix, multi-pak, gate-seam, fingerprint, override-unit, and AV-magic
+suites present and biting per the test reviewer's table, consistent with
+the green suite run. Case1/case2 constant corrections are sound
+arithmetic, not weakenings. No FIX list.
+
+Recorded items (none block acceptance): N1 → spec owner · N3 → cosmetic ·
+N4 → orchestrator commit.
+
+## Acceptance-run clearance — CLEARED
+
+The full four-pak extract per [spec §6](./spec-harvest.mdx) **is cleared,
+without conditions**: the earlier attempt's mandatory re-run gate existed
+only because that session could not execute the probes; they have now run
+green under the arbiter's own hand (probe 2 above). One advisory remains,
+cheap insurance rather than a gate: because this worktree is concurrently
+mutated by other pack agents, whoever launches should re-run the suite
+once at launch time and require 48 passed / 0 failed / 3 skipped — a
+drift guard against tree changes between arbitration and launch, not an
+execution-trust gate. Anything else ⇒ stop and re-arbitrate. Remaining
+§6 discipline carries over from r1: provenance citations say
+`<out>/harvest-report.json`; all four paks get fresh-out runs
+(content.pak wrap delta must reconcile at −2³³; res.pak census is pinned
+by probe 3 above).

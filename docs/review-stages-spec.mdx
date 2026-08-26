@@ -1,0 +1,83 @@
+# Review — spec-stages-datasets.mdx (run_all stages 4–6)
+
+Reviewer pass, 2026-08-25, against buildid 20318128 on this host. Every
+finding below was checked against the named artifact's bytes or code, not
+inference. Recounts run this session:
+
+- `extracted/relinks/_draft/` pair files: **51**, edges **19,130**,
+  valid distribution **{true: 19,130}** — `valid:null` = **0**.
+- `extracted/data/_draft/`: **45** `.jsonl` kinds, not 40 — extras:
+  `achievement` (Dig 10 keyless Steam, 235 rows),
+  `place` 536 / `group` 791 / `element` 5180 / `levelProps` 5982 rows
+  (all `pipeline/tools/hbson_emit.py`, emitted 2026-08-25T06:45:54), plus
+  non-JSONL `worldmap_overlays.json`.
+- Census arithmetic confirmed: CENSUS Σ 11,473; wave1 3,779 + wave2 6,428
+  (= 37 kinds) + constants 1,266 == 11,473.
+
+## Verdict
+
+**NEEDS_REVISION** — 3 blockers, 4 majors, 5 minors. The wiring plan, tool
+CLIs, exit-code surface, and test conventions are sound and check out
+against `run_all.ps1`/`cdb_emit.py`/`cdb_verify.py`/`conftest.py`; the
+spec's frozen ground truth is what fails — it was frozen from a pre-D7 /
+pre-Dig-10 snapshot and is contradicted by the exact draft bytes §2 says
+stage 5 promotes.
+
+## Findings
+
+| # | Sev | Section | Finding | Fix |
+|---|---|---|---|---|
+| B1 | BLOCKER | §2 relink table, §4.4, AC5, F3, I2, validator `relink-integrity`, RELATIONS.md totals "51/19,130/**0/72**" | Frozen null-edge ground truth is false against the bytes the spec freezes. Disk truth: env__place 61, frescos__place 9, fiefGoal__element 2 were upgraded to `valid:true` by Dig D7 (`_meta.verifiedBy: "Dig D7 against decoded place/element id set"`, `unverifiableBefore: 0`). Null population is **0**, not 72. Worse, the design is self-contradictory: steps 1–2 regenerate drafts from data.cdb, whose place/element sheets have no inline lines, so every rerun recomputes those 72 edges to `valid:null` — silently destroying measured knowledge each run; conversely promoting today's bytes fails stage-5's own gate (cdb_verify recomputes `None` for no-inline targets and its per-edge audit flags `true != None`). RELATIONS.md would also ledger 72 R1-unblocks that no longer exist — the decode evidence is already in hand ([PROOF.md](../extracted/PROOF.md) R1 residue has shrunk accordingly). Violates doctrine Principle one ("document every relation you looked for and could not establish" — these are established). | Make the decoded id registries a first-class pipeline input: emit `place`/`element`/… id-set sidecars from the HBSON dig into `extracted/` and teach cdb_emit/cdb_verify to validate datafile-backed targets against them (one retrofit, same class as §3.6); re-freeze §2/§4.4/F3/I2 from post-fix output in one commit per EXTRACTION-LOG §5 procedure. Never freeze numbers from an older snapshot than the referenced bytes. |
+| B2 | BLOCKER | §3.4 rule 1, §3.1 step 3, AC1, AC4 vs disk | Promotion scope is undefined while `_draft` holds 45 kinds. The promoter "manages exactly `<kind>.jsonl`" with a whitelist — but nothing defines the 40-kind universe, so a correct-by-construction implementation either promotes all 45 (violating AC1 "exactly the 40" + `hbson-independent`) or hardcodes a list the spec never states. Independently, stage-4 step 3 cannot pass on today's tree: cdb_verify scans *every* datadir `.jsonl` (`sourceSheet not in census` failures for the five extras), and steps 1–2 never clean the dir. §3.5's deferred story is stale twice over: PROOF R2 records achievements RESOLVED keyless (achievement.jsonl shipped), and R1's four datafile-backed kinds now have hbson-emitted rows awaiting a promotion decision. | Specify the managed set explicitly (shared WAVE_KINDS constant used by emit/promote/verify, or an explicit `--kinds` list); state draft-dir hygiene policy for non-wave files (ignore-with-ledger or fail, naming `worldmap_overlays.json`); update §3.5 deferred table to the current PROOF R1/R2 state (achievement row moves out of "unblock: keyed Steam call"; the four HBON kinds get a disposition: wave-3 promotion path or explicit hold). |
+| B3 | BLOCKER | §5.2 `census-closure`, AC7, I3 | 11,473 is not checkable on a fresh clone. Closure reads `extracted/logic/constants.jsonl` (1,266), which **no run_all stage produces**: it came from dig-2 `formula_emit.py`, which is unwired and absent from EXTRACTION-LOG §2 tool pins. Doctrine [DR-2026-08-18-pipeline] and the spec's own §1 claim fresh clone + entrypoint reproduces stages 4–6; as written, emit exits 2/fails closure there. Passes today only because the dig-era file sits on this host. | Pick one and say which: (a) wire `formula_emit.py` into the datasets stage; (b) take the 1,266 from the independent verifier's `CENSUS['constant']` instead of reading the dig-era file; (c) declare constants.jsonl an explicit precondition with a named producer. Add the chosen proof to I3. |
+| M1 | MAJOR | AC2 | Unverifiable as written: steps 1–2 regenerate the drafts *before* the step-3 gate, so a seeded corrupt cell in a draft file is overwritten before it can fail anything — through `run_all.ps1 datasets` the stage exits 0, not nonzero. | Re-point AC2 at the corruption surface that survives regeneration: a corrupted `data.cdb` copy (steps 1–3 fail), or isolated execution of step 3 over a corrupted draft copy. T2 already covers the mini-fixture analog. |
+| M2 | MAJOR | AC9 vs §3.4 rules 2–4 | Deletion clause contradicts the promoter contract. §3.4 makes drafts the source of truth: a missing canonical target falls outside rule 3's tripwire (which needs the file *present*) and naturally restores as `updated`, exit 0. AC9 demands exit ≠0 naming the file. Also self-healing at exit 0 regardless: deleting `locale_availability.jsonl` or `RELATIONS.md` is undone by stage-6 regeneration. | Choose per class and write it down: managed datasets/relinks — restore-and-pass or fail-loud (state which in §3.4 rule set); regenerated stage products — exempt from AC9. Align the AC with whichever is chosen; TestWriter cannot implement both. |
+| M3 | MAJOR | AC5 | Orders `locale_availability.jsonl` into the relink stage's outputs, but nothing before stage 6 writes it: promote_drafts `--plane relinks` explicitly manages only `<from>__<to>.jsonl`, and the regenerator runs in emit. On a fresh tree `run_all.ps1 relink` exits 0 with no availability file → AC5 false; it passes locally only because the dig-era copy sits there. | Move availability out of AC5 (assert it at emit/AC7–AC8), or state it as inherited prior-run state rather than a relink product. |
+| M4 | MAJOR | §2 availability table, AC8, F4, `availability-regenerated` | "Filler-class cells 0 across all **72 kind×locale pairs**" — 72 is derivable from no artifact. The generator counts fillers per kind × non-pivot locale = 3 × 8 = **24** counters (each summing over fields), or 45 (kind,field)-by-locale cells including pivot; availability holds exactly 3 kinds × 9 locales. Likely transposed from the (now-zero) 72 null edges. An invented frozen constant is precisely what §1's own discipline bans. | Define the dimension mechanically — name the counter set in `locale_bridge_dig.py`'s report (`filler_class_cells`: 24 keys) — and freeze that number (24 zero-counters, or per-field cells if that is meant). |
+| m1 | MINOR | §4.2, §5.2 report envelope | Hole 3's lesson is not applied to the spec's own new artifacts: `matrix.json` header carries wall-clock `generated` (as does the validation-report envelope), so stages 5–6 churn bytes every rerun — git-visible diffs and the same defeats-byte-idempotency problem §10.3 fixes for drafts. No AC asserts byte-stability there, so nothing breaks; doctrine idempotency deserves better. | Drop the stamp from matrix.json (keep run stamps in stdout/report only) or declare the exemption explicitly next to hole 3. |
+| m2 | MINOR | §3.2 `_meta` field table | Table claims "verbatim fields" but omits `localeTextRoute`, which the emitter stamps on every dataset (verified in `_draft/item.jsonl` line 1). | Add the row. |
+| m3 | MINOR | §4.1 precondition, §10 | Undeclared orphan artifacts in the input dirs: `poi_coordinates.jsonl` (D7 marker-carrier plane, non-pair name) sits in `relinks/_draft/`; `worldmap_overlays.json` in `data/_draft/`. Hole 1's fix makes the verifier skip them and the promoter ignores them, but the spec neither names them nor pins their long-term home; §4.1's "≥51 pair files" also under-constrains (60 would pass). | Name both files' disposition; tighten preconditions to equality (== 51 pair files, == 40 managed kinds). |
+| m4 | MINOR | §4.3 partial example | Skill's modeled targets-of directions are listed as "(battle__skill, unitPattern__skill)" — omitting `class__skill` (874 edges), which also targets skill. | Include it or mark the list illustrative. |
+| m5 | MINOR | §4.2 matrix record shape | `{a, b, forward, reverse}` implies a canonical ordering of the unordered pair and which direction "forward" means; unspecified, yet T8/T9 require deterministic rendering. | Pin: lexicographic `{a,b}`, forward = a→b (or any rule), stated once. |
+
+## Checked and holding (facts, for the record)
+
+- Wiring template claims accurate: `$script:StageInfo` stub-key shape,
+  dispatch-before-else ordering, `Read-Defaults` required-keys array,
+  `TotalCount 32` literal, and the `| Out-Host` captured-return-stream bug
+  history all match `run_all.ps1` as read.
+- §3.6/hole 2 real: `BUILD_ID = "20318128"` hardcoded in both tools; hole 1
+  real: verifier treats every reldir `*.jsonl` as a pair file
+  (`rm["fromKind"]` would KeyError on `locale_availability.jsonl`).
+- `conftest.py` already registers `integration` + `--run-integration` —
+  no conftest edit needed; §7's convention claims match
+  `test_map_tiles.py` (numeric fixtures, pinned constants, opt-in real-data
+  layer). `run_all.sh` is a thin forwarder — "no change" correct.
+- Isolation-mode story coherent: hole 4 + E4 + AC10 + I4 agree the full walk
+  still halts at decompile exit 3.
+- Arithmetic internally consistent: census Σ 11,473; 3,779 + 6,428 +
+  1,266 == 11,473; wave-1 pairs Σ 6,636; 8+43 == 51; 40×39 == 1,560;
+  C(40,2) == 780; availability 3,779 rows / 3 kinds recounted on disk;
+  overlays 29,889 == 3,321 × 9.
+- Citations resolve: `locales.official` == the 9 locales in pack `spec.md`
+  line 44 and `locale_bridge_dig.LOCALES`; M1–M8/E1–E8 chains exist in
+  `spec.md`; `docs/cdb-census.mdx` exists; PROOF.md R-pointers R1–R10 exist
+  (contents drifted — see B1/B2).
+- Availability byte-stability claim (AC8/I3) implementable: the generator
+  sorts everywhere, seeds RNG with the buildid, stamps no times.
+
+## Ordered fix list
+
+1. B1 — id-registry input retrofit + re-freeze of every 72-derived number.
+2. B2 — define the promoted kind universe + draft-dir hygiene + refresh
+   §3.5 to current PROOF R1/R2 state.
+3. B3 — give constants.jsonl a producer inside the entrypoint (or drop the
+   file dependency from `census-closure`).
+4. M1 — make AC2 executable through a corruption surface that survives
+   regeneration.
+5. M2 — one deletion semantic per file class, AC9 aligned.
+6. M3 — availability out of AC5 (or first-production ownership stated).
+7. M4 — replace "72 kind×locale pairs" with the generator's actual counter
+   dimension.
+8. m1–m5 — stamp exemption, `_meta` table row, orphan dispositions +
+   equality preconditions, class__skill, matrix ordering rule.

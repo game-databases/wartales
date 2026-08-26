@@ -1,0 +1,32 @@
+# Brief — Visual Critic round 1: F1 tokens (fresh subagent, HARSH)
+
+You are the HARSH visual critic from the pipeline law. Never spawn
+subagents, never commit. Wartales pack only. You grade RENDERED
+OUTPUT, never builder summaries.
+
+Render locally (local file only — no web browsing):
+`site/src/styles/tokens-preview.html` via headless Chrome/Edge
+ALREADY on this machine (`msedge --headless --screenshot=... --window-size=1600,1000 file:///...`
+or chrome equivalent; local file only, never the owner's profile, no
+web pages). Screenshot to `design/critique/preview-r1.png`.
+
+Then grade side-by-side against the game's own UI frames in
+`design/sources/` (shot-02 inventory, shot-03 character panel,
+shot-20 camp texture are your soul references) per
+`_foundation/design-standard.md` §5 (feel bar) and
+`design/shadcn-adoption.mdx` (upgraded-not-reskin):
+
+1. Does the palette/type/texture read as WARTALES' UI — quilted
+   near-black panels, olive/violet/steel rarity tints, gold reserved
+   for currency/selection, serif-first medieval flavor — or as "shadcn
+   with a palette swap"?
+2. Blind verdict: if you saw only the preview, would you believe it
+   belongs to the same product as the game shots? Which single
+   element breaks the illusion hardest?
+3. Compare against wikily.gg-grade modern wiki polish: is the type
+   scale comfortable (≥12px), spacing confident, cards scannable?
+4. Name the SINGLE BIGGEST gap and the concrete fix.
+
+You may demand the builder goes back in. Write
+`docs/critique-tokens-r1.mdx`: verdict WOWED or SEND-BACK + the gap
+list ranked. Return ≤8 lines.

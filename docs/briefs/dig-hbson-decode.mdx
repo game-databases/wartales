@@ -1,0 +1,94 @@
+# Brief — Data dig 7: HBSON prefab decoder (fresh subagent)
+
+Fresh data-layer dig agent — the pack's top unblock (PROOF.md R1). **Never
+spawn subagents**; never commit; Wartales pack only
+(`C:\_reps\game-databases\wartales`). Headless: stdout → log; end with
+deliverable paths + verification results.
+
+Read first, in full: repo-root `AGENTS.md`;
+`_foundation/extraction-doctrine.md`; `wartales/spec.md` entities + maps
+blocks; `wartales/docs/data-dig-log.mdx` (Dig 1 type-17 finding, queue
+items naming HBSON); `wartales/docs/toolchain-validation.mdx` §1;
+`wartales/docs/cdb-kind-map.mdx`; `wartales/extracted/PROOF.md` R1/R8 rows;
+`wartales/docs/decompile-dig-1.mdx` (bytecode cross-reference method);
+Dig-6 facts in the dig log tail (field ordinals, jump semantics).
+
+## State (verify, don't trust)
+
+- HBSON = Heaps binary object notation, magic `HBSON\0`. Corpus already
+  harvested as bytes: content.pak 2,674 blobs / 287,251,010 B; res.pak
+  727 / 20,353,567 B. Under `extracted/harvest/`:
+  - `res/content/regions/<tree>/{POI,Towns,Secrets,…}/*.prefab` — REG
+    trees (POI 453 / Towns 156 / Secrets 115) = THE map-marker corpus
+    with world coordinates inside.
+  - `res/content/worldmap.l3d` + `wmap_current.prefab` — overlay scenes.
+  - `content/prefabs/**` — battle/backgrounds/fx/places/camp/buildings.
+- `data.cdb` at `pipeline/tools/_verify/extract-res.pak-data.cdb`
+  (CastleDB JSON). Four top-level sheets are zero-inline DATAFILE-BACKED:
+  `place`, `group`, `element`, `levelProps` — their rows ARE these blobs
+  via type-17 columns (`props.dataFiles`). Their hidden sub-sheets in
+  data.cdb define each blob's expected column schema — use them as the
+  decode oracle.
+- The game reads these blobs at runtime through HashLink code: the reader
+  semantics live in `hlboot.dat`, whose structure layer is fully parsed
+  at `extracted/logic/hl-structure/` (functions/types/globals/constants/
+  strings/opcodes.jsonl.gz). Field names will appear in strings.txt;
+  serializer functions are findable by name/type evidence. Use bytecode
+  + CDB schema + bytes as three independent oracles and make them agree.
+- `itemType.basePrice` payloads ride some prefabs (dig log Dig 2 #2,
+  itemPrice fallback path).
+- Known artifact: `worldmap.dat/layers2D/*.png` masks are readable PNGs
+  whose pixel values index CDB ids via a table that rides `worldmap.dat`
+  HBSON (orientation-evidence §3).
+
+## Hard rules
+
+- Python `C:\Python314\python.exe`, stdlib only.
+- Never Read binary files into context — inspect via scripts/hexdumps you
+  write; validate images only programmatically (PIL/numpy if present).
+- Preserve every identifier and original key name. Never invent values.
+- Zero-slack parse standard (wtpak/hlboot precedent): every byte of every
+  decoded blob accounted for; strict EOF landing; self-verifying reads.
+
+## Task
+
+1. **Reverse the format**: derive HBSON reading rules from the three
+   oracles above (bytes across many files incl. tiny + huge; CDB hidden
+   sub-sheet schemas; bytecode reader functions). Record the grammar in
+   `docs/hbson-format.mdx` with byte-level evidence per rule.
+2. **`pipeline/tools/hbson_decode.py`** — clean-room decoder, stdlib
+   only, CLI: file/dir → JSON (+ `--stats`). Strict mode fails loud on
+   any unaccounted byte pattern.
+3. **Decode targets**, emitting under `extracted/`:
+   - Four datafile-backed sheets as draft rows compatible with
+     `_draft/*.jsonl` conventions (`_meta` first line, buildid 20318128):
+     `place.jsonl`, `group.jsonl`, `element.jsonl`, `levelProps.jsonl`.
+   - Coordinates: every POI/Town/Secret prefab → world position +
+     rotation/scale if present → `extracted/relinks/_draft/poi_coordinates.jsonl`
+     (`{carrier:"prefab", digId:"D7", buildid:20318128, kind, id, x, y,
+     …}` — marker-row carrier A2 contract in EXTRACTION-LOG §5).
+   - `worldmap.l3d` + `wmap_current.prefab` scene structure →
+     `extracted/data/_draft/worldmap_overlays.json`; resolve the
+     value→CDB-id tables for layers2D masks.
+   - `itemType.basePrice` payloads → wherever the itemPrice fallback
+     expects them (document exact join key).
+4. **Proofs**: round-trip re-encode check on a stratified sample (≥200
+   blobs incl. largest/smallest); two-implementation cross-check on ≥50
+   blobs (second decoder written independently, even if minimal);
+   zero-slack report to `output/_dig-hbson/`.
+5. Close what R1 gated where the evidence allows: the 72 unverifiable
+   relink edges (`env→place` 61, `frescos→place` 9, `fiefGoal→element`
+   2) — verify or keep open with the concrete new blocker.
+6. Append **Dig 7** to `docs/data-dig-log.mdx` (findings, gotchas,
+   artifacts); update PROOF.md R1 row with measured facts only.
+
+## Deliverables (exact paths)
+
+`docs/hbson-format.mdx` · `pipeline/tools/hbson_decode.py` ·
+`extracted/data/_draft/{place,group,element,levelProps}.jsonl` ·
+`extracted/relinks/_draft/poi_coordinates.jsonl` ·
+`extracted/data/_draft/worldmap_overlays.json` · basePrice payload
+artifact · `output/_dig-hbson/` proofs · Dig 7 log entry.
+
+Do NOT touch `site/`, `run_all.*`, map_tiles.py gates; never commit;
+never spawn subagents.

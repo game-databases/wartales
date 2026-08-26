@@ -1,0 +1,160 @@
+# Locale key convention — textKey → `export_<locale>.xml` leaf addressing
+
+Pinned by dig 2 (2026-08-24). This is the contract every per-locale page,
+sitemap, and coverage stat reads through. Reproduce the proof with
+`python pipeline/tools/locale_bridge_dig.py` (deterministic, seed =
+buildid 20318128).
+
+Shorthands: **draft** = `extracted/data/_draft/<kind>.jsonl` (dig 1) ·
+**bridge** = `extracted/harvest/_lang-bridge/export_<locale>.xml` ×9 ·
+[localization-architecture](../../_foundation/localization-architecture.md) §5
+· [spec locales block](../spec.md).
+
+## 1. The bridge files
+
+Nine CastleDB text exports, one per official client locale — the exact set
+of [spec](../spec.md) `locales.official`: `en, fr, de, es, pl, pt-BR, ru,
+ko, zh` (client code `zh` ships store-named zh-Hans; BCP-47 mapping is a
+presentation concern, file names use client codes).
+
+Root header carries per-file stamps (all revision **43420**, version 126):
+
+| locale | date stamp | note |
+|---|---|---|
+| en | 2025-09-30 13:56:29 | pivot |
+| ko, zh | 2025-10-01 10:55:41 | |
+| de, es, pl, pt-BR, ru | 2025-10-01 13:05:28 | |
+| fr | *(none)* | dev-pivot vintage: bare `<cdb>` root, no attrs, tab-indented, UTF-8 BOM, 3 duplicate entries in `element` |
+
+The fr file is a different export vintage — treat its missing header as
+"stamps unavailable", never as "untranslated". E3 versioned-truth work
+should key on revision where present and fall back to buildid for fr.
+
+## 2. Addressing grammar
+
+A draft localizable cell is a structured ref:
+
+```json
+{"textKey": {"bridge": "lang/export_<locale>.xml",
+             "sheet": "item", "column": "name", "row": "Gold"}}
+```
+
+Resolution to a text node:
+
+```
+export_<locale>.xml
+└─ <cdb …>                      root (fr: bare <cdb>, no attributes)
+   └─ <sheet name="{sheet}">    exactly one; 35 sheets per file
+      └─ <{row}>                entry element whose TAG NAME is the row id
+         └─ <{column}>          leaf element whose TAG NAME is the column id
+            └─ text             THE GAME STRING for this (entity, field, locale)
+```
+
+Rules pinned by verification (§4):
+
+- The entry id and column id are **element tag names**, not attributes.
+  Every original identifier is preserved verbatim — never slugified here.
+- Leaf presence is the truth, per locale, per column: an absent leaf = the
+  game has no string there (state `missing`); `<desc/>` or `<desc></desc>`
+  = present but empty (state `empty`).
+- Column order inside an entry is irrelevant; sheets carry differing
+  column sets (`item`/`skill`: `name`,`desc`; `unitClass`: `name`;
+  single-column sheets such as `icon` use a `text` leaf instead).
+- Field alias for site consumption: `desc` → `description`. There are **no
+  flavor columns** in the item/skill/unitClass sheets.
+
+### Value fidelity
+
+- XML entities are unescaped **once**: `&lt;b&gt;` in the file means the
+  literal characters `<b>` are part of the game string (Heaps rich-text
+  markup: `<b>`, `<bad>`, `<happy>::value::</happy>`, `[Guard]` macros).
+- Real child elements inside a leaf (`<br/>`, `<img src="…"/>`) are kept
+  **verbatim** in the stored string — the stored value is the exact raw
+  span between `<?{column}>` and `</{column}>`, entity-decoded.
+- All nine files are clean UTF-8 (zero U+FFFD; verified per file).
+
+## 3. Emitted artifacts
+
+- **Overlays** `extracted/locales/<locale>/{item,skill,class}.json` — one
+  JSON object per kind keyed by entity id, values `{name?, description?}`
+  exactly as the game text reads. Per
+  [localization-architecture](../../_foundation/localization-architecture.md) §1
+  a file never mixes locales; per the frozen spec filler policy
+  (`omit-until-translated`) an entity absent from locale L simply has no
+  entry in L's file — no pivot prose, no other-locale prose, ever.
+  Pivot `en` is written first, all files sorted by id.
+- **Availability** `extracted/relinks/locale_availability.jsonl` — one row
+  per entity × kind (3,779 rows), schema:
+  `{kind, id, availableLocales[], namedLocales[], fields:{<locale>:{name:bool, description?:bool}}}`.
+  `availableLocales` = ≥1 resolved field; `namedLocales` = `name`
+  resolves; drives the cross-locale link row, sitemaps and coverage stats
+  ([localization-architecture](../../_foundation/localization-architecture.md) §2, §5.4).
+
+## 4. Proof (dig 2, reproducible)
+
+1. **Structural, dual-parser (en):** independent ElementTree pass vs the
+   storage tokenizer over all 35 sheets — row sets, column sets: **0
+   mismatches across 15,084 leaves**.
+2. **Text, dual-parser:** 10,924 leaves have no real child elements —
+   expat's decoded text must equal the stored value byte-for-byte: **0
+   mismatches**. 4,160 mixed-content leaves cannot be adjudicated by a
+   DOM parser (it loses the escaped-vs-real distinction), so they are
+   proven by (3); comparator-level stripped-text notes remain on 8 leaves
+   of the known artifact class (`&lt;bad&gt;`-style literals), none of
+   which failed (3).
+3. **Raw-span, exhaustive, all 9 locales:** every cell that any overlay
+   could emit was re-extracted from the raw file bytes by an independent
+   regex path and compared after one entity-decode: **55,350 / 55,350
+   matched, 0 mismatched, 0 absent**.
+4. **Random-entity round trip:** 55 entities sampled deterministically
+   (30 item / 15 skill / 10 class; brief requires ≥20) × 9 locales —
+   **50 / 55 names resolve in all nine**; the 5 failures
+   (`JamRecipe`, `FirstAidManual`, `RecipeBeltAccBleedingCrit`, `Attract`,
+   `KogoPassive`) all belong to the drift population of §5 — they resolve
+   in *no* locale, i.e. a data gap, not an addressing failure.
+5. **Cross-locale distinctness sanity:** only 2 of 3,219 en-named items
+   carry an identical string in all 9 locales — values genuinely differ
+   per locale, so a "same everywhere" bug would have been visible.
+
+## 5. Drift ledger — CDB rows with no bridge leaf anywhere
+
+All nine locales are **perfectly parallel**: identical cell-presence
+patterns per kind (per locale: item ok 3,508 / missing 742 of 4,250;
+skill ok 2,364 / missing 382 of 2,746; class ok 278 / missing 3 of 281).
+Consequences:
+
+| population | count | shape |
+|---|---|---|
+| item ids with no export entry (any locale) | 318 | template/internal families: `Unknown`, `*Base` weapon+armor templates, `Recipe*` (craft-named), etc.; spread across `done` (290 Ok + 28 TODO) — an engine-internal marker, not cut content |
+| skill ids with no export entry | 137 | internal/oil-proc skills (`Reload`, `Oil*Proc*`) |
+| unitClass ids with no export entry | 3 | `TavernCustomer`, `Object`, `Dummy` |
+| bridged rows missing one column (pivot) | item 106, skill 108, class 0 | e.g. `PathBonus` has `name`, no `desc` |
+
+These are **display-text gaps in the source data itself** (the CDB schema
+demands the columns; the exporter omits never-shown rows), recorded
+honestly in `locale_availability.jsonl` rather than papered over. They
+are the entire reason coverage is not 100%.
+
+## 6. Filler policy application
+
+Spec-frozen policy: **omit-until-translated**
+([spec](../spec.md) `locales.source-per-locale.filler-policy`). Measured
+against it: **filler-class cells (en-present but L-missing) = 0 for every
+kind × every one of the 9 client locales** — where the game shows an
+entity at all, it shows it everywhere. Omission therefore only ever bites
+whole drift entities (§5), which are absent from `availableLocales` and so
+get no page and no link row in ANY locale — including the pivot.
+
+## 7. Coverage summary (cells × 9 locales)
+
+| kind | cells/entity | ok per locale | missing per locale | cell coverage | entity availability (any locale) |
+|---|---|---|---|---|---|
+| item | 2 (name, desc) | 3,508 | 742 | 82.5% | 1,807 / 2,125 (85.0%) |
+| skill | 2 (name, desc) | 2,364 | 382 | 86.1% | 1,236 / 1,373 (90.0%) |
+| class | 1 (name) | 278 | 3 | 98.9% | 278 / 281 (98.9%) |
+
+Totals reconcile: 55,350 verified cells = Σ ok×9 (3,508+2,364+278)×9 +
+Σ (drift cells are absent everywhere, hence not emitted and not checked);
+availability rows 3,779 = 2,125 + 1,373 + 281.
+
+<!-- END OF wartales/docs/locale-key-convention.mdx -->

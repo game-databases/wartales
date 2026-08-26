@@ -1,0 +1,65 @@
+# Brief — Data dig 11: world↔tile coordinate transform, R8 (fresh subagent)
+
+Fresh data-dig agent. **Never spawn subagents**; never commit; Wartales
+pack only. Headless: stdout → log; end with verification results.
+
+Read first, in full: `wartales/docs/data-dig-log.mdx` Dig 5 (map imagery
+pipeline + gates) and Dig 6 (orientation evidence — D6 axis verdict);
+`wartales/EXTRACTION-LOG.md` §5 (FROZEN gates + AC1 re-pin procedure);
+`extracted/relinks/_draft/poi_coordinates.jsonl` header + sample rows;
+`extracted/data/_draft/worldmap_overlays.json`; `docs/orientation-evidence.mdx`;
+`pipeline/map_tiles.py` (registry + SERVED_TILE contract + frozen
+constants); `pipeline/tests/test_map_tiles.py` (what is pinned).
+
+## State (verify, don't trust)
+
+- Dig 7 landed `poi_coordinates.jsonl`: 607 rows (322 poi / 66 towns /
+  210 secrets / 9 region anchors) with world-space positions from decoded
+  prefabs; layers2D value→CDB-id index tables recovered into
+  worldmap_overlays.json. Region/island/biome masks are readable 2048²
+  L-mode PNGs under res.pak `/content/prefabs/lighting/worldmap.dat/layers2D/`.
+- Albedo webp pyramid + maps.json exist (stage 2 BUILT). Height float
+  grids: 1,377 cells measured. Orientation: stored plane never flips;
+  small-y = north massif, large-y = sea (D6).
+- The transform to derive: world coordinates → tile-pyramid pixel space
+  (the `/map-tiles/v{buildid}/albedo/{z}/{x}/{y}.webp` space), plus
+  per-map bounds already in maps.json.
+
+## Hard rules
+
+- Python `C:\Python314\python.exe`, stdlib only. Never Read binary images
+  into context — PIL/numpy programmatic checks only.
+- NEVER alter frozen gate constants (PLATEAU_FRACTION_GATE,
+  PYRAMID_CORR_GATE, EXPECTED_*, BBOX…) — adding NEW registry fields to
+  maps.json is expected work; if any pinned expectation must change, STOP
+  and follow EXTRACTION-LOG §5 AC1 re-pin procedure instead (documented
+  one-commit re-freeze), reporting back rather than improvising.
+- Never invent values; a fit that doesn't validate stays open with its
+  residual table.
+
+## Task
+
+1. Fit the transform from evidence: POI/town/anchor world coords vs tile
+   pixel space (use known landmarks: Belerion wreck southern Tiltren
+   coast, northern massif at y≈0–13 cell band, region anchor rows).
+   Candidate shapes: single affine (scale+offset, possibly axis swap per
+   D6), else rect-per-region. Record residuals per candidate.
+2. Validate INDEPENDENTLY: every POI must land inside its own region's
+   layers2D mask (value→id table); land/sea consistency vs albedo means
+   per marker kind (crossings on land, fishing near water…); report
+   mismatch counts by kind.
+3. Pin the validated transform into `maps.json` via the normal registry
+   path (`python pipeline/map_tiles.py registry` rerun) using NEW
+   declared fields (e.g. `coordinateTransform` per spec §maps), keeping
+   served-tile URL shape A1 untouched.
+4. Emit `extracted/relinks/_draft/poi_tile_coords.jsonl` — tile-space
+   coordinates joined to poi_coordinates rows (carrier provenance kept).
+5. pytest suite green after your changes (`test_map_tiles.py`). Append
+   **Dig 11** to docs/data-dig-log.mdx; close/update PROOF.md R8 row +
+   spec `maps.coordinate-sources` unknown-P0 cells that you resolved.
+
+## Deliverables
+
+Validated transform (pinned in maps.json + documented in the dig log) ·
+poi_tile_coords.jsonl · residual report in output/_dig-xform/ · Dig 11
+entry · updated PROOF/spec rows.

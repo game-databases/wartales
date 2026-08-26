@@ -1,0 +1,19 @@
+# Brief — CodeFixer: F1 tokens round 3 (fresh subagent, small)
+
+Fresh CodeFixer. Never spawn subagents, never commit. Wartales pack
+only. Read `docs/critique-tokens-r3.mdx` — execute its exact fix list:
+1. Re-pull `eb-garamond-latin-700-normal.woff2` per the fonts README
+   contract; `cmp`-verify byte-DISTINCT from the 400; if the source
+   serves an identical file, record that and instantiate bold from
+   the VF per the README's own rule — either way the rendered bold
+   must be real glyphs, and you prove it (PIL/render diff on a bold
+   specimen crop vs the old shot).
+2. Hygiene from the critique: delete `woff2_` twin files, remove the
+   stale "degrade to Georgia" README line, stage
+   `site/public/assets/ui/` per its instruction.
+3. One spec-line fix routed by the orchestrator: remove the leftover
+   Georgia mention from `design/spec-tokens.mdx` §1 (stacks are
+   EB Garamond/IM Fell only).
+4. Re-shoot `design/critique/preview-r4.png` (same headless command,
+   1600×1000). `npm test` stays 20/20.
+Return: ≤8-line summary — cmp result, render proof, hygiene ✓.

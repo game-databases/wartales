@@ -1,0 +1,140 @@
+# Visual critic r3 — F1 design tokens: **SEND-BACK**
+
+Round 3 · 2026-08-25 · HARSH critic, per
+[docs/briefs/critic-tokens-r2.mdx](./briefs/critic-tokens-r2.mdx) (the r2
+brief's method, re-shot as r3) and the pipeline law in
+[design/shadcn-adoption.mdx](../design/shadcn-adoption.mdx). Graded from
+**rendered output only**, never builder summaries or captions — and this
+round, from pixel-level verification against the extracted binaries, not
+eyeballing alone.
+
+**Evidence graded:**
+
+- Render: `design/critique/preview-r3.png` (1600×1000) — my own shoot,
+  headless Edge `--headless=new`, local `file://` only, from
+  [site/src/styles/tokens-preview.html](../site/src/styles/tokens-preview.html)
+  over [site/src/styles/tokens.css](../site/src/styles/tokens.css).
+- Zoom crops + measurement scripts: `design/critique/_r3zoom/` (band, tip
+  corner, slots, hover cell, 4× type samples, A/B bold test).
+- Soul references, side-by-side, opened only after the blind read was
+  written down: shots 02/03/20 in [design/sources/](../design/sources/).
+- Contract state on disk: `site/public/fonts/` holds the five woff2 (plus
+  `woff2_` verification twins); `site/public/assets/ui/` still does not
+  exist — the preview legally renders the binaries straight from
+  `design/extracted-ui/` per the fixer mandate, but the *served* texture
+  path is still unstaged. Token tests: 20/20 green (`vitest run`).
+
+## Verdict: SEND-BACK
+
+Narrower than r2, and for one reason only — and this time the round
+**cleared every condition of the re-entry bar**. The two carriers render,
+the chrome is real, the uncommon slot is nameable, the hover outline is in
+the pixels. Say it plainly: this is the first round I would believe is
+Wartales. The send-back is for a defect my protocol caught only because
+this round finally rendered enough truth to check: **the staged "700"
+binary is byte-identical to the 400** — `cmp` says so, and a render A/B
+(prove below) shows every bold run in the preview is Skia *synthetic* bold
+smeared over 400 glyphs. r2 sent back a specimen that printed "IM Fell
+English" over Georgia glyphs — a false claim in the render. A font file
+named `eb-garamond-latin-700-normal.woff2` that is the 400 cut is the same
+defect class one layer down: a false claim staged into the contract the
+site will ship. The game's own UI carries a real bold
+(`eb_garamond_bold.fnt`, per the README table); the staging was mandated to
+deliver it ("Real font files rendering"); it delivered a photocopy.
+
+### The defect, proven
+
+1. `cmp site/public/fonts/eb-garamond-latin-400-normal.woff2
+   site/public/fonts/eb-garamond-latin-700-normal.woff2` → byte-identical
+   (44,336 B both; the italic and latin-ext files are distinct, as is IM
+   Fell — only the 700 collides).
+2. Render A/B (`_r3zoom/z-boldtest.png`): the same string at 400 and at
+   700 with these files — the 700 line is visibly *heavier*, which is
+   Chromium synthesizing faux bold because the binary's real weight class
+   is 400 under a 700 declaration. A true 700 instance would be a
+   different cut with different outlines; a same-bytes file cannot
+   produce one.
+3. Consequence in `preview-r3.png`: "Warden Helm", every stat value, the
+   set counter, and the price render faux — the game's tooltip hierarchy
+   rides a bold axis this preview does not actually have.
+
+### Re-entry bar — 4/4 PASS (this must be recorded)
+
+| r2 bar condition | State |
+|---|---|
+| IM Fell identifiable in display, EB Garamond in ramp, Georgia nowhere | ✓ At 4× the display samples show IM Fell's cut (spiky irregular serifs, crossed-stroke W, no ball terminals, moderate x-height); the 22/19/16/14 ramp is EB Garamond (delicate old-style, fine serifs). No Georgia tell anywhere; no Georgia in any stack. |
+| ≥1 panel carries the real 9-slice/texture chrome | ✓ All four carriers verified, not just one: band vs `HeaderBg.png` rms **3.0**; slot frames match their correct `RarityBackground.png` tiles (tile-identity test with controls — rare 14.1 vs 18.6/20.2); tooltip corner shows `dialogBg.png`'s double-hairline bevel + inner shading arc at 8×; the `SmallEntryBG.png` fill is measurably the underlay beneath the slots. |
+| Uncommon slot nameable at arm's length | ✓ The steel-blue wash reads at 1× against common wells without the legend — r2's invisible `#151A1E` is gone, lifted by the game's own tip-wash hues (`--rarity-lift`), no invented color, `--rarity-1..3` byte-untouched (tests pin it). |
+| White hover outline visible in the render | ✓ The marked slot carries a bright `outline(0.5, white)` ring, legible at 1×. Shown, not narrated. |
+
+### Blind verdict (captions discounted, shots opened after)
+
+- **Panel anatomy — pass, r2's both tells fixed.** Band + tucked body +
+  double-hairline bevel + square corners, band titles **centered** (were
+  left-aligned), and the inventory grid now fills its body edge to edge
+  (17 columns, was a sparse floating 4-column island). Against shots
+  02/03 the grammar reads as the same family.
+- **Type voice — pass on the two 400 faces; fail on the bold axis** (the
+  verdict above).
+- **Rarity slots — pass.** Rare's olive + sheen and legendary's violet +
+  ring still read correctly over their real frames; uncommon is now
+  nameable; common stays untinted and frameless, matching the game.
+
+### §5 feel bar
+
+- **Finished-object feel: pass.** The tooltip on real `dialogBg` chrome is
+  the best object this pack has produced; the inventory reads as holding
+  objects, not demoing a grid.
+- **Empty well honesty: pass.** One quiet same-size rectangle, no caption
+  sentence about it.
+- **Gold discipline: pass.** Currency gold on the price row and the one
+  selected ring only. The `#FFFFAA` item name is the game's own
+  `.rarity_r` tip color, not gold creep — watched, not violated.
+- **Hover vocabulary: pass.** The state is rendered; the caption labels
+  what is already visible instead of narrating what isn't.
+
+### r2 gap scorecard
+
+| r2 gap | r3 state |
+|---|---|
+| 1 · Type voice (fonts) | ◑ the two 400 faces render true; the 700 binary is a mislabeled duplicate of the 400 |
+| 2 · Texture chrome | ✓ real binaries render on band, body, dialog and all three slot frames (verified against the PNGs) |
+| 3 · Translucency over art | ✗ still composites over flat `--bg-1`; `--panel-alpha` untested against shot-20 — **now the oldest open gap** |
+| 4 · Rarity frames | ✓ real frames + sanctioned wash lift; uncommon legible |
+| 5 · Interaction vocabulary | ✓ white hover outline rendered; gold selection ring retained |
+| 6 · Demo craft | ✓ grid fills the body, titles centered, captions label rather than narrate |
+
+Fairness note, on the record: unlike r2, this send-back is **not** a scope
+complaint — the fixer mandate
+([docs/briefs/fixer-tokens-r2.mdx](./briefs/fixer-tokens-r2.mdx)) item 1
+explicitly required the real font files. The round had every permission it
+needed and staged one false binary anyway.
+
+## Single biggest gap + fix
+
+**Gap: `eb-garamond-latin-700-normal.woff2` is the 400 file under a 700
+name — the bold axis of the whole type system is synthetic.**
+
+**Fix (one fetch, then re-shoot):** re-download the 700 variant per
+[site/public/fonts/README.md](../site/public/fonts/README.md)'s own fetch
+contract, overwrite the duplicate, and **verify byte-distinct from the 400
+before declaring done** (a one-line `cmp`; ideally also confirm the
+instance's weight class). Re-shoot this same composition set. While in
+there, three hygiene items: delete the five `woff2_` verification twins
+from `site/public/fonts/`; fix the README's stale "stacks degrade to
+Georgia" line (no stack contains Georgia any more); and stage
+`site/public/assets/ui/` so the *served* contract — not just this preview —
+can reach the element binaries.
+
+## What survives (do not re-litigate)
+
+Everything else. The composition set, the tooltip, the chrome wiring (the
+border-image slice numbers are faithful to `style.css`), the uncommon
+lift, the hover render, the filled grid, the centered titles, gold
+discipline, empty-well honesty, the token set and its 20 green tests. r4
+is not a rebuild: it is **one corrected binary and a re-shoot**.
+
+**Re-entry bar for r4:** all four r3 conditions still hold with no
+regression, **and** the bold axis is a true cut — the 700 file
+byte-distinct from the 400, bold text rendering from real 700 outlines
+(no synthesis), verified by the same A/B render test.

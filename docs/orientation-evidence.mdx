@@ -1,0 +1,157 @@
+# Orientation evidence — world-map axis directions (D6 pre-dig)
+
+Fresh data-layer dig, 2026-08-25 (brief
+[briefs/dig-orientation.mdx](briefs/dig-orientation.mdx)). Read-only on the
+client; no subagents; no commits. Question: which way are +x/+y on screen in
+the stored artifact plane (map.pak tile grid x[−8..43], y[0..39]), and what
+are `crs.yAxis` / `transform.d` for the served plane?
+
+## Verdict
+
+**Orientation is closed: `yAxis: "north-up"`, `transform.d: −1`, `a: +1`
+(no mirror).** In the stored plane, **north = small y (image top), east =
++x (image right)**. A served north-up plane must flip the y axis
+(`py = C − y·s`, i.e. `d = −1`) and needs no x change. Confidence **high**
+— convergent client-side evidence, threads 2+3 below; no thread contradicts.
+
+Not yet done (unchanged gates): pinning these values into maps.json happens
+on a pipeline rerun (registry stage reads this doc); AC9's roundtrip budget
+still waits on D5 anchors.
+
+## Thread 1 — hscript sources (`extracted/logic/hscript/`)
+
+**Negative.** All 12 files are quest/world *state* flag tables (`World.hx`,
+region scripts, `formulas.hx` 687 B). Zero camera, coordinate, or compass
+logic. The only geographic payload is adjacency vocabulary in
+`World.hx` border-post flags:
+`alazarEdoranOpen · alazarGosenbergOpen · gosenbergHaragOpen ·
+tiltrenHaragOpen · gosenbergAlazarOpen` — crossing pairs
+Drombach(Alazar)↔Arthes(Edoran), Drombach↔Vertruse(Gosenberg),
+Vertruse↔Ludern(Harag), **Tiltren↔Ludern**, Vertruse↔Drombach. Used as a
+consistency check in thread 3; carries no axis information by itself.
+
+## Thread 2 — hlboot bytecode (`extracted/logic/hl-structure/`)
+
+New scratch tool `output/_dig-map/orientation_disasm2.py`: disassembles the
+fork's opcode stream over the already-verified datasets. Fork facts pinned
+en route (all verified against known-semantics functions, see log entry):
+
+- field ops (`OField/OGetThis/OSetThis/OSetField`) carry **flattened
+  per-type field ordinals** (root ancestor → leaf), not string indices
+  (`h2d.Camera.set_x/y/anchorX` → 0/1/6; `$Math.PI` at ordinal 8 through the
+  `hl.BaseType→hl.Class→$Math` chain);
+- jump targets are signed offsets, destination = `pc + 1 + t`;
+- call-family op 28 has a fixed 6-operand layout (left undecoded; not needed).
+
+### 2a. Every CPU-side world→pixel sampler is UNFLIPPED (confidence: high)
+
+All of them share one frame with the tile grid — whatever cardinal binding
+the frame has applies to tiles, layers PNGs, FOW and minimap alike:
+
+- `WorldMesh.getFow(x,y)`: `col=(x−mesh.minX)/fowScale`,
+  `row=(y−mesh.minY)/fowScale`, byte `fow[row·fowSize+col]` — **y is the
+  row index**, no negation.
+- `Layers2D.getLayerColor(pixels,x,y)`: `int((x−offsetX)/layerScale)`,
+  `int((y−offsetY)/layerScale)` → `Pixels.getPixel(col,row)`; hxd loads PNG
+  rows top-down, so **world +y runs down-image** in every layers2D map.
+- `MiniMap.getPlayerPosition()`: returns `(me.x, me.y)` (or `fakePosition`)
+  — panel space is world xy directly.
+- `MiniMap.getInitialPanning()`: `(pos.x·zoom, pos.y·zoom)`; update applies
+  `scroll.x/y = −panning.x/y + C` (symmetric camera negation, not an axis
+  flip).
+- `MiniMap.update`: inner container `camera.rotation = atan2(dy,dx)` toward
+  the 3D camera target, **no offset and no negation** — the strategic map is
+  *rotated* to the camera heading at runtime; it never flips axes.
+
+### 2b. Compass widget (`ui.comp.Compass`) — decoded, then DISCARDED as tiebreak
+
+`sync` computes a camera yaw `±acos(f·X̂)` (sign from a `fy` comparison) and
+places N/E/S/W labels from bearing windows `N(0,π) E(+π/2,−π/2)
+W(−π/2,+π/2) S(−π,0)` with K = `Math.PI`. Read literally this binds
+North=+Y / East=−X — contradicting thread 3. The literal reading rests on
+two coupled sign choices I could not close without deeper dataflow analysis
+(the fork's comparison-jump operand order, and which `angleData` field
+drives label-x vs alpha across a strip whose interpolation direction depends
+on `innerWidth`). Both reversals together would flip the reading to
+North=−Y/East=+X, i.e. exactly thread 3's verdict. **Recorded as ambiguous;
+not used as evidence.** (The widget is a Skyrim-style heading bar whose
+content the game also rotates — consistent with either reading.)
+
+## Thread 3 — region identity + geography vs measured terrain (decisive)
+
+**Names** ([locale bridge](locale-key-convention.mdx), `export_en.xml`
+sheet=region): code regions are not display names —
+
+| CDB id | display name |
+|---|---|
+| Alazar_Aneding | **Tiltren County** |
+| Alazar_1 | **Drombach County** |
+| Harag_1 | Ludern Region |
+| Edoran_1 | County of Arthes |
+| Gosenberg_1 | Vertruse Province |
+| Gosenberg_2 | Grinmeer Province |
+| InterRegion_1 | Mount Altis |
+| Belerion_1 / Ihraa_1 | Belerion Archipelago |
+
+**Client directional lore** (`export_en.xml`, EN strings quoted verbatim):
+
+- *"Where would you like to go: south to Tiltren or **north to Ludern**?"*
+  ⇒ Ludern is north of Tiltren.
+- *"…when Alazar was still called the **Northern Kingdom**"* + *"Keep your
+  **mountains** and your science, wicked king!"* ⇒ Alazar/Drombach is the
+  mountainous far north.
+- *"a Belerian ship has washed up on the **southern coast of Tiltren**"*
+  ⇒ sea lies south of Tiltren; the archipelago sits off it.
+
+**Measurement** (client imagery, same plane as the tiles):
+
+- Mean elevation per cell from all 1,377 `height_x-y.raw` f32 grids (range
+  −5.59..18.17, median −0.98): the single great massif fills
+  **y ≈ 0–13, x ≈ −2..+12** — the TOP-LEFT (small-y) corner — with a
+  secondary ridge east at y ≈ 10–20; everything y ≳ 21 is low.
+- The archipelago layer (`layer_island.png`) paints its islands in a band
+  at mid-to-large y; the two tile-space island clusters sit at large y
+  (x 41–43 / y 28–31).
+- Placeholder-identical albedo cells (276 sharing hash `0ff430e9` — this
+  also explains the spec's "273⊂276 subset" residue) fill the bottom band,
+  i.e. the un-authored open sea is at LARGE y.
+
+Small-y = mountains = "Northern Kingdom"; large-y = lowlands + southern
+sea + archipelago. **North = small y**, east = +x. Every directional text
+fits with zero contrivance; under the compass-literal alternative every one
+of them would need to be upside-down.
+
+## Thread 4 — worldmap data assets
+
+- `textures.json` (sole real JSON in map.pak): splat material palette
+  (names + representative colors) — terrain-painting config only; no
+  compass/label overlay layers, no placement data. Negative for orientation.
+- NEW artifact class discovered, feeding D5:
+  `res.pak:/content/prefabs/lighting/worldmap.dat/layers2D/` —
+  `layer_region.png` (values 1–10), `layer_island.png` (1–16),
+  `layer_biome.png` (0/2/3), `layer_subregion.png`, `layer_difficulty.png`
+  (1–3), `layer_env.png`, `layer_gameplay.png`; 2048² indexed L-mode PNGs,
+  sampled per world position via `Layers2D.getLayerColor` (§2a). The
+  value→CDB-id index table rides `worldmap.dat` (HBSON) via
+  `Data.region` resolution — so per-region name overlays stay gated behind
+  D5, but the masks are readable now (used above).
+
+## Community knowledge (hypothesis slot, brief item 5)
+
+Hypothesis from prior community exposure: Tiltren centre-south, Drombach
+north, Ludern north-east, Belerion an offshore island southwest — matches
+the verdict. Corroboration attempt against wartales.fandom.com returned
+403 (bot wall; recorded as a finding, single attempt, page abandoned). Not
+load-bearing: the verdict stands on client evidence alone.
+
+## What this changes
+
+- `maps.json` `crs`: `yAxis: "north-up"`, `transform.d: −1` (`a:+1`,
+  `b:c:0` unchanged) — pin on next registry run; schema enum already allows
+  it.
+- Tile serving note: the webp pyramid itself stays as-is (data plane);
+  the north-up flip belongs to the served-plane pixel formula, per this
+  doc, before frontend consumption (AGENTS.md rule 8).
+- D5 queue gains `layers2D/*` masks (cheap region/subregion/biome polygons
+  once the HBSON index table lands) and keeps POI/town coordinates +
+  AC9 roundtrip budget as its remaining deliverables.

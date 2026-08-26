@@ -1,0 +1,189 @@
+# Review — map pipeline code ([map_tiles.py](../pipeline/map_tiles.py) + [README-map](../pipeline/README-map.mdx) + [maps.json](../extracted/data/maps.json) + [maps.schema.json](../contracts/maps.schema.json))
+
+Fresh CodeReviewer pass (brief [briefs/codereviewer-map](briefs/codereviewer-map.mdx)),
+2026-08-25, NE8K session. Never spawns subagents, never commits; findings
+only. Read in full before judging: root AGENTS.md ·
+`_foundation/decision-register.md` (sentinel seen) ·
+`_foundation/extraction-doctrine.md` · `_foundation/extraction-host.md` ·
+[spec.md](../spec.md) end to end · [spec-map-pipeline](spec-map-pipeline.mdx)
+end to end · [review-spec-map](review-spec-map.mdx) (F1–F13) · the four
+reviewed artifacts in full · `pipeline/tests/test_map_tiles.py` in full ·
+harvest helper sources.
+
+**Method — nothing taken on faith.** Suite run (`python -m pytest
+pipeline/tests -q`: **80 passed / 33 skipped**, exactly the briefed numbers),
+then decomposed with `-rs`. Tool spot-run on real payloads into throwaway
+dig-out dirs: `classify` (with `--tsv` bijection) over the live
+`A:\...\Wartales\map.pak`, `formats`, `texindex` — all clean. Dig artifacts
+(`output/_dig-map/*.json`) cross-checked against the claims hardcoded in the
+code; CDB pin, catalogue rows, git tracking state and TSV byte format all
+re-derived.
+
+## Findings
+
+**C1 — MAJOR · the implementation satisfies none of its contracted test
+surface: every behavioral test of the pipeline skips, and the suite stays
+green anyway.** The TestWriter contract
+([test_map_tiles.py:39-58](../pipeline/tests/test_map_tiles.py))
+names ~16 required symbols (`parse_tile_name`, `classify_path`,
+`tile_sort_key`, `in_world_bounds`, `parse_entry_row`, `summarize_entries`,
+`byte_delta`, `origin_px`, `rebase_origin`, `world_pixel_size`, `edge_delta`,
+`assemble_mosaic`, `EXPECTED_GEOMETRY_FIELDS`, `SERVED_TILE_RE`,
+`decode_dds_rgba`, `fit_transform`/`apply_transform`/`invert_transform` +
+`D6_BUDGET_PX`). [map_tiles.py](../pipeline/map_tiles.py) implements **none**
+of them — its API is `classify_entry` / `edge_continuity` /
+`decode_albedo_rgba` / `cmd_*` — so `_need()`
+([:207-214](../pipeline/tests/test_map_tiles.py)) converts each behavioral
+test into a skip. Measured this pass: the map test file is **32 passed / 30
+skipped**, the 30 = 21 × "map_tiles lacks contracted symbol(s)" + 9
+integration-gated. The pack-wide 80/33 therefore verifies the *committed
+numbers* (fixture layer) and the harvest reader — and **nothing about the
+shipped module's behavior**. The docstring itself ordered the fix
+("rename here first if CodeWriter lands a different filename"); it never
+happened. Unexecuted coverage is precisely the brief's trap list: signed
+xy-parse, CR-insensitive rows, negative-origin rebase, the
+orientation-required assembly guard (never-hardcode-yAxis), seam off-by-one
+detection, hole-alpha-on-exact-hole-set, served-plane exclusion regex.
+Three latent follow-ons hide behind the same skips:
+
+- `MAPS_JSON`
+  ([:77](../pipeline/tests/test_map_tiles.py)) points at
+  `extracted/maps.json`; the registry emits `extracted/data/maps.json` — even
+  symbol-fixed, the maps.json contract test would skip forever.
+- cells dir `extracted/cells`
+  ([:953](../pipeline/tests/test_map_tiles.py)) vs actual
+  `extracted/data/cells`.
+- the integration TSV parser assumes column order `path,size,flag`
+  ([:896-903](../pipeline/tests/test_map_tiles.py)); the real recon TSV
+  (re-checked byte-level this pass) is `path \t flag \t offset \t size \t crc`
+  — sizes would read as flags.
+
+**Fix:** either add thin contract adapters in `map_tiles.py` (one-line
+wrappers over the existing regexes; factor `assemble_mosaic(y_axis=…)` out of
+`cmd_mosaic`; expose `SERVED_TILE_RE` and `EXPECTED_GEOMETRY_FIELDS` as the
+tuple of `GEOMETRY_VOCABULARY` fields) or repoint `_need` at the real API —
+plus the two paths and the TSV column order — then make the 21 skipped tests
+actually pass. Until then the map pipeline has zero regression protection:
+any refactor can silently break xy-parsing, hole-alpha or orientation
+handling and the suite stays 80/33.
+
+**C2 — MINOR · the emitted marker taxonomy drops two frozen-spec coordinate-source
+kinds.** Frozen [spec.md](../spec.md) `maps.coordinate-sources` names five
+unknown-P0 kinds; `MARKER_LAYERS`
+([map_tiles.py:937-951](../pipeline/map_tiles.py)) and the emitted
+[maps.json](../extracted/data/maps.json) `marker-layers.types` carry
+poi-marker, location-place, the eleven H-POI legend kinds and a
+fief-districts layer — but **encounter-spawn and vendor-npc appear nowhere**
+in the registry. Their carriers are properly named in
+[spec-map-pipeline §3](spec-map-pipeline.mdx) (PRE battle/group prefabs; PRE
+places/fiefdom + CDB TBD-P1, both D5 P1 slices), so this is not F1's
+missing-carrier shape — but under AGENTS.md rule 8 the registry *is* the
+contract the frontend consumes: PT05 reading maps.json alone can never learn
+those two typed-empty layers are planned. Two-line fix in `MARKER_LAYERS`
+(carriers copied from the spec table), regenerate the registry.
+
+**C3 — MINOR · D2's refutation verdict is prose baked over an unfrozen
+threshold, contradicted by its own recorded metric.** `rawproof.json`
+records `maxPlateauFractionNearPin = 0.0719` — 7.19 % of pixels within ±0.01
+of the −0.4 pin in the worst tile — while the verdict string assembled at
+[map_tiles.py:546-552](../pipeline/map_tiles.py) asserts "no plateau within
+±0.01 of −0.4 **in any tile**". Both cannot be read literally. The
+refutation itself is almost certainly right (measured ocean-cell mean
+−4.82 vs pin −0.4; range −5.92..21.34 — re-verified from the artifact), but
+AC4's discipline is thresholds *frozen from the measured distribution before
+they gate*: "plateau" has no frozen definition here and the 7 % tail goes
+unexplained. Same pattern, lower stakes: the `corr < 0.99` divergence gate in
+D7 ([map_tiles.py:737](../pipeline/map_tiles.py)) is an invented constant
+(it happens to isolate exactly the known origin cell). **Fix:** freeze a
+plateau definition (e.g. fraction ≥ ½ tile) in EXTRACTION-LOG, compute the
+verdict from the metric instead of concatenating the conclusion, and add one
+sentence explaining the 7 % near-pin pixels.
+
+**C4 — LOW · conclusion strings in the registry can silently drift from the
+measurements they cite.** `build_registry`
+([map_tiles.py:975-977](../pipeline/map_tiles.py)) hardcodes
+"height_x0_y0 is a measured 1024×1024 double-resolution LOD" and
+seaLevelPin "refuted (D2)" as literals; nothing reads `rawproof.json`.
+Every such claim matches this buildid's artifacts today (bestLayout =
+1024x1024, own-_s corr 0.4496, D4 = 43 materials — all re-verified this
+pass), so nothing is dishonest now; but a future-buildid rerun whose
+smoothness sweep picked a different shape would still emit the 1024² note
+into maps.json. Thread the measured values through (read the dig artifact or
+pass them in) so the registry can only state what this run measured.
+
+**C5 — LOW · Windows long-path policy applied inconsistently; one unguarded
+mkdir.** `harvest.longpath()` is the pack's stated `\\?\`-prefix policy and
+is used by `write_json` / the manifest write / `hash_existing_file` — but
+`open(str(pak_path))` in `cmd_extract`
+([:304](../pipeline/map_tiles.py)), every `p.open()`/`Image.open`/
+`load_f32` in formats/rawproof/cells/tiles/mosaic
+([:395](../pipeline/map_tiles.py), [:441](../pipeline/map_tiles.py)), and
+`target.parent.mkdir(parents=True)` (:318) bypass it. Latent only — all
+current paths are short — but it is exactly the trap the brief names, and
+`contracts.mkdir(exist_ok=True)`
+([:1151](../pipeline/map_tiles.py)) lacks `parents=True` (a fresh-packroot
+spot-run this pass crashed on it with a bare traceback; unrelated
+non-`MapPipelineError` exceptions likewise escape as tracebacks rather than
+the README's exit-3 fail-loud contract). Route opens through `longpath`,
+add `parents=True`.
+
+**C6 — LOW · registry CLI can silently discard an explicit argument or emit a
+half-pinned transform.** `main()`
+([:1228-1229](../pipeline/map_tiles.py)) forces `--d-sign` to `None`
+whenever `--y-axis` is `unknown` — silently dropping an explicit user value
+(safe direction, silent overwrite). Conversely `--y-axis south-up` without
+`--d-sign` pins `yAxis` while leaving `transform.d` null — a half-pinned CRS
+that passes the schema. Fail or warn loudly on both mismatches; until D5/D6
+land the correct invocation stays all-null, which the default already
+produces.
+
+## Over-engineering hunt
+
+Nothing to remove. The smoothness-shape sweep and quadrant-correlation probes
+each retire a named hypothesis; the manual JSON-schema fallback
+([:1119-1141](../pipeline/map_tiles.py)) is weaker than jsonschema (no
+type/enum checks) but is dead weight only when jsonschema is absent — and it
+is present here (4.26.0), so the real validator ran. The extra registry
+blocks (`originRebase`, `zoomScheme`, `storagePlanes`, …) sit outside the
+published schema's `properties` but draft-07 allows additional properties,
+and each answers a spec §4 duty. Perf posture on the 26 GB layer is right:
+classify walks the pak index only, extract hash-skips harvested bytes, the
+23.1 GB splat class is never decoded except the 3 residue cells, and the
+albedo pyramid shares one decoded array across zoom levels (~1.4 GB peak).
+
+## Traced clean (re-measured this pass)
+
+Suite 80/33 pack-wide as briefed — see C1 for why that number flatters. Real-pak
+spot-runs clean: `classify` 6,886 entries / dirs 8 / Σ 27,888,786,275, Δ=0,
+all six class counts+bytes to the digit, bbox x[−8..43]×y[0..39], duplicate
+families exactly {albedo:0ff430e9×276, splat:78c858d4×273, splat:782458d4×2,
+height_s:db05e56a×2}, TSV bijection 6,886/6,886 no divergence;
+`formats` 4,131/4,131 headers match the measured §2 triples, outliers=0;
+`texindex` 43 materials, 0 tile-like names. Seven-field geometry vocabulary
+complete and consistent across code / maps.json / test fixture. D5/D6 gates
+genuinely open: `yAxis` null, `d` null, `roundtripBudget` null, mosaic
+orientation probe recorded INCONCLUSIVE with reasons, README states both digs
+open — nothing pre-pinned anywhere. MEDIA-CATALOGUE exclusions real:
+rows for splat/normal/height/_s at exact byte totals marked "never served",
+tiles stage emits albedo webp only. Hole arithmetic closes (1,377 + 703 =
+52×40), hole-alpha asserted on the exact hole set, 273⊂276 subset + 3-cell
+residue asserted and proven varied-splat in `cells.json`. Detect census
+json 7 / xml 10 = the documented F3 false-positive mode; `Belerion_1`
+props.waterHeight = −0.4 confirmed in the CDB draft row (pin value honest);
+`height_x10_y20.raw` present (rawproof's one unguarded cell assumption holds);
+rerun manifest preserves the harvest key shape; dig-out gitignored;
+`contracts/maps.schema.json` committed and byte-identical to the code's
+`SCHEMA`; maps.json itself untracked (extracted/ stays machine-local per
+doctrine — consistent). Albedo alpha force-flatten
+([:774](../pipeline/map_tiles.py)) measured harmless: α ≡ 255 across probed
+ocean-placeholder, far-east, mid-world and origin tiles.
+
+---
+
+**Verdict: NEEDS-FIXES** — C1 is load-bearing: land the contract adapters (or
+rename the `_need` targets), fix the two paths + TSV column order, and prove
+the 21 skipped behavioral tests green before PT05 consumes any of this. C2 is
+a two-line registry fix; C3/C4 are compute-the-verdict edits; C5/C6 are
+hygiene. The measurement base itself is excellent — every checked number
+reproduced exactly on the live payload, and the D5/D6 null discipline held
+everywhere it was probed.

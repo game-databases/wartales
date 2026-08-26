@@ -1,0 +1,199 @@
+# CodeReview — pipeline/harvest.py (harvest stage)
+
+Reviewer: fresh CodeReviewer subagent (ox-alpha) · 2026-08-24 · verdict below.
+Inputs read **in full**: `docs/spec-harvest.mdx` (arbiter-approved contract),
+`pipeline/harvest.py`, `pipeline/tools/wtpak.py` (proven reader).
+
+**Review target identity — read this first.** The worktree changed
+mid-review. Committed v1 (5931de6) was superseded at 20:24 by an
+**uncommitted refactor** (two-phase `prepare_pak`/`harvest_pak`,
+`preflight_gates`, `RunState`; 733 lines). This review judges the
+**current working-tree bytes**; every line ref and probe below is against
+them. Historical note: v1-as-committed had a hard blocker the refactor
+fixes — `calibrate()` multiplied its dict argument by a float
+(`int(work_bytes_total * FREE_SPACE_MARGIN)` → `TypeError` on every real
+run) and scoped the 30-min budget per-pak. Do not ship 5931de6 as-is;
+do commit the refactor after these fixes.
+
+Probes run (brief-sanctioned + minimal hermetic fixtures, no full
+harvest): `py_compile` OK · `--help` shape matches §3.1 ·
+`--manifest-only` on res.pak · `--list | head` on res.pak · three
+synthetic mini-paks built into `output/_recon-scratch/_review_harvest/`
+(since deleted; recipes inline per finding).
+
+---
+
+## Findings
+
+### BLOCKER
+
+**B1. `--manifest-only` crashes on any fresh `--out` — output root never created.**
+`harvest.py:505-507` creates only `<out>/<pak>/` and only when
+`extracting`; the manifest/summary/report writes at `harvest.py:562-563`,
+`:601-602`, `:697-698` then `open()` into a nonexistent parent → uncaught
+`FileNotFoundError` → raw traceback, **exit 1**. Proven live:
+`--manifest-only` on real res.pak with a fresh `--out` dies exactly there;
+with the dir pre-created it exits 0 with the correct 936-line manifest,
+dirs=127, media=0, wrap-delta 0, version_byte 0. One of the four contract
+modes (spec §3.1) cannot do its job, and §7.10's test case would catch it
+late. *Fix:* `os.makedirs(longpath(out_root), exist_ok=True)` before the
+first meta write (top of `harvest_pak`, unconditioned).
+
+### MAJOR
+
+**M1. Corrupt inputs exit 1 with a traceback instead of exit 3 — two exception-type holes.**
+(a) Header < 12 B: `struct.unpack("<ii", f.read(8))` (`wtpak.py:34`) raises
+`struct.error`; the constructor catch (`harvest.py:186-191`) handles only
+`ValueError`/`OSError`. (b) Index ending exactly at a node boundary: the
+truncation guard (`harvest.py:91-93`) covers only the name slice; the next
+`self._u8()` (`:99`, `:101`, …) raises `IndexError`, and the parse catch
+(`:192-195`) handles only `struct.error`/`RecursionError`. Both proven with
+synthetic mini-paks (12+1+4-byte file with lone nameLen byte; 8-byte file):
+**exit=1, traceback**, violating the §3.1 exit-code set {0,2,3,4} and the
+§7.8 fixture expectations. *Fix:* add `struct.error` to (a)'s handler and
+`IndexError` to (b)'s (or bound-check `_u8` inside `HarvestReader`).
+
+**M2. Duplicate `--pak` stems silently clobber outputs.**
+Stem uniqueness is never checked (`harvest.py:654-662` validates only
+count and existence). `--pak X\res.pak --pak Y\res.pak` parses both in
+phase A, then phase B writes both into `<out>/res/`, both times to
+`res.manifest.jsonl` / `res.summary.json` (`:504`, `:562`, `:601`) and
+keys `results[ctx["stem"]]` twice (`:682`) — the second pak silently
+overwrites the first's payloads and provenance, with exit 0. Against the
+§4.1 spirit (collisions are a hard error, exit 4). *Fix:* reject duplicate
+stems at preflight with a `UsageError` naming both paths.
+
+**M3. MPEG-sync heuristic carves out arbitrary binaries as media — silent principle-zero violation.**
+`is_av_container` (`harvest.py:175-176`) flags **any** payload whose first
+two bytes are `FF F8..FF FF` as audio; such entries get `media:true`, are
+never verified nor extracted (`:525-526`). Expected media in these four
+paks is zero (spec §4.2), so any hit is anomalous — yet it surfaces only
+as a census number, no warning, no sample coverage (compounds m5). A
+future/patched corpus with an unknown format starting `FF Fx` loses bytes
+without a sound. *Fix:* corroborate magic-driven classification with the
+extension half, or validate the full MPEG frame header (version/layer/
+bitrate bits); print a loud stderr warning whenever a media row is
+magic-driven rather than extension-driven.
+
+**M4. `os.replace` unguarded; dir/file shadowing misclassified; `--out`-is-a-file dies at exit 1.**
+The atomic swap sits **outside** the try (`harvest.py:372`): if the target
+exists as a non-empty directory or is locked by another process, the
+`OSError` escapes uncaught → traceback, exit 1. Relatedly, a tree
+containing both file `a` and file `a/b` surfaces as generic exit-3
+"write failed" from `makedirs` (`:356` → `:364-366`) instead of the §4.1
+collision framing that names both locations; and `--out` pointing at an
+existing **file** makes `os.makedirs(pkg_dir)` (`:507`) raise uncaught
+`FileExistsError` → exit 1. *Fix:* move the replace inside the try;
+classify parent-shadow hits as `CollisionError` (exit 4) naming both tree
+locations; preflight-validate that `--out` is not an existing file.
+
+**M5. Sanctioned `--list | head` deterministically exits 120 on NE8K.**
+The SIGPIPE guard (`harvest.py:38-42`) is dead code on the primary host —
+`signal.SIGPIPE` does not exist on win32 (proven: `hasattr` False) — so
+when `head` closes the pipe, stdout flush fails at interpreter shutdown
+and CPython exits with status **120** (observed live; stderr silent).
+Exit 120 is outside the contracted set, and `--list` is a brief-sanctioned
+smoke command any wrapper will gate on `$?`. *Fix:* wrap the list
+emission (`:450-451`) and final flush in `try/except OSError` → clean
+exit 0; keep or drop the Unix-only SIGPIPE line as you please.
+
+### MINOR
+
+**m1. `wrap_delta_vs_sum_sizes` off by 2³² for content.pak.** `harvest.py:578-579`
+masks the signed i32 to unsigned before subtracting. For content.pak
+(field −1,223,561,650, Σ 7,366,372,942) this records **−2³²**; spec §2.1's
+documented deltas (−2³³, −3×2³³) correspond to the **raw signed field minus
+Σsizes** (−1,223,561,650 − 7,366,372,942 = −2³³ exactly). res.pak probes
+consistent (field positive ⇒ delta 0 either way). *Fix:* use
+`ctx["data_size_field_i32"] - ctx["sum_sizes"]`.
+
+**m2. `--list` no longer enforces §2.2 invariants.** The list branch
+(`harvest.py:449-452`) returns before `structural_checks` (`:454`) — a
+regression vs committed v1's ordering. Spec §2.2's "hard invariants
+(assert, fail loudly)" is mode-unqualified; a corrupt pak now lists
+cleanly with exit 0 (slack, DATA marker, span and tiling all unchecked).
+*Fix:* run `structural_checks` before the branch (cheap, index-only).
+
+**m3. `scope_work(contexts)` computed twice back-to-back** (`harvest.py:675`,
+`:677`) — hoist to one call.
+
+**m4. Per-entry redundant syscalls/allocations on the 40k scale.**
+`os.makedirs(..., exist_ok=True)` per extracted/skipped entry
+(`harvest.py:356`) ≈ 40k stat+mkdir calls per full run, and
+`tuple(MEDIA_EXTENSIONS)` is rebuilt on every `ext_is_media` call
+(`:156`; invoked per entry at `:523`). *Fix:* cache created parents in a
+set; hoist the tuple to module scope.
+
+**m5. Acceptance sampling pools media rows.** `build_samples`
+(`harvest.py:468-471`) samples from all file entries; once the §4.2 hook
+ever fires, a sampled media row reports `match:false` forever (nothing on
+disk to re-hash), poisoning the §6c artifact with a permanent false
+negative. *Fix:* exclude media rows from the pool or emit them with an
+explicit `"note": "media"`.
+
+**m6. `sha256:null` emitted for media rows under `--sha256`** (`harvest.py:550-551`)
+— schema wart on catalogue-only rows. *Fix:* omit the key when
+`sha_hex is None`.
+
+**m7. Stale `.part` orphans survive hard kills.** Discard happens only on
+handled failures (`harvest.py:361-366`); a killed run leaves `.part`
+remnants that the space gate doesn't know about. Resume stays correct
+(targets are checked, parts overwritten) — this is hygiene only. *Fix:*
+optional phase-A sweep of `<out>/**/*.part`.
+
+**m8. UNC targets malformed by `longpath`.** `harvest.py:132-137` prefixes
+`\\?\` onto `\\server\share\...` producing an invalid path; the correct
+form is `\\?\UNC\server\share`. Local-volume runs (NE8K today) unaffected.
+*Fix:* special-case the UNC shape.
+
+**m9. Reader handle closed only by GC.** `wtpak.py:41` opens the pak;
+nothing closes it. CPython refcounting makes this near-deterministic, but
+an explicit close/context-manager is cheap insurance on a tool that holds
+four archives open through two phases.
+
+**m10. Backslash-containing entry names diverge from the verbatim policy on Windows.**
+`joinpath(*rel.split("/"))` (`harvest.py:486`, `:528`) lets pathlib split
+embedded `\` into extra components, so disk layout ≠ stored name.
+Manifest round-trip stays self-consistent, but the "packed name preserved
+verbatim" rule (§4.3) quietly bends. *Fix:* reject node names containing
+`\` at parse time (format failure), or document the nesting behavior.
+
+## Verified clean (checked, no finding)
+
+12-byte-header arithmetic end-to-end (12 + `header_size−16` index + 4
+DATA = header_size; payload = pos + header_size) · flag-bit-2 f64
+positions asserted integral, exact above 2³² (f64 integral ≤ 2⁵³) · u32
+size unwrap · adler mask · DATA marker / zero-slack / delta-0 span /
+tiling proofs (`:239-268`, sorts by pos, for-else closure) · peek-past-EOF
+→ exit 3 naming the entry (`:271-281`, `:296-298`) · childCount bounded by
+remaining index bytes ×2 min-node cost (`:100-106`, §7.14) · collisions
+incl. NTFS casefold gate (`:219-236`) · CLI shape, mutual exclusion,
+argparse-exits-2 · `--list` columns/order/writes-nothing · manifest
+schema/key-order/DFS order/UTF-8/LF · summary completeness incl. version
+byte, wrap fields, counts, census, throughput, lineage, strict flag ·
+report artifact with **per-pak RNG seed recorded** (`:611-615`) ·
+idempotency/resume design (streamed re-adler of existing target; length
+mismatch ⇒ miss ⇒ re-extract) · media extension set exactly the §4.2
+fourteen · detect vocabulary exact incl. whitespace-gated json/xml and
+`u:<8hex>` · long-path `\\?\` applied to every payload/meta write ·
+unicode-safe stdout reconfigure · memory bounded (~tens of MB at 40k
+entries; leaves retained, dir scaffolding collectable) · no per-entry
+stat of the pak · no improvised parallelism; calibration/budget machinery
+is spec-mandated, not gold-plating; v1's dead `exists_lp` removed in this
+revision · `wartales/.gitignore` present covering `extracted/` +
+`output/_recon-scratch/` (§5 hygiene satisfied).
+
+## Over-engineering hunt
+
+None material. The two-phase split adds real value (all trees validated
+before the first payload byte — strengthens §4.4). `RunState` +
+`preflight_gates` map 1:1 to spec clauses. Constants carry spec refs.
+No speculative abstraction beyond the two nits already listed (m3, m4).
+
+---
+
+**VERDICT: NEEDS-FIXES** — 1 blocker (B1), 5 major (M1–M5), 10 minor.
+B1 and M1 are mechanical; everything else is small, localized surgery.
+Format semantics themselves are sound: no wire-format defect found
+against R2 §1, and the res.pak read-only probes reconcile (936 entries,
+127 dirs, adler column well-formed).

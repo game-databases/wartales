@@ -1,0 +1,191 @@
+# Wartales — stages 4–6 build: code review (CodeReviewer, fresh agent)
+
+Reviewed 2026-08-25 against
+[spec-stages-datasets.mdx](./spec-stages-datasets.mdx) REVISED r1 (THE
+contract), root `AGENTS.md`, `_foundation/extraction-doctrine.md`,
+[EXTRACTION-LOG.md](../EXTRACTION-LOG.md) (E1–E6 claims),
+`run_all.ps1`, and the diff: NEW
+`pipeline/tools/{wave_kinds,promote_drafts,relink_catalog,validate_all}.py`;
+retrofits `cdb_emit.py` / `cdb_verify.py` (`--buildid`, scan scope,
+pair-name rule) + `hbson_emit.py` input repoint; wiring in `run_all.ps1`
++ EXTRACTION-LOG edits. This agent did not write the code and did not use
+the TestWriter suite as evidence.
+
+**Method.** All listed files read in full; every claim below was then
+verified by execution on NE8K (buildid 20318128): live `run_all.ps1
+--list` / `--dry-run datasets|relink|emit` / unknown-flag; live `run_all.ps1
+relink` and `run_all.ps1 emit` (both PASS exit 0); sandboxed behavioral
+probes of `promote_drafts.py` (temp dirs only — idempotency, ghost
+tripwires both planes, emitted-exempt equality, buildid-drift fail-before-
+write, missing-draft-dir exit 2, injected mid-copy failure); a sandboxed
+crash repro of `validate_all.py` with stubbed children and temp dirs;
+byte-level emit-parity probe (both waves regenerated into a scratch outdir
+vs canonical); byte-stability probe of `relink_catalog.py` into a scratch
+outdir vs committed products; sha256 pin audit vs EXTRACTION-LOG §2.
+No finding below is speculative; each carries its proof.
+
+## Findings table
+
+| # | Severity | Location | Class | Summary |
+|---|---|---|---|---|
+| R1 | **BLOCKER** | `validate_all.py:175` (+ enabler `:49–50`, `:59–68`) | red lead confirmed — crash instead of report record | A non-managed `.jsonl` in the canonical data dir crashes the validator with `KeyError: 'place'`; the precondition extra-guard that should catch intruders is vacuous by construction |
+| R2 | MINOR | `promote_drafts.py:56–62`, `:152` | spec deviation (§3.4 rule 2) | Equality is `splitlines()`-based, not byte-equality: line-ending / trailing-newline differences compare equal and leave the target stale |
+| R3 | MINOR | `promote_drafts.py:205–219` | robustness / exit-code hygiene | Hand-rolled arg parsing: truncated flag value → IndexError traceback (exit 1); `sys.exit("unknown --plane …")` exits 1, conflating usage error with drift |
+| R4 | MINOR | `promote_drafts.py:100–158` | spec gap (§3.4 rule 4) | No completeness assertion against the managed universe: a truncated draft set over an equally empty canonical dir promotes partially and exits 0 in isolation (unreachable through run_all — gates cover it) |
+| R5 | MINOR | `cdb_verify.py:203` vs `:310–325` | spec deviation (§3.6) | Verifier requires `--buildid` equality for dataset `_meta` but never checks pair-file `_meta.buildId`; covered in-pipeline only because promote_drafts passes `--buildid` |
+| R6 | MINOR | `validate_all.py:303–308` | spec-text mismatch (§5.2 `hbson-independent`) | Scan is top-level-only while the check text says "anywhere under canonical dirs"; recursive reading would false-fail the lawful wave-3 copies sitting in `data/_draft/` — scope one side deliberately |
+| R7 | MINOR | `validate_all.py:293–299` | weakened assertion (§5.2 `deferred-present`) | Check re-states `wave_kinds.DEFERRED` shape (non-empty + unblock truthiness); §3.5 content drift inside the module cannot be detected (self-referential freeze) |
+| R8 | MINOR | `run_all.ps1:280`, `:302` | spec-vs-code drift (§3.1/§3.4 vectors) | Wiring passes `--buildid` to `promote_drafts.py`, absent from the spec's command blocks; tool accepts it (optional), behavior is sound — spec text lags the code |
+| R9 | MINOR | `promote_drafts.py:38–49`, `:165–173` | incomplete enumeration ledger | `poi_tile_coords.jsonl` (Dig-11 product in `relinks/_draft/`) gets the generic "non-managed name" reason; subdirectories in a draft dir are skipped silently rather than enumerated |
+| R10 | MINOR | `validate_all.py:117–118`, `:131–132` | latent Windows encoding trap | `subprocess.run(..., text=True)` without `encoding=` decodes child stdout at the locale codec (cp1252 here); children print `ensure_ascii=False`. Outputs are ASCII-only today (verified in the live emit run) — latent until any child prints non-cp1252 text |
+| R11 | LATENT | `relink_catalog.py:188`, `:201–207` | vocabulary edge | A zero-edge canonical pair file would be labeled `modeled` (vocabulary requires ≥1 edge); unreachable on this corpus (verifier totals cross-check gate runs first). Likewise the both-modeled `"None"` unblock cell: 0 such pairs exist today |
+
+## R1 — BLOCKER: validate_all crashes on a non-managed canonical file
+
+Two defects, one root class ("dict lookup keyed by the managed universe"
+fed by an unfiltered listing):
+
+1. **The guard is vacuous.** `preconditions()` computes `have` via
+   `managed_kinds_in()` (`validate_all.py:46–50`), which pre-filters to
+   `wave_kinds.MANAGED_KINDS`. Therefore `extra = [k for k in have if k
+   not in want]` (`:64`) can never be non-empty — a planted
+   `place.jsonl` sails through the "exactly the 40 managed kinds" check
+   (`:59–68`).
+2. **The loop is unfiltered.** The census loops iterate ALL top-level
+   `.jsonl` (`:147–151`), so the intruder enters `per_kind_rows`, and
+   `census-per-kind` does `sheet = wave_kinds.KIND_SHEETS[kind]`
+   (`:175`) → `KeyError`.
+
+Proof (sandboxed repro, stubbed children, temp datadir seeded with copies
+of the real 40 kinds + a planted `place.jsonl`):
+
+```
+File ".../pipeline/tools/validate_all.py", line 175, in main
+    sheet = wave_kinds.KIND_SHEETS[kind]
+KeyError: 'place'
+```
+
+Consequences, per contract:
+
+- §5.2 requires every fault to become a report record `{id, expected,
+  actual, pass}` with exit 0/1 semantics — instead: no report written,
+  traceback, interpreter exit 1. Indistinguishable from a check-failure
+  except by the absence of the file write.
+- T10's contract ("planted `place.jsonl` … flips exactly its named check
+  and exits 1") cannot hold: the crash precedes `hbson-independent`.
+- Secondary corruption when the crash is avoided: `total_rows` (`:152`)
+  counts the intruder, so `census-closure` would report a wrong number
+  as a *check failure* rather than routing the intruder to its own record.
+- Sibling scan of every dict lookup keyed by the managed universe:
+  `cdb_verify.CENSUS[sheet]` (`:176`) is safe (sheet comes from
+  `KIND_SHEETS`, all 40 sheets present — verified);
+  `relink_catalog.py:159–160` uses `.get`; `promote_drafts.py:116` uses
+  `.get`; the `run_all.ps1` embedded preconditions build their name list
+  UNfiltered (`run_all.ps1:210`, `:237`) and correctly detect extras.
+  Only `validate_all.py` has the bug.
+
+Masking note (facts, not mitigation): through `run_all.ps1 emit` the
+intruder IS caught — `Test-EmitPreconditions` (`run_all.ps1:227–260`)
+checks raw names and exits 2 naming `run_all.ps1 datasets` before any
+child runs. The crash is reachable via isolated `validate_all.py`
+invocation, which is exactly the surface T10 exercises.
+
+Fix (two moves, ordered by the spec's own layers):
+
+- Keep run_all's exactly-40 die() as the stage-boundary guard (already
+  correct). In `validate_all.preconditions()`, do NOT die on extras —
+  per T10 the planted-file fault must reach the checks as a record.
+- Filter the `:147` loop to `MANAGED_KINDS` for closure/per-kind math,
+  and extend `hbson-independent` to enumerate every non-managed
+  top-level `.jsonl` (fail on the four banned HBSON names per AC4/AC11;
+  count-and-report the rest).
+
+## Verified clean (each by execution, not reading alone)
+
+- **Wiring**: `--list` shows six stages, 4–6 BUILT + resolved `CDB` line;
+  `--dry-run datasets|relink|emit` print the exact spec vectors
+  (§3.1/§4.1/§5.1 step-for-step; R8's extra flag aside); unknown flag →
+  usage, exit 2; header block prints complete (`TotalCount 36` ≥ the 33
+  comment lines).
+- **Live stage runs**: `run_all.ps1 relink` PASS exit 0 (precondition
+  block ran clean; promoter `updated=0 unchanged=51 ignored=2`;
+  verifier `ALL CHECKS PASSED` — 40 files / 10,207 rows / 51 pairs /
+  19,130 edges / dangling 0 / unverifiable 72 / preserved keys 133);
+  `run_all.ps1 emit` PASS exit 0 (validator 8/8 reconciling
+  10,207 + 1,266 = 11,473; availability 3,779 = 2,125+1,373+281, grid 27
+  keys all zero; catalog 780 pairs / 39 modeled of 1,560 / markerMatch).
+- **Retrofit regression (mission item 4)**: emitting both waves from the
+  harvest `data.cdb` with NO `--buildid` reproduces all 40 canonical
+  payloads **byte-identically**, `_meta` equal modulo `emitted`, stamp
+  `20318128` — default preserves recorded outputs (spec §3.6). Scan-scope
+  change breaks no caller: grep over the pack shows cdb_emit/cdb_verify
+  are invoked only by run_all, validate_all (child), and tests; map/harvest
+  never call them. Hole-1 skip-and-enumerate works live over the canonical
+  relink dir (`locale_availability.jsonl` skipped; `matrix.json` invisible)
+  and over drafts (`poi_coordinates.jsonl` skipped).
+- **hbson_emit repoint (F14/A2)**: single input read at
+  `hbson_emit.py:149` = `extracted/harvest/res/data.cdb`; no `_verify`
+  reference remains.
+- **Idempotency (mission item 3)**: promoter rerun → 40 unchanged, mtimes
+  untouched; tampered-only-`emitted` → skipped; tampered payload row →
+  exactly that file updated. No wall-clock stamps in
+  promote/catalog/wave_kinds (grep clean); `generated` exists only where
+  declared (reports + emitter `emitted`). Catalog rerun into a scratch
+  outdir is **byte-identical** to committed `matrix.json` +
+  `RELATIONS.md` (arbiter F9 holds on real data).
+- **Atomicity / residue (mission item 1)**: injected `os.replace` failure
+  mid-promotion → exception propagates loud, `.part` cleaned up
+  (`residue=[]`), previous target intact.
+- **Drift semantics (mission item 2, AC9)**: managed-name ghost in either
+  plane → exit 1 naming the file, nothing deleted (data + relink probes);
+  fresh restore-and-pass → exit 0 counted `updated`; `--buildid 99999999`
+  → DRIFT exit 1 **before any write** (out-dir not created); missing draft
+  dir → exit 2. Exit codes 0/1/2 as contracted at tool level.
+- **Freeze-source rule**: regeneration output equals canonical bytes
+  (probe above) — promotion consumes regenerated drafts, not
+  `_draft`-as-found; D7 stamps are correctly NOT in regenerated bytes and
+  the adjudication lives beside the null flags (`relink_catalog.py:48–54`,
+  rendered in the RELATIONS.md ledger).
+- **E1–E6 claims**: defaults block parses (`CDB` resolved by --list, E1);
+  §2 rows added for all six tools and **all six sha256 pins match disk
+  byte-for-byte** (E2); stage table 4–6 BUILT (E3); isolation-mode
+  paragraph present (E4); §4 re-run note present (E5); dated history entry
+  naming retrofits + proofs (E6).
+- **Equality preconditions ==40/==51 with exit 2**: implemented in
+  `Test-RelinkPreconditions` / `Test-EmitPreconditions` on RAW name lists
+  (correctly detect extras — the contrast that isolates R1 to
+  validate_all), and again in `relink_catalog.py:120–131` /
+  `validate_all.preconditions` (this one vacuous, see R1).
+
+## Boundary notes (no action owed)
+
+- Scope otherwise matches the spec; no requirement weakened outside the
+  findings above; decompile stub untouched; `run_all.sh` forwarder
+  unchanged as specified; stage products my live runs regenerated were
+  proven byte-identical before rewrite (only the declared `generated`
+  stamp moved in `validation-report.json`).
+
+## Verdict
+
+**NEEDS-FIXES** — apply in this order:
+
+1. **R1** (BLOCKER): filter validate_all's census loops to the managed
+   universe; make `hbson-independent` carry non-managed names as records
+   so a planted `place.jsonl` flips exactly its named check and lands a
+   report (T10/AC11 contract).
+2. R2 — make promote equality byte-exact (compare raw bytes with the
+   `emitted` field masked structurally, not via `splitlines()`).
+3. R5 — require pair-file `_meta.buildId == --buildid` in cdb_verify so
+   isolated verification enforces §3.6 on both planes.
+4. R4 + R3 — assert draft-set completeness against the universe in
+   `promote_drafts` (exit 2 naming the missing kind/pair) and replace the
+   hand-rolled parser (argparse or explicit length checks; usage errors
+   exit 2).
+5. R6 + R7 + R8 — align check wording/scoping (`hbson-independent`),
+   pin §3.5 content against an inline frozen copy (CENSUS-style), amend
+   spec §3.1/§3.4 command blocks to include the `--buildid` flag the
+   wiring passes.
+6. R9 + R10 + R11 — ledger completeness (`poi_tile_coords.jsonl` reason,
+   subdirectory enumeration), explicit `encoding="utf-8"` on subprocess
+   captures, zero-edge guard in `direction_record` (one-line: skip
+   `edges == 0` from `modeled`).

@@ -1,0 +1,40 @@
+# Brief — Data dig: localization layer (fresh subagent)
+
+Fresh data-layer dig agent. Never spawn subagents, never commit.
+Wartales pack only. Read root AGENTS.md; `_foundation/extraction-doctrine.md`;
+`_foundation/localization-architecture.md` IN FULL (your contract:
+stable ids, locale inventory, per-locale content joinable by documented
+key convention, locale_availability.jsonl, filler policy);
+`wartales/spec.md` locales block (9 client locales, en pivot; filler
+policy as frozen).
+
+## Inputs (verify, don't trust)
+
+- `extracted/data/_draft/{item,skill,class}.jsonl` — canonical rows;
+  locale-text fields are structured `textKey` refs.
+- `extracted/harvest/_lang-bridge/` — `export_<9 locales>.xml` (35
+  sheets mirroring data.cdb), `texts_<9>.xml`, `texts.xml` (fr master).
+  Headers carry version/revision/date stamps (recon §4).
+
+## Task
+
+1. **Key convention** (`docs/locale-key-convention.mdx`): pin the exact
+   addressing from a dataset row's textKey ref to the export_*.xml
+   leaf per locale — sheet → entry → text node; prove it round-trips
+   on ≥20 random entities × 9 locales (name fields must resolve in
+   all 9; document any that don't).
+2. **Per-locale overlays** (`extracted/locales/<locale>/`): for the
+   three draft kinds, emit per-locale JSON keyed by entity id:
+   {name, description, flavor…} exactly as the game's text reads
+   (never mix locales in one file). en pivot first.
+3. **locale_availability.jsonl** (`extracted/relinks/`): one row per
+   entity × kind: availableLocales, namedLocales, per-field presence.
+   Coverage stats per locale per kind.
+4. **Filler policy application**: per frozen spec — entities missing a
+   locale's text get the declared filler marker (never another
+   locale's prose). Count fillers per locale.
+5. Append `docs/data-dig-log.mdx`.
+
+Rules: read-only on A:; preserve every identifier; numbers reconcile
+(row counts × locale coverage). Return: ≤12-line summary — key
+convention proof result, coverage %, filler counts, surprises.

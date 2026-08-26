@@ -1,0 +1,4 @@
+# design source shots stay local (evidence, ~15MB); INDEX.mdx is tracked
+sources/*.jpg
+sources/*.png
+_staging/

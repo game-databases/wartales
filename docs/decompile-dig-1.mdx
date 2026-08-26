@@ -1,0 +1,104 @@
+# Decompile dig 1 — the hlboot.dat structure is fully recovered
+
+Follow-up to [toolchain-validation §2](toolchain-validation.mdx): the
+HashLink bytecode layer of Wartales (client buildid 20318128) is now parsed
+end-to-end with a **zero-slack round-trip proof** and an **independent
+two-implementation cross-check**. Artifacts:
+[`extracted/logic/hl-structure/`](../extracted/logic/hl-structure/WALK-PROOF.mdx)
+(7 datasets + proof), tool: `pipeline/tools/hlboot_probe.py --emit`.
+
+## 1. What the fork actually adds — R2 verdicts corrected
+
+The R2 scout's working theory ("type-kinds ≥19 exist that no public table
+names; observed kinds 22–31+") was an artifact of its own desync: the seed
+probe rewound past the canonical debug-files block (which sits at
+`0x22E65B–0x238AA9`, strictly NUL-validated, ndf=1,609) and read blob bytes
+as type-kind ids. The completed walk proves:
+
+1. **Type kinds: NO fork extensions occur.** All 46,891 types use the
+   public enum family carried by the shipped `libhl.dll` (`hlt_dynobj`,
+   `hl_guid_str` exports ⇒ HDYN=9…HPACKED=22, HGUID=23 — exactly
+   [`_refs/hl.h`](../pipeline/tools/_refs/hl.h)). Full per-kind histogram in
+   [WALK-PROOF](../extracted/logic/hl-structure/WALK-PROOF.mdx).
+   Why [hlbc](https://github.com/Gui-Yom/hlbc) still dies on kind '22':
+   its release tables end below this build's numbering — a tool gap, not a
+   bytecode fork.
+2. **Opcode table: public v4 table + 3 known fork-family additions.** Only
+   ids 0–98 occur in this build; the Shiro/DeadCells fork family's extras
+   `Prefetch(reg,field,int)`, `Asm(int,int,reg)`, `Catch(reg)` (ids 99–101,
+   per crashlink) are pinned in our tool for future builds.
+3. **Fork deviations that ARE real** (all handled):
+   - function storage order is not findex order;
+   - findex space is sparse over the combined functions+natives span
+     (0..52,682; entrypoint f#52,548 = exact function match — resolves §2's
+     "entrypoint > nfunctions" flag);
+   - assigns are `(stringRef, int)` pairs (debugger variable tracking), not
+     reg/type pairs;
+   - native lib names appear with a literal `?` prefix variant
+     (`?steam`, `?hlgog`, `?hlwwise`, `?std`, `?directx`, `?ui`) alongside
+     hard forms — consistent with soft/optional native binding in the
+     loader.
+4. **Section layout is canonical** after all: strings → debug-files block →
+   types → globals → natives → functions(+debug+assigns) → constants → EOF.
+
+## 2. Class-name census (game packages/modules)
+
+From 8,663 object/struct type names (unique Haxe modules ≈ 314 from names;
+1,609 source files in the debug table):
+
+| Package | Types | What it is |
+|---|---:|---|
+| `_Data` | **1,110** | CastleDB-generated data classes — mirrors `res.pak`'s `data.cdb` sheets (ItemKind_Impl_ has 2,126 fields, SkillKind_Impl_ 1,374, ConstantKind_Impl_ 1,267) |
+| `hxbit` / `domkit` | 1,069 / 986 | serialization + Heaps UI/CSS frameworks |
+| `ui` | 962 | Wartales' own UI classes |
+| `hrt` / `h3d` / `h2d` / `hxd` / `hxsl` | 889+551+177+415+— | Heaps engine stack |
+| `battle` | **326** | tactical battle system |
+| `prefab` | 324 | scene/prefab runtime |
+| `st` | **218** | game state/structures |
+| `ent` | **196** | entity system |
+| `world` / `mpman` / `shaders` / `lib` / `haxe` | 94 / 92 / 98 / 142 / 171 | world map, multiplayer manager, shaders, libs |
+
+Native surface (569): `std` 220 · **`steam` 127** (+8 soft) · `directx` 93 ·
+`?hlwwise` 22 · `ssl` 21 · `fmt` 18 · `ui`+`heaps` 28 · `?hlgog` 13 (GOG
+build path present) · `uv` 4.
+
+Debug source paths (1,609 files) resolve **every** function: `src/` 21,068
+functions, `hxbit/` 9,060, `hxsl/` 5,925, `cdb/` 3,694, plus engine dirs —
+the `cdb/` + `_Data.` pairing is the direct code↔data.cdb relink bridge for
+the [relink layer](spec.mdx).
+
+Headline counts: **52,114 functions · 2,508,050 opcodes · 46,891 types ·
+34,258 globals · 569 natives · 27,941 constants · 75,321 strings**, all
+emitted as JSONL with resolved signatures and debug paths.
+
+## 3. Next step — full decompiler
+
+Everything a decompiler needs is now tabular and verified; the remaining
+work is codegen, not discovery:
+
+1. **Operand-level disassembler** (`hl_disasm.py`): decode
+   `opcodes.jsonl.gz` against the pinned opcode semantics into typed IR
+   (per-opcode operand roles: reg/ref-global/ref-string/jump-offset…).
+   Jump targets resolve within each function's op range — cheap CFG build.
+2. **CFG + structured text**: dominator tree per function, if/while/switch
+   reconstruction (OSwitch payloads already parsed), expression folding over
+   register SSA-ish chains. Target output:
+   `extracted/decompiled/hl/{module-path}.hx` mirrors of the 1,609 debug
+   source paths, so every game mechanic lands next to its original file
+   name (extraction doctrine: raw decompile is a first-class output).
+3. **Name recovery**: method names come from owner-class protos
+   (obj.protos findex→function), closures from debug paths (`fun$init`
+   pattern), natives already named. Globals get `_Data`-typed names where
+   the constant-object table attaches them.
+4. **Relink pass**: `_Data.*Impl_` fields ↔ `data.cdb` sheet columns
+   (sheet-id join); `ui.*` classes ↔ HBONN prefabs; `battle`/`ent` call
+   sites ↔ cdb skill/item rows — feeding `extracted/relinks/`.
+5. **Scale estimate**: 2.5M ops is ~minutes of Python per full pass;
+   decompiled corpus size ~50–150 MB text. One agent-pass per package,
+   `src/` (game code) first — that is where formulas, drop logic and
+   unlock conditions live.
+
+Tooling note: crashlink (fetched under `_refs/upstream/` provenance notes)
+provides a reference decompiler pipeline for the same format family; we use
+it as verifier and shape-reference while keeping our own emitter, so the
+pack's outputs stay reproducible from `run_all`-style entrypoints.

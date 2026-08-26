@@ -1,0 +1,130 @@
+# Visual critic r2 — F1 design tokens: **SEND-BACK**
+
+Round 2 · 2026-08-25 · HARSH critic, per
+[docs/briefs/critic-tokens-r2.mdx](./briefs/critic-tokens-r2.mdx) and the
+pipeline law in [design/shadcn-adoption.mdx](../design/shadcn-adoption.mdx)
+("the game's panel on the web, not shadcn with a palette swap"). Graded from
+**rendered output only**, never builder summaries or captions.
+
+**Evidence graded:**
+
+- Render: `design/critique/preview-r2.png` (1600×1000, the brief's shot) —
+  headless Edge `--headless=new`, local `file://` only, from
+  [site/src/styles/tokens-preview.html](../site/src/styles/tokens-preview.html)
+  over [site/src/styles/tokens.css](../site/src/styles/tokens.css).
+- Soul references, side-by-side:
+  [shot-02](../design/sources/shot-02-inventory-trade-dialogue.jpg),
+  [shot-03](../design/sources/shot-03-character-panel.jpg),
+  [shot-20](../design/sources/shot-20-camp-firelight-texture.jpg) — opened
+  only after the blind read of the render was written down.
+- Contract state verified on disk: `site/public/fonts/` holds **README.md
+  only — zero woff2**; `site/public/assets/ui/` **does not exist**; the
+  binaries sit in `design/extracted-ui/` exactly as r1 left them.
+
+## Verdict: SEND-BACK
+
+Narrower than r1, and for one reason only. The composition rebuild is real
+progress — the preview now shows panels instead of swatches, and the tooltip
+card is the first thing in this pack I would believe is Wartales-adjacent.
+But the r1 re-entry bar was a conjunction — *"panel anatomy, type voice, and
+rarity slots must be attributable to Wartales before the palette is even
+considered"* — and the **type voice still renders Georgia on the loudest
+pixels of the page**, exactly where r1 put the single hardest
+illusion-breaker. Worse than silent fallback this time: the type-specimen
+panel **prints "flavor serif — IM Fell English" and "UI face — EB Garamond"
+over Georgia glyphs**. A specimen that mislabels the face it renders is not
+evidence of the serif-first canon; it is a false claim in the render, and it
+sits on the page's most-read pixels for the second round running.
+
+### Blind verdict (captions discounted, shots opened after)
+
+- **Panel anatomy — close, two tells.** Band + tucked body + double hairline
+  bevel + square corners is the game's grammar, and the tooltip card's
+  anatomy (icon, rarity name + star, italic desc, stat rows, gold price row)
+  mirrors `shot-02`'s tip family convincingly. The tells: (1) **the quilt is
+  on the wrong surface** — the game quilts the panel *frame* (`shot-02`
+  inventory border, the `RarityBackground` texture itself); the preview
+  quilts the body interior and leaves the frame a 3px hairline. (2) Band
+  titles sit left-aligned; every Wartales band title ("Inventory", "Trade",
+  "Defence", "Attributes" in shots 02/03) is **centered**.
+- **Type voice — fail.** Georgia everywhere. At 25px display size the
+  difference between Georgia's modern ball-terminal serif and IM Fell's rough
+  17th-century cut is not subtle; against `shot-03`'s Garamond text ramp the
+  specimen reads "browser default", which is the exact read r1 failed for.
+- **Rarity slots — two of three.** Rare's olive wash + static sheen and
+  legendary's violet + gradient ring read correctly and match the sanctioned
+  spec-§3 treatment. **Uncommon is invisible, not quiet**: `#151A1E` on the
+  quilted well is indistinguishable from common at table distance — I could
+  not name the uncommon slots without the caption. In `shot-02` the steel
+  wash reads because it is a *frame texture*, not a flat fill one shade off
+  the well. The real `RarityBackground.png` frames remain unrendered.
+
+### §5 feel bar
+
+- **Finished-object feel:** the tooltip passes; the inventory panel does not —
+  a 4-column, 246px grid floats centered in a full-width quilted body with
+  ~400px of empty quilt either side. The game's inventory fills its frame
+  edge to edge (`shot-02`). Sparse grid in a wide panel reads "component
+  demo", not "holding the object".
+- **Empty well honesty: pass.** One quiet same-size rectangle, no caption
+  sentence about it — the game's own move.
+- **Gold discipline: pass, exemplary.** Gold on exactly the price row and the
+  one selected row's ring, nowhere else; no gold body text; the rare sheen
+  stays inside the `#FFFFAA` tip family (no invented hue).
+- **Hover vocabulary: half.** The gold selection ring is rendered on the
+  Armor row — good. The white outline hover exists only as a caption
+  ("hover a slot: outline(0.5, white)"). A caption narrating a state the
+  render never shows is a summary, and this round grades renders. r1 gap 5
+  asked for the hover state *shown*; it still is not.
+
+### r1 gap scorecard
+
+| r1 gap | r2 state |
+|---|---|
+| 1 · Type voice (fonts) | ✗ Georgia; now mislabeled by the specimen |
+| 2 · Texture chrome | ✗ binaries unstaged; CSS recipes carry a plausible but textureless grammar |
+| 3 · Translucency over art | ✗ still composites over flat `--bg-1`; `--panel-alpha` untested against `shot-20` |
+| 4 · Rarity frames | ◑ fills + sanctioned gradient rings; uncommon illegible; real frames unrendered |
+| 5 · Interaction vocabulary | ◑ gold selection shown; white hover outline still caption-only |
+| 6 · Demo craft | ✓ emoji→monochrome silhouettes, hex-wrap, stray "72", stranded column, border bug all fixed |
+
+Fairness note, on the record: [docs/briefs/fixer-tokens-r1.mdx](./briefs/fixer-tokens-r1.mdx)
+scoped this round to "no new colors, **no new fonts**" — so gaps 1–3 were
+outside the builder's mandate. The send-back is therefore aimed at the round's
+scope, not at negligence: **a round without the fonts cannot clear a re-entry
+bar that names the type voice.** The orchestrator should unblock the fetch
+before r3; grading cannot lower the bar to meet the scope.
+
+## Single biggest gap + fix
+
+**Gap: the two faces the whole soul claim rests on have never rendered — and
+the preview now asserts them while rendering Georgia.**
+
+**Fix (one step, then re-shoot):** fetch the five woff2 per
+[site/public/fonts/README.md](../site/public/fonts/README.md) **and fix the
+resolution path** — `tokens.css` declares root-absolute
+`url("/fonts/…")`, which under the brief's `file://` shoot resolves to the
+drive root and can never load the binaries even once they land. Either serve
+`site/public/` over localhost for the shoot, or point the preview's font
+sources at a path that resolves from `site/src/styles/`. Then re-shoot this
+same composition set. While in there: move the quilt to the panel frame,
+center the band titles, widen the slot grid to fill its body, and render the
+white-outline hover state statically (a `.is-hover` demo cell, not a
+caption).
+
+## What survives (do not re-litigate)
+
+The extracted token set, the palette discipline, the composition concept, the
+tooltip anatomy, gold discipline, empty-well honesty, square corners, the
+sanctioned legendary/rare border treatments, and the r1 craft fixes are all
+in and correct. r3 is not a rebuild: it is **staging the two binary carriers
+that already have contracts (fonts, element PNGs), rendering them, and
+showing the hover state** — then this composition set gets re-graded against
+the same three shots.
+
+**Re-entry bar for r3:** with only the r3 preview on screen and no captions,
+IM Fell English must be identifiable in the display samples and EB Garamond
+in the ramp (Georgia nowhere), at least one panel must carry the real
+9-slice/texture chrome from `design/extracted-ui/`, the uncommon slot must
+be nameable at arm's length, and the white hover outline must be visible in
+the render itself.

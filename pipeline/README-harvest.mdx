@@ -1,0 +1,60 @@
+# harvest — raw PAK extraction stage
+
+Byte-identical extraction of the Shiro `PAK\0` archives into
+`extracted/harvest/`, with per-entry manifests reconciling against the recon
+scratch TSVs on (path, size, adler32). Complete contract:
+[`docs/spec-harvest.mdx`](../docs/spec-harvest.mdx) (format §2, stage §3,
+behavior [§4](../docs/spec-harvest.mdx#4-behavior-rules)). Usage only.
+
+## Usage
+
+```
+python pipeline/harvest.py --pak <path> [--pak <path> ...]
+                           [--out <dir>] [--manifest-only] [--list]
+                           [--sha256] [--fingerprint] [--strict|--no-strict]
+                           [--buildid <id>]
+```
+
+- `--pak` repeatable, max 4 · `--out` default `<packroot>/extracted/harvest`
+- `--manifest-only` — walk trees, write manifests + summaries, extract nothing
+- `--list` — print `path<TAB>flag<TAB>offset<TAB>size<TAB>hash` (TSV column
+  order) to stdout; writes nothing anywhere
+- `--sha256` — per-entry sha256 column in manifest lines (off: wall-clock)
+- `--fingerprint` — whole-pak sha256 into summary provenance (minutes; off)
+- `--strict` default; `--no-strict` downgrades the §2.2 structural invariants
+  (slack, DATA marker, span delta, tiling) to warnings — payload integrity
+  failures (adler mismatch, peek past EOF, bad magic) still exit non-zero
+- `--buildid <id>` — free string stamped into summary provenance (`20318128`)
+
+## Outputs (per pak `X.pak`)
+
+- `X/<entry-path>` — payloads, byte-identical; written via `<target>.part` +
+  `os.replace`, so an interrupted run leaves no partial file behind.
+- `X.manifest.jsonl` — one JSON object per **file** entry, DFS tree order,
+  UTF-8 LF: `{path, flag, offset, size, hash, detect, media[, sha256]}`;
+  `path` keeps its leading `/` (TSV-identical); media rows catalogue without
+  writing payload ([§4.2](../docs/spec-harvest.mdx#4-behavior-rules)).
+- `X.summary.json` — measured size/mtime, version byte, header size, dataSize
+  + wrap delta, counts (`files/dirs/media/skipped_reuse/extracted`), Σ bytes
+  written this run, detect census, wall seconds + MB/s, lineage, buildid.
+- `harvest-report.json` — per-pak RNG seed + 10 sampled entries with
+  disk-recomputed adlers, wall seconds, throughput
+  ([§6](../docs/spec-harvest.mdx#6-acceptance-criteria)).
+
+Exit codes: `0` ok · `2` usage/preflight/budget-tripwire · `3`
+format/integrity · `4` duplicate or case-clashing output path.
+
+Idempotency ([§3.3](../docs/spec-harvest.mdx#33-idempotency-and-resume)):
+every run re-verifies each non-media entry against its stored Adler-32 —
+match ⇒ skip the write (`skipped_reuse`); mismatch or missing ⇒ re-extract.
+Interrupt anywhere and re-run with the same command; only unfinished entries
+are written.
+
+Runtime tripwire ([§5](../docs/spec-harvest.mdx#5-environment-and-performance)):
+before touching payloads it measures throughput (64 MiB probe per pak) and
+free space (payload × 1.05 under `--out`); projection past 30 min stops with
+exit 2 — remedy is a faster `--out`; parallelizing needs a new spec note.
+
+Smoke proof: `res.pak --manifest-only --buildid 20318128` reconciles 936/936
+rows vs `output/_recon-scratch/res-pak-entries.tsv` on every column incl.
+DFS order; dirs=127, Σbytes 767,068,478, wrap delta 0.

@@ -1,0 +1,34 @@
+# Brief — Reviewer: wartales/docs/spec-harvest.mdx (fresh subagent)
+
+Fresh Reviewer in the PrepareTask pass. Never spawn subagents, never
+commit, never edit files under review — findings only. Wartales pack
+only.
+
+Read first: root AGENTS.md; `_foundation/extraction-doctrine.md` in
+full; `wartales/docs/client-recon.mdx` §2 (pak format) in full;
+`wartales/docs/toolchain-validation.mdx` §1 in full; the four
+`output/_recon-scratch/*-pak-entries.tsv` header lines + 3 sample rows
+each; `pipeline/tools/wtpak.py` (the proven parser — the spec builds on
+it); then `wartales/docs/spec-harvest.mdx` in full.
+
+Mission — find holes BEFORE CodeWriter builds from this spec:
+1. Format-contract correctness — does the spec's pak model match recon
+   §2 and wtpak.py exactly (16-B header, DFS name tree, DATA marker,
+   flag-0 raw vs flag-2 f64-offset sequential regions, >4 GiB
+   dataSize wrap, adler32)? Any field mis-stated is a blocker.
+2. Acceptance criteria — measurable? reconcilable to recon TSVs
+   (17,131/15,248/6,886/936)? hash-verify plan sound? resumability
+   defined? performance budget realistic for 40,201 entries/~44 GiB?
+3. Test spec — would it actually catch a wrong flag-2 decode, unicode
+   names, duplicate names, tree/data boundary off-by-one? Missing edge
+   cases?
+4. Media carve-out — catalogue-not-extract rules present and correct
+   per DR-2026-08-18-media-scope?
+5. Over-engineering hunt — anything beyond the stage's job.
+6. Completeness for CodeWriter+TestWriter — could two fresh agents
+   build from this file alone without asking questions?
+
+Write `wartales/docs/review-spec-harvest.mdx`: numbered findings with
+severity (blocker/major/minor), exact line/section, evidence, concrete
+fix. End with verdict: READY-FOR-ARBITER or NEEDS-REVISION. Return:
+≤10-line summary.

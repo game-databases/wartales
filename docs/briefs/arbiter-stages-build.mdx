@@ -1,0 +1,39 @@
+# Brief — Build Arbiter: stages 4–6 code+test review rulings (fresh subagent)
+
+Fresh Arbiter agent. **Never spawn subagents**; never commit; Wartales
+pack only. Headless: stdout → log; end with your ordered fix list.
+
+Read first, in full: `wartales/docs/spec-stages-datasets.mdx` (the
+contract); `wartales/docs/review-stages-code.mdx` (R1–R11);
+`wartales/docs/review-stages-tests.mdx` (F1–F15); repo-root `AGENTS.md`;
+`_foundation/extraction-doctrine.md`. Then spot-verify on disk whatever
+your rulings depend on (both reviewers left repro scripts under
+`D:\_rev-tmp\`; re-run what you cite).
+
+## Mission
+
+1. **Rule per finding** (VALID / INVALID / PARTIAL with proof): prove
+   where either reviewer is wrong; a reviewer's claim is never
+   automatically right.
+2. **Code-vs-test conflicts**: where the CodeReviewer's reading and the
+   TestReviewer's reading imply different behavior, decide from the SPEC,
+   not from taste. Known example to adjudicate: R9's "wiring passes
+   --buildid absent from spec vectors" vs T4's "--buildid accept/reject"
+   pin — is the flag a spec-compliant addition or an undocumented
+   divergence?
+3. **Over-engineering check**: reject fixes exceeding doctrine/spec
+   requirements (e.g., does F3's tamper-test requirement demand new
+   validator machinery, or only a test-side assertion? Does R6's
+   recursion demand contradict its own false-fail note?).
+4. **Scope/boundary check**: silently weakened requirements on either
+   side (spec §5.2 record semantics vs validator crash; §7 verdict-set
+   completeness).
+5. **Verdict**: FIX (ordered list) or APPROVE. For each fix item:
+   owner (CodeFixer / TestFixer / both), exact file(s), exact required
+   change, acceptance proof. Order so blockers land first and no item
+   invalidates an earlier one.
+
+## Deliverable
+
+`docs/arbiter-stages-build-r1.mdx` — per-finding rulings table +
+verdict + ordered fix list. Facts and proofs only.
