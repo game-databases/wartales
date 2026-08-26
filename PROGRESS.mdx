@@ -18,9 +18,9 @@ items lives at the bottom.
 | Phase | Status |
 |---|---|
 | P0 Bootstrap & research (recon, toolchain, competitors, locales, spec) | **DONE — spec FROZEN 2026-08-24** (arbiter delta APPROVE-FOR-FREEZE) |
-| P1 Extraction: harvest → decompile → datasets → relink → PROOF | **NEARLY CLOSED** — run_all stages 1–6 all BUILT and SHIPPED (arbiter APPROVE-FOR-SHIP-COMMIT, `af29425a`). Residue ledger: R1 HBSON **CLOSED** (dig 7, 3,536/3,536 byte-exact) · R2 achievements **RESOLVED** keyless (235 rows, dig 10) · R3 disassembler **COMPLETE** (dig 8, 2.5M ops) · R3b decompiler **CLOSED** (dig 13: every fn readable structured text; OCallClosure typing ledgered as follow-up) · R6 sdlboot **CLOSED** (dig 9) · R7 battle terrain **CLOSED** (dig 12, 97 scenes decoded) · R8 world↔tile transform **CLOSED** (dig 11, px=wx·4/py=wy·4 proven). Open: R9 locale wave-2 overlays (dig 14 running) · R10 relink matrix upgrade (dig 15 running) · R5 fr stamping rule (rides dig 14) |
-| P2 Data-completeness gate (rule 8 arbiter) | opens after R9 (dig 14) + R10 (dig 15) land + commit; Batch-2 launch |
-| P3 Site build (DB, map, builder, calculators, guides/news, i18n, UGC, SEO/AEO) | F1 tokens **DONE** (r4 verdict + r5 closeout measured); F2/F4/F5/PT16 specs drafting now (Batch 1); builds gated on P2 |
+| P1 Extraction: harvest → decompile → datasets → relink → PROOF | **NEARLY CLOSED** — run_all stages 1–6 BUILT+SHIPPED (`af29425a`). Residue ledger: R1 HBSON **CLOSED** (dig 7) · R2 achievements **RESOLVED** keyless (dig 10) · R3/R3b disassembler+decompiler **CLOSED** (digs 8+13) · R6 sdlboot **CLOSED** (dig 9) · R7 battle terrain **CLOSED** (dig 12) · R8 world↔tile transform **CLOSED** (dig 11) · **R10 relink matrix LANDED** (dig 15: 7,184 edges / 107 families / 0 dangling, triple-verified PASS·SOUND·PASS) · **R9 locale wave-2 in delta verification** (dig 14 fix round complete: 217,611 cells / fallback class emitted / wave-1 byte-intact) · **R5 fr stamping delivered** (dig 14 meta table). Remaining: dig-14 delta verdict → landing |
+| P2 Data-completeness gate (rule 8 arbiter) | fires on dig-14 landing — the only remaining P1 item |
+| P3 Site build (DB, map, builder, calculators, guides/news, i18n, UGC, SEO/AEO) | F1 tokens DONE; **all four foundation specs BUILD-READY through full dialectical chains** (F4 approve+r1b+r2b · PT16 approve · F5 r1→arbiter→r2 executed-green · F2 13/13+probes+r2 carrier-unified); builds launch behind the P2 gate |
 | P4 Visual critic loop vs references + e2e smoother | not started |
 | P5 Definition-of-done verification + missingdata.md | not started |
 
@@ -57,6 +57,34 @@ through the full pipeline law (PrepareTask → blind build → double review
   land; DoD sweep + missingdata.md last.
 
 ## Log
+
+### 2026-08-26 (morning) — Batch 1 spec chains closed; dig 15 landed; dig 14 in delta
+
+- **All four foundation specs reached BUILD-READY through the full
+  pipeline law**, each with its own reviewer→fixer→arbiter chain and
+  cross-spec arbitration: F4 shell (12 findings + pt-BR errata ruling +
+  smoke-leg staging), PT16 SEO (12 findings + collision adjudication —
+  `pageSegments` manifest carrier law born here), F5 search (12
+  findings + ko-jamo prefix law executed codepoint-green + `/db`-route
+  conformance), F2 contracts (13 findings incl. post-dig-14 recount
+  governance, true id charset `[A-Za-z0-9_-]` with env-/recipe-
+  hyphen families, carrier unified to F4's law both-directions
+  asserted).
+- **DIG 15 LANDED** (`8c62386`): relink matrix upgrade at evidence
+  layer — 1,560 ordered directions fully classified, **7,184 edges /
+  107 families / 0 dangling** (52 typed directions emitted from CDB
+  hidden sub-sheets during the fix round), sampler 107/107, all
+  locators survived independent break attempts, PROOF R10 truthful.
+- **Dig 14 fix round complete, in delta verification**: BLOCKER resolved
+  (refless struct-column prose now emits via fallback patterns — 7,083
+  cells that audits caught being silently dropped), flatten_struct
+  counters fixed (+12,295 cells recovered exactly), UI inventory
+  completed (40+197 groups / en 2,148 strings), fillers = exactly 3,
+  headline recomputed to **217,611 game-content + 19,081 UI cells**,
+  wave-1's 27 overlays byte-identical throughout. Availability now
+  14,456 rows = 9,827 bridged + 4,629 drift.
+- Drive emergency (C: 454 MB) hit and was resolved by owner cleanup →
+  ~40 GB free; Q2 closed out.
 
 ### 2026-08-26 — Batch 1 airborne; R3b closed; drive pressure escalated
 
