@@ -1,0 +1,228 @@
+# Code review — F4 app shell build (c4f312f)
+
+Fresh Code Reviewer, 2026-08-26. Subject: the built F4 shell (commit
+`c4f312f`, tree under `site/`) against
+[`spec-f4-app-shell.mdx`](./spec-f4-app-shell.mdx) (build-ready, r1/r1b/r2b
+included). Review only — no fixes, no commits. All six reported deviations
+adjudicated; every load-bearing law re-verified **live on this machine**
+(Next 16.3.3 installed in `site/node_modules/`), not taken from the build
+report.
+
+## Verdict: CLEAN
+
+Zero BLOCKER, zero MAJOR. Six MINOR findings recorded below — none gates F5,
+PT16 or PT01. All six deviations ruled **JUSTIFIED**; the cross-pair
+smoke.mjs edit (e) is verified correct against actual response semantics
+(§D-E).
+
+| Category | Count |
+|---|---|
+| BLOCKER | 0 |
+| MAJOR | 0 |
+| MINOR | 6 (N1–N6) |
+| Deviations JUSTIFIED | 6 / 6 |
+| Deviations DEFECT | 0 |
+
+Independent reproduction on this machine:
+
+- `vitest run`: **62/62 green** across all five suites (tokens canon +
+  four new).
+- `tsc --noEmit`: exit 0.
+- `next build`: success — `/[locale]` prerendered as SSG for exactly nine
+  paths (`● /en /de /es [+6 more]`), `[...rest]` dynamic, proxy listed.
+- Armed smoke (`WARTALES_SMOKE_LIVE=1 node scripts/smoke.mjs`):
+  **PASS 19/19**, 0 failed, 0 skipped (fonts/textures staged here, so AC 12
+  leg 1 ran for real: 12 asset refs curl-200).
+
+## A. Spec fidelity — §5–§6 contracts
+
+Every §5–§6 contract checked against code and served HTML:
+
+- **Middleware dispatch laws** (`site/src/middleware.ts`). `/en` → observed
+  `HTTP/1.1 301`, raw header `location: /` (permanent, external);
+  `/en/de` → `301 /de`; never 302/307 (middleware.ts:73–79). No negotiation:
+  `GET /` with `Accept-Language: fr` → `200` EN at `/` (nothing reads
+  Accept-Language; `routing.ts:13` pins `localeDetection: false`). Unknown
+  segment `/xx/foo` → `404`, no Location (middleware.ts:107–108), backed by
+  pre-resolution validation in `request.ts:35–37` and
+  `layout.tsx:45–48`. Trailing slash stays Next core's canonical:
+  `/de/` → `308 /de` observed. `<html lang>` takes the BCP-47 column ×9
+  (`layout.tsx:56`; observed `pt-BR`, `zh-Hans` on the wire).
+- **Manifest-driven render-only-existing nav**: desktop nav, mobile sheet
+  and footer all map `liveRoutes` from
+  `site/src/lib/routes-manifest.ts:22–38` — exactly one live home row keyed
+  `chrome.header.homeLabel`; label keys come from the §4 inventory only
+  (`nav-row.tsx:43`, `footer.tsx:38`). Anchor graph observed on `/de`:
+  skip link + 3× `/` + 3× `/de` + one href per other locale, zero `/en*`,
+  zero raw `chrome.*` keys, exactly one `banner`/one `contentinfo`.
+- **Staged search slot (AC-11 r2b)**: mount renders nothing
+  (`search-slot.tsx:14–16`), `data-search-swap-root=""` server-rendered on
+  `<main>` of every page (`layout.tsx:74–80`); no `/search` route (observed
+  404), no search word/input outside the slot. The r2b restated legs are
+  implemented as specified in `scripts/smoke.mjs:448–472,490–518` and pass.
+- **Chrome i18n stub law**: 13 keys ×9, all nine files byte-identical
+  (md5 `78de322f…` ×9 — trivially satisfying the byte-identical stub gate;
+  keyset/placeholder parity enforced by
+  `messages/chrome-parity.test.ts`), `_stub-keys.json` lists exactly the 13.
+  No `search.*` key exists.
+- **Token wiring over canon**: `globals.css:12–13` imports Tailwind then
+  sibling `./tokens.css`; every @theme right side is a `var()` alias
+  (:15–102); spacing ships only as named `--spacing-g1..g8 ← var(--space-*)`
+  (:94–101); base layer `color-scheme: dark`, no `.dark`
+  (:104–114). **Verify-at-install duty discharged empirically**: compiled
+  CSS shows `:root{--font-ui:"EB Garamond", serif;…}` from the canon with
+  utilities inlining `var(--font-ui)` / `var(--text-display)` /
+  `var(--space-4)` — tokens.css stayed authoritative through the self-named
+  `@theme inline` spellings.
+- **g-suffix spacing only**: grep of shell/app sources finds zero numeric
+  spacing/palette/rounded-/oklch hits (the sole "rounded" hit is a comment);
+  shell-hygiene enforces mechanically.
+
+## B. Deviation adjudication
+
+**(a) Next 16 middleware dispatch rewrite — JUSTIFIED.** Spec §3 said
+"wraps createMiddleware with one pre-shim"; the build keeps
+`createMiddleware(routing)` (middleware.ts:32) as the dispatcher for the
+eight prefixed live locales (:100) and takes over the pivot hop (:111–117)
+and the serving gate (:82–105). Every DR law the rewrite exists to protect
+was verified live (§A above): 301-permanent external `/en*`, no negotiation,
+unknown-segment 404, core-owned 308. Nothing diluted. Forward-risk note
+recorded as N4.
+
+**(b) Served-404 documents composed at the serving layer — JUSTIFIED, and
+its premise is independently verified true.** The claim was that on Next 16
+a buffered `notFound()` cannot emit localized chrome/`<html lang>` in the
+server HTML. Verified: a request that bypasses the middleware matcher and
+reaches `[...rest]` → `notFound()` (e.g. `/de/not-a-route.txt`) returns the
+framework error shell — `<!DOCTYPE html><html id="__next_error__">` with no
+lang attribute and no chrome in server HTML — while the middleware-composed
+document (`middleware.ts:131–153`) delivers everything AC 14 asserts:
+true 404, `<html lang="de">`, chrome copy from the same nine message files
+(no second vocabulary), landmarks, plus `noindex` meta + `x-robots-tag`.
+Both mechanism files remain in place ([...rest]/page.tsx:12–21,
+not-found.tsx:9–19). Residue noted as N5.
+
+**(c) Pivot switch link as plain anchor + sr-only anchor row — JUSTIFIED.**
+The claim "an explicit `locale` prop would force-prefix it" is true in
+next-intl 4.13.7:
+`node_modules/next-intl/dist/esm/development/navigation/shared/createSharedNavigationFns.js:41`
+sets `forcePrefix: locale != null` ("Always include a prefix when changing
+locales"), which flows into `applyPathnamePrefix` (utils.js:140–160) — so
+`<Link locale="en" href="/">` would emit `/en`, violating §3 rule 2. The
+plain anchor to `/` (locale-combobox.tsx:53–59) keeps the pivot bare. The
+sr-only row (:83–98) restores the crawlable cross-locale link graph because
+Radix portals never SSR popover content — without it AC 5's served-page
+switch links would not exist; the smoke leg passes ×9.
+
+**(d) ui/utils.ts beyond §9's letter — JUSTIFIED.** `cn` is required by all
+three shadcn copies; the alias is registered where shadcn expects it
+(`components.json` → `"utils": "@/components/ui/utils"`). One-file shape
+matches shadcn convention; no second vocabulary introduced.
+
+**(e) THE CROSS-PAIR TOUCH — edit to sibling-owned scripts/smoke.mjs
+pivot-301 leg — JUSTIFIED.** Verified against actual response semantics:
+this machine's conformant app answers `/en` with the raw relative header
+`location: /`. The old line
+(`(res.headers.get("location") ?? "").replace(/\/$/,"")`, smoke.mjs:305 at
+600b0e6) maps that to `""`, while the leg compares against
+`wantLoc("/en") === "/"` (smoke.mjs:300) — so the root leg was unpassable
+for ANY app that answers the required root location (absolute forms ending
+in `/` strip just as fatally). The replacement (smoke.mjs:305–309) strips a
+trailing slash only when `raw.length > 1`, preserving `/` while still
+normalizing `/de/` → `/de`; status-301 and exact unprefixed-Location
+assertions are unchanged, so no spec assertion was weakened — an unpassable
+assertion became a passing one that still fails any nonconformant app. The
+diff is 5 lines including its justification comment, in a file the spec §9
+itself assigns to this piece (the TestWriter landed it first, blind, at
+600b0e6 — an orchestration artifact, not a build defect).
+
+**(f) Tooling artifacts — JUSTIFIED.** `site/AGENTS.md` / `site/CLAUDE.md`
+are generated by `next dev` (Next 16 writes the agent block itself; the
+file states committing it keeps the tree clean) — deleting them only
+re-creates the dirty tree, and gitignoring them would contradict §9's own
+pinned two-line `.gitignore` extension. The tsconfig test exclusion is
+ruled a MINOR dilution instead (N2).
+
+## C. Canon protection
+
+`git diff` for c4f312f touches nothing under `src/styles/` except ADDING
+globals.css; `tokens.css`, `tokens.test.ts`, `tokens-preview.html` last
+changed at e82d8a1 (pre-F4 initial import). No canon token name is
+re-declared anywhere in site/src outside tokens.css except in aliasing form
+(hygiene suite enforces, incl. non-color literals and the total
+`--radius-*` ban — globals.css declares none, and no `rounded-*` utility
+exists in any swept source). One value-level residue found: N3.
+
+## D. Correctness / security sweep
+
+Live probes against a scratch dev server (Next 16.3.3):
+
+- **Open-redirect surface of the 301 shim**: `/en//evil.com` → core
+  normalizes first (`308 → /en/evil.com` → `301 /evil.com`, same-origin);
+  `/en/https://evil.com` collapses to a single-slash PATH and terminates in
+  a 404, never an off-origin Location; backslash forms normalize the same
+  way; `%0d%0a` stays percent-encoded inside the Location value (no header
+  injection); `..%2f` → 404. No open redirect found.
+- **Locale injection into lang attrs/hreflang**: `<html lang>` resolves only
+  through `isLocaleId` validation → table lookup (`layout.tsx:45–56`,
+  `request.ts:35–37`); the middleware document escapes interpolated values
+  (`middleware.ts:123–138`) and its inputs come from the frozen table/files.
+  PT16 still owns real hreflang links; see N1 for the one in-markup
+  hreflang nit.
+- **SSG claims**: build output proves nine SSG homes; `generateStaticParams`
+  returns the nine ids (`layout.tsx:13–15`) and `setRequestLocale` is called
+  in layout, page and catch-all before render.
+- **Error boundaries**: no `error.tsx` — runtime errors get the framework
+  default 500. Spec §9 never lists one; recorded, not counted.
+
+## E. Files-touched exactness
+
+Commit c4f312f touches only `site/**`. Every §9 Created path exists (i18n
+quartet, five shell components, three primitives, manifest, messages ×9 +
+ledger, both scripts, catch-all + not-found, configs, components.json,
+globals.css). Modified: `package.json` — deps/scripts added exactly as §1
+lists, existing `test` script byte-identical; `.gitignore` extended with
+exactly `.next/` + `next-env.d.ts`, nothing removed. Extra vs §9: AGENTS.md,
+CLAUDE.md (adjudicated f), ui/utils.ts (d) — none touches another piece's
+surface except the smoke.mjs edit adjudicated (e). Missing vs §9: nothing.
+No vitest.config added (correct — forbidden at F4).
+
+## F. Quality bar
+
+FRAMEWORK §2 conventions hold: App Router + React 19 + TS strict (tsc
+clean), Tailwind v4 via postcss, next-intl standard-library i18n, curl-
+greetable served HTML verified. shadcn copies keep the Radix/cmdk skeletons
+and data-slot names intact while upgrading surfaces/effects to the F1
+recipes (button/popover/command) — square corners throughout, gold confined
+to focus/selection, motion on canon duration/ease with reduced-motion
+flattening. Dead code: none of consequence (unused `CommandEmpty`,
+`buttonVariants` are primitive-surface completeness). Watch item (not
+counted): Next 16.3 emits the "middleware convention deprecated — use
+proxy" warning at boot/build; the spec pins the middleware filename and
+next-intl's createMiddleware, so migrating is a spec-owner call for a later
+revision, and smoke's boot-clean leg will surface it if a future minor
+removes support.
+
+## Findings
+
+| id | sev | location | finding |
+|---|---|---|---|
+| N1 | MINOR | `site/src/components/shell/locale-combobox.tsx:50` | `hrefLang={locale.id}` puts the PAGE segment (`pt-br`) into anchor hreflang where §2 reserves BCP-47 (`pt-BR`) for hreflang. Matches next-intl's own `hrefLang={locale}` convention, cosmetic only — but use `bcp47Of` when the row is touched again. |
+| N2 | MINOR | `site/tsconfig.json` (`exclude: ["node_modules", "**/*.test.ts"]`) | Four new suites (~1.2k lines) sit outside tsc's lane; FRAMEWORK §2.14 type-check discipline silently stops covering them. tokens.test.ts had no tsconfig before, so status quo ante is preserved — but the exclusion should be a recorded choice, and dropped when vitest types land. |
+| N3 | MINOR | `site/src/styles/globals.css:127` | `.wt-band-header` hard-codes border-image slice `10` though tokens.css declares `--tex-slice-header: 10` — a canon VALUE duplicated by literal (hygiene can't see it: not a re-declaration, not in @theme). Alias `var(--tex-slice-header)`. |
+| N4 | MINOR | `site/src/middleware.ts:82–105` | Request-serving is now gated by LIVE_PATHS — an extension of §5's render-only-existing law from NAV RENDERING to REQUESTS that §3 never prescribed. Coherent with "each landing piece flips its own row", but a future page file with a dormant manifest row will 404 at the middleware even though the route exists. Ledger note for PT01/F5/PT16; no code change now. |
+| N5 | MINOR | `site/src/middleware.ts:155–158` | Two 404 anatomies coexist: the localized composed doc for dotless paths vs the framework error shell (no lang/chrome/viewport) for dotted paths that bypass the matcher (`/de/x.txt`). Spec didn't address dotted-path 404s; unify later via matcher inclusion if it ever matters. |
+| N6 | MINOR | `site/src/middleware.ts:68–70` | The rewrite-continuation guard trusts inbound `x-next-intl-locale`: spoofing it makes `/en` answer 200 EN instead of 301 (verified). Library-inherited trust (next-intl communicates locale via this exact header); no boundary crossed on localhost-first — strip/overwrite the header at the edge when a domain deploy lands. |
+
+## Count table
+
+| Severity | Count |
+|---|---|
+| BLOCKER | 0 |
+| MAJOR | 0 |
+| MINOR | 6 |
+
+Deviations: 6/6 JUSTIFIED, 0 DEFECT. Verdict stands: **CLEAN** — the shell
+implements the contract as written, the canon is untouched, the laws were
+re-proven live, and every deliberate divergence either preserves the spec's
+laws or is recorded above as a non-gating minor.
