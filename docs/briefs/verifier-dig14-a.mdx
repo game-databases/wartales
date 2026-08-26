@@ -1,0 +1,43 @@
+# Brief — Verifier A (mechanical): Dig 14 locale wave-2
+
+Fresh Verifier agent; never spawn subagents; never commit; Wartales pack
+only. Deliverable: `docs/verify-dig14-a.mdx`. Scratch writes ONLY under
+`output/_verify-dig14a/`. Read-only everywhere else — do NOT modify
+`extracted/**`, `pipeline/tools/locale_bridge_dig.py`, or docs.
+
+Subject: Dig 14 claim set in `docs/data-dig-log.mdx` (entry "Dig 14") +
+`extracted/PROOF.md` (R9 row, R5 rule, §2 reconciliation) + deliverables
+(`extracted/locales/<locale>/<kind>.json` ×34 kinds ×9 locales,
+`extracted/locales/ui/*.json` ×10 + `_inventory.json`,
+`extracted/relinks/locale_availability.jsonl` (14,456 rows),
+`locale_availability.meta.json`, `output/_dig-locale-wave2/report.json`,
+tool rewrite).
+
+Mechanically re-prove, quoting commands + outputs:
+
+1. **Inventory** — count artifacts yourself: overlay files == 34×9
+   (306) minus any kinds honestly absent; ui == 10 files + inventory;
+   total matches the claimed 468-artifact determinism set shape.
+2. **Availability recount** — independent tally of
+   locale_availability.jsonl: 14,456 rows = 9,474 bridged + 4,982
+   absent-everywhere; frozen wave-1 subset still 3,779 rows with
+   unchanged shape; per kind×locale decomposition spot-check 3 kinds.
+3. **Wave-1 non-regression** — regenerate ONE wave-1 kind (item) with
+   the HEAD version of the tool via git show > temp copy, run into your
+   scratch, byte-compare vs the shipped overlay. Any diff = FAIL.
+4. **Determinism spot** — run the tool twice for one mid-size kind
+   (e.g. trait) into scratch dirs; hashes identical; equal to shipped.
+5. **Dual-extractor spot** — for 3 sampled kinds × 3 locales, extract
+   raw spans yourself from texts/export XMLs with YOUR OWN minimal
+   parser (not the dig's tool) and compare leaf values to the overlay
+   JSONs. Any silent mismatch beyond documented drift = FAIL.
+6. **UI layer counts** — 7,890 matched cells; 889 keys/locale; fr
+   missing 111; `_inventory.json` internally consistent with files.
+7. **R5 stamps** — meta.json covers exactly the headerless sources
+   (`export_fr.xml`, master `texts.xml`); stamps at file+locale level;
+   no invented stamps elsewhere.
+8. **Docs coherence** — every number in the Dig 14 log entry traceable
+   to your counts above; END sentinel present; PROOF R9 wording matches
+   artifact state.
+
+Verdict line at top: PASS / FAIL with failing item ids.

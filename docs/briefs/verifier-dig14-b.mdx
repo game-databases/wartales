@@ -1,0 +1,46 @@
+# Brief — Verifier B (adversarial audit): Dig 14 locale wave-2
+
+Fresh Verifier agent; never spawn subagents; never commit; Wartales pack
+only. Deliverable: `docs/verify-dig14-b.mdx`. Scratch writes ONLY under
+`output/_verify-dig14b/`. Read-only everywhere else.
+
+Your job is to ATTACK the Dig 14 result. Sources available: client XMLs
+(`A:\SteamLibrary\steamapps\common\Wartales\` — res.pak-extracted copies
+under `data/sources/` if staged, else read-only client paths),
+`extracted/data/_draft|canonical/*.jsonl` (CDB shapes for join keys),
+`extracted/locales/**`, the tool source, dig-log entry.
+
+Attacks:
+
+1. **Id-join kinds (the risky class)** — place/group/element +
+   battle/fiefPlace/fiefAdministration/fiefMission join CDB rows to
+   prose by row id with "per-sheet prose vocabularies pinned". For 4 of
+   these 7 kinds: pick 10 rows each and prove/disprove the join — does
+   the overlay text actually belong to that entity id (cross-check
+   against export_en.xml structure AND semantic sense: item names should
+   read like names)? A systematic off-by-one or sheet-mismatch here =
+   BLOCKER.
+2. **Markup fidelity** — the claim is inline markup stays VERBATIM.
+   Sample 20 cells known to contain tags/colors/brackets; diff overlay
+   value vs raw XML span byte-for-byte. One silently-normalized cell
+   beyond documented policy = MAJOR.
+3. **Drift accounting** — "21 round-trip failures are all drift
+   entities failing everywhere": independently classify those 21; any
+   failure that resolves in some locale = the resolver has a bug =
+   BLOCKER.
+4. **Filler census** — "exactly 2 instances pack-wide": hunt for a
+   third (fr-absent descs elsewhere, e.g. other fief* kinds, tutorial,
+   confessions). Finding an undocumented filler instance = MAJOR.
+5. **UI namespace honesty** — fr master lacks 111 of 889 chrome keys:
+   confirm these are genuinely absent in source (not skipped by a
+   parsing gap) by grepping the master texts.xml directly.
+6. **R5 stamp abuse** — verify no stamp exists on a source that HAS a
+   version header (stamps must never mask real provenance); verify the
+   two stamped sources truly lack headers.
+7. **Sibling hygiene** — dig wrote only its designated surfaces; flag
+   anything else (attributing concurrent sibling work correctly — dig-15
+   fixer + spec fixers are live right now).
+
+Every finding: severity + anchor + demonstrating probe. Verdict at top:
+SOUND / UNSOUND with count summary. Show every probe you ran even when
+it finds nothing.
