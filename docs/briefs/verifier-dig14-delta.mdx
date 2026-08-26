@@ -1,0 +1,40 @@
+# Brief — Delta Verifier: Dig 14 post-fix tree
+
+Fresh Verifier agent; never spawn subagents; never commit; Wartales pack
+only. Deliverable: `docs/verify-dig14-delta.mdx`. Scratch ONLY under
+`output/_verify-dig14d/`; read-only everywhere else.
+
+Context: pre-fix tree passed mechanical deep-equal (verify-dig14-a) but
+adversarial audit found real defects (verify-dig14-b UNSOUND); the fix
+round claims all resolved (`docs/briefs/dig14-fixer-r1.mdx` is the work
+order; fixer's resolution table is in its completion notes and the
+updated Dig 14 log entry). Your subject is the DELTA.
+
+Verify (quote commands + outputs):
+
+1. **B1 fallback emissions** — sample 12 of the 7,083 fallback cells
+   across ≥4 A-kinds: each must resolve in an export locale AND match
+   raw XML prose for its entity id (your own extractor). Confirm
+   G2TierryAbodeDaugther resolves 9/9. Confirm the two "credits pair"
+   rows are genuinely false positives (show why).
+2. **M1 recovery** — pick 6 previously-vanished repeated-tag cells;
+   verify present now with correct values vs raw XML; confirm B-side
+   total 114,383 by independent recount on 3 kinds.
+3. **Availability delta** — independent tally: 14,456 = 9,827 bridged +
+   4,629 drift; the +353/−353 shift vs pre-fix reconciles to the
+   fallback class size; meta.json byte-unchanged.
+4. **UI completeness** — recount nested groups/keyed strings yourself:
+   en 2,148 = 40 top-level + 197 nested + 4 top-level keys claim;
+   fr 1,897; fr−111 absence re-proven within stated depth.
+5. **Filler census** — reproduce "exactly 3" exhaustively both
+   directions.
+6. **Docs truth** — every headline figure in the Dig 14 log entry +
+   PROOF R9/R5/§2 reproduces from `output/_dig-locale-wave2/report.json`
+   as shipped NOW (no stale intermediates anywhere: grep for the purged
+   198,899/96,811 figures).
+7. **Integrity** — wave-1's 27 overlays byte-identical to a fresh HEAD
+   regen (git show the pre-fix tool if needed); determinism double-run
+   on one mid-size kind into scratch; achievements overlay + relink
+   files untouched; END sentinel present.
+
+Verdict at top: PASS / FAIL with failing item ids.
