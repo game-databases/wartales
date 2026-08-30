@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, getTranslations, setRequestLocale } from "next-intl/server";
+import GoogleAnalytics from "@/components/analytics/google-analytics";
 import Footer from "@/components/shell/footer";
 import Header from "@/components/shell/header";
 import { LOCALES, bcp47Of, isLocaleId } from "@/i18n/locales";
@@ -54,6 +55,7 @@ export default async function LocaleLayout({
 
   return (
     <html lang={bcp47Of(locale)}>
+      <GoogleAnalytics />
       <body className="flex min-h-dvh flex-col font-ui">
         <CjkFontLink locale={locale} />
         <NextIntlClientProvider locale={locale} messages={messages}>
