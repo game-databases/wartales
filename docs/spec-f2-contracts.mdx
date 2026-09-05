@@ -19,7 +19,7 @@ were both observed during the r1 fix round itself).
 Define, under `contracts/`, every schema and URL rule the frontend needs to
 consume the canonical corpus as published static JSON — per-kind records
 split base + locale overlay ([FRAMEWORK §2.2](../../FRAMEWORK.md#22-entity--base--locale-overlay)),
-stable ids ([localization-architecture §5](../../_foundation/localization-architecture.md#5-data-layer-obligations--what-every-pack-must-ship)),
+stable ids ([localization-architecture §5](../../_foundation/localization-architecture.md#5-data-layer-obligations-what-every-pack-must-ship)),
 list indexes, tooltip sub-routes, map marks, icon CDN paths — with the
 user-facing provenance field law applied verbatim, and the actual emitting
 of those files explicitly LEFT to a later stage-7 piece.
@@ -38,9 +38,9 @@ Read in full before reviewing this spec:
   [DR-2026-08-20-locale-urls] (pivot bare paths),
   [DR-2026-08-22-numbers-stand-alone] (no refresh stamps),
   [DR-2026-08-22-docs-mdx] (this file is MDX).
-- [seo-standard §9](../../_foundation/seo-standard.md#9-answer-engines-aeogeo--be-the-cited-answer-not-just-the-ranked-page)
+- [seo-standard §9](../../_foundation/seo-standard.md#9-answer-engines-aeogeo-be-the-cited-answer-not-just-the-ranked-page)
   (machine data plane; stable-data-URL rule; citability = D2 user-facing
-  class only) · [FRAMEWORK §2](../../FRAMEWORK.md#2-the-stable-core--invariants)
+  class only) · [FRAMEWORK §2](../../FRAMEWORK.md#2-the-stable-core-invariants)
   (planes, base+overlay, relations, icons, URLs, SEO/AEO) ·
   [localization-architecture](../../_foundation/localization-architecture.md).
 - Pack ground truth: [spec.md](../spec.md) (frozen) ·
@@ -176,7 +176,7 @@ so no later piece edits across the line:
 3. **Published data plane** (stage 7 will own bytes; F2 pins shapes):
    the static, unauthenticated, CORS-open `/data/**` + `/cdn/**` trees
    served beside the site — the machine half of
-   [seo-standard §9](../../_foundation/seo-standard.md#9-answer-engines-aeogeo--be-the-cited-answer-not-just-the-ranked-page)
+   [seo-standard §9](../../_foundation/seo-standard.md#9-answer-engines-aeogeo-be-the-cited-answer-not-just-the-ranked-page)
    and the satellite obligation of
    [FRAMEWORK §2.17](../../FRAMEWORK.md#217-overlay-satellite-per-project-option-overwolf-default).
    One data plane, two renders: the API never disagrees with the page.
@@ -196,7 +196,7 @@ the committed registry schema legitimately names `source`, `provenance`,
 
 - **Entity id** = the canonical dataset `id`, VERBATIM (case-preserving,
   never slugified) — the immutable join key of
-  [localization-architecture §5](../../_foundation/localization-architecture.md#5-data-layer-obligations--what-every-pack-must-ship)
+  [localization-architecture §5](../../_foundation/localization-architecture.md#5-data-layer-obligations-what-every-pack-must-ship)
   item 1. (r1) Observed id charsets, MEASURED across every row of all 40
   kinds (R-4 re-derives at build time): native ids are ASCII
   `[A-Za-z0-9_]+`; the corpus-wide union adds the hyphen through exactly
@@ -344,7 +344,7 @@ leftovers) pass through verbatim — doctrine Principle one.
 ## 6. Static JSON API URL architecture
 
 The load-bearing rule of
-[seo-standard §9](../../_foundation/seo-standard.md#9-answer-engines-aeogeo--be-the-cited-answer-not-just-the-ranked-page):
+[seo-standard §9](../../_foundation/seo-standard.md#9-answer-engines-aeogeo-be-the-cited-answer-not-just-the-ranked-page):
 an agent can act on this database iff it can fetch an entity's JSON at a
 STABLE URL DERIVED FROM ITS PAGE URL and get the same facts the page renders.
 
@@ -604,7 +604,7 @@ projection of the registry:
 ## 11. Provenance field law (two classes, one whitelist)
 
 Per [DR-2026-08-15] D2, [AGENTS.md](../../AGENTS.md) rule 3, and
-[seo-standard §9](../../_foundation/seo-standard.md#9-answer-engines-aeogeo--be-the-cited-answer-not-just-the-ranked-page)
+[seo-standard §9](../../_foundation/seo-standard.md#9-answer-engines-aeogeo-be-the-cited-answer-not-just-the-ranked-page)
 citability clause — the API inherits the page's ban, not the repo's habits.
 
 (r1) Scope precision: the law binds PUBLISHED documents. Within the contract
